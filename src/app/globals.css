@@ -1,0 +1,46 @@
+@import 'tailwindcss';
+
+/*
+ * Charte KSP — jetons de design communs aux sites de l'écosystème.
+ * Couleurs provisoires (à valider avec la charte graphique) ; elles migreront dans ksp-ui.
+ * Seule la couleur d'accent change d'un site à l'autre.
+ */
+@theme {
+  --color-brand-50: #eef5fb;
+  --color-brand-100: #d5e6f4;
+  --color-brand-500: #1c6aa8;
+  --color-brand-600: #155689;
+  --color-brand-700: #0f436c;
+  --color-brand-900: #0a2a44;
+
+  --color-accent: #0f766e;
+  --color-accent-contrast: #ffffff;
+
+  --color-surface: #ffffff;
+  --color-surface-muted: #f5f7f9;
+  --color-ink: #13202b;
+  --color-ink-muted: #4d5b67;
+  --color-line: #dde3e8;
+
+  --color-success: #1f7a4d;
+  --color-warning: #a35f00;
+  --color-danger: #b42318;
+  --color-whatsapp: #128c4a;
+
+  /* Polices système : aucun téléchargement, affichage immédiat sur les connexions lentes. */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+
+  --radius-card: 0.75rem;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-surface text-ink font-sans antialiased;
+  }
+  :focus-visible {
+    @apply outline-brand-500 outline-2 outline-offset-2;
+  }
+}
