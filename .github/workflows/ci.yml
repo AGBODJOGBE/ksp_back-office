@@ -66,13 +66,16 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # Les noms d'images Docker doivent être en minuscules ; le propriétaire GitHub ne l'est pas forcément.
+      - name: Propriétaire du registre en minuscules
+        run: echo "IMAGE_OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
       # Image de préproduction : construite à chaque demande de fusion, publiée depuis main.
       # Les adresses viennent des variables du dépôt (Settings → Variables), avec des valeurs par défaut.
       - uses: docker/build-push-action@v6
         with:
           context: .
           push: ${{ github.event_name == 'push' }}
-          tags: ghcr.io/${{ github.repository_owner }}/ksp_back-office:${{ github.sha }}
+          tags: ghcr.io/${{ env.IMAGE_OWNER }}/ksp_back-office:${{ github.sha }}
           build-args: |
             NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL || 'https://admin.staging.ksp.bj' }}
             NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'https://api.staging.ksp.bj' }}
