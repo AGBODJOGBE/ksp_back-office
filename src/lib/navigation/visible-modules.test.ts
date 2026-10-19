@@ -1,4 +1,4 @@
-import { canAccessModule, visibleModules } from './access';
+import { isModuleVisible, visibleModules } from './visible-modules';
 
 const slugs = (roles: string[], phase?: number) => visibleModules(roles, phase).map((module) => module.slug);
 
@@ -29,7 +29,7 @@ describe('accès aux modules du back-office', () => {
   });
 
   it('refuse un module hors des rôles de l’agent', () => {
-    expect(canAccessModule('finance', ['recovery_agent'])).toBe(false);
-    expect(canAccessModule('finance', ['finance_officer'])).toBe(true);
+    expect(isModuleVisible('finance', ['recovery_agent'])).toBe(false);
+    expect(isModuleVisible('finance', ['finance_officer'])).toBe(true);
   });
 });

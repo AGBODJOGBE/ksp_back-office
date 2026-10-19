@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { AppShell } from '@/components/shell/app-shell';
+import { AppShell } from '@/components/layout/app-shell';
 import { MODULES, SUPER_ADMIN } from '@/config/modules';
-import { visibleModules } from '@/lib/auth/access';
+import { visibleModules } from '@/lib/navigation/visible-modules';
 
 type Params = Promise<{ module: string }>;
 

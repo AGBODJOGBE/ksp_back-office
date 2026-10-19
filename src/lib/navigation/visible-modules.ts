@@ -1,8 +1,9 @@
 import { type BackofficeModule, CURRENT_PHASE, MODULES, SUPER_ADMIN } from '@/config/modules';
 
 /**
- * Modules visibles par un agent selon ses rôles. Simple confort d'affichage :
- * le contrôle réel des droits est fait par le backend à chaque appel.
+ * Modules visibles par un agent selon ses rôles et la phase en cours : sert au menu et aux pages d'attente.
+ * Simple confort d'affichage, pas une protection : les rôles viennent de la session délivrée par la gateway,
+ * et le backend contrôle les droits à chaque appel (un module masqué ici reste refusé là-bas).
  */
 export function visibleModules(
   roles: readonly string[],
@@ -17,7 +18,8 @@ export function visibleModules(
   );
 }
 
-export function canAccessModule(
+/** Le module figure-t-il dans le menu de l'agent ? Affichage seulement, comme `visibleModules`. */
+export function isModuleVisible(
   slug: string,
   roles: readonly string[],
   phase: number = CURRENT_PHASE,
