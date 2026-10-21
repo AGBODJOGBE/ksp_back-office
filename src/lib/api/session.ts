@@ -7,8 +7,8 @@
  * - Au chargement d'une page, ou sur une réponse 401, le jeton d'accès est redemandé à la gateway.
  */
 
-/** Route de renouvellement de la gateway. À confirmer à l'étape « Contrats » de la gateway. */
-export const SESSION_REFRESH_PATH = '/api/v1/auth/refresh';
+/** Route de renouvellement de la gateway (contrat ksp-api.v1.yaml, décision F-015). */
+export const SESSION_REFRESH_PATH = '/api/v1/identity/token/refresh';
 
 export interface SessionTokens {
   accessToken: string;
