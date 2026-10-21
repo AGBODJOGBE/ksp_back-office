@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { SUPER_ADMIN } from '@/config/modules';
 import { siteConfig } from '@/config/site';
-import { visibleModules } from '@/lib/auth/access';
+import { visibleModules } from '@/lib/navigation/visible-modules';
 import { SidebarNav } from './sidebar-nav';
 
 /**

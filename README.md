@@ -44,23 +44,11 @@ La gateway locale (`ksp_back`) répond sur http://localhost:3000. Ports des site
 | `pnpm lint` · `pnpm format:check` · `pnpm typecheck` | Contrôles de qualité                        |
 | `pnpm test`                                          | Tests unitaires                             |
 | `pnpm build` puis `pnpm test:e2e`                    | Tests de bout en bout sur le site construit |
+| `pnpm build` puis `pnpm size`                        | Poids JavaScript de chaque page             |
 
-## Organisation
+## Architecture du front
 
-```
-src/
-├── app/                 pages (App Router) ; (app)/ = espace des agents ; (auth)/ = connexion ; api/health = sonde
-├── components/
-│   ├── shell/           cadre du back-office (menu des modules)
-│   └── ui/              composants de base (migreront dans ksp-ui)
-├── config/              variables d'environnement, identité de l'outil, modules et rôles
-├── i18n/                textes de l'interface (français ; anglais prévu)
-└── lib/
-    ├── api/             client de la gateway et session
-    └── auth/            modules visibles selon les rôles
-e2e/                     tests de bout en bout
-docs/decisions.md        décisions propres aux fronts
-```
+Le code est découpé par fonctionnalité (`src/features/<domaine>`, aligné sur les services du backend) autour d'un cadre (`src/components/layout`) et de composants de base portables (`src/components/ui`, futur `ksp-ui`), avec des frontières vérifiées par ESLint, des écrans en coques statiques et un menu filtré par rôle pour l'affichage seulement. Le détail (dossiers, règles de dépendance, droits, rendu, budget de poids) est dans [docs/architecture.md](docs/architecture.md).
 
 ## Variables d'environnement
 
@@ -71,5 +59,6 @@ Adresses de préproduction utilisées par défaut en CI (`*.staging.ksp.bj`) : *
 ## Documentation
 
 - [Règles de travail](CONTRIBUTING.md)
+- [Architecture du front](docs/architecture.md)
 - [Décisions des fronts](docs/decisions.md)
 - Architecture et ADR de l'écosystème : dépôt `ksp_back`, dossier `docs/`.

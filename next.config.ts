@@ -34,6 +34,8 @@ const nextConfig: NextConfig = {
   // Image Docker minimale : seul le serveur autonome et ses dépendances sont copiés.
   output: 'standalone',
   poweredByHeader: false,
+  // Empêche `next dev` d'ajouter des blocs générés aux fichiers de documentation locaux.
+  agentRules: false,
   reactStrictMode: true,
   images: {
     // Images servies par le stockage S3 (service file) et le CMS : domaines à compléter au déploiement.
