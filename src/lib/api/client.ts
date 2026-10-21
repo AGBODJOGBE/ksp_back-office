@@ -22,7 +22,6 @@ export interface ApiClientOptions {
   /** Renouvelle la session ; renvoie true si un nouveau jeton est disponible. */
   refreshSession?: () => Promise<boolean>;
   fetchImpl?: typeof fetch;
-  newCorrelationId?: () => string;
 }
 
 const API_PREFIX = '/api/v1/';
@@ -35,15 +34,18 @@ export interface ApiClient {
   delete<T>(path: string, options?: RequestOptions): Promise<T>;
 }
 
+/** En-tête de corrélation créé par la gateway pour chaque requête (exposé par sa politique CORS). */
+const CORRELATION_HEADER = 'X-Correlation-Id';
+
 /**
  * Client unique de la gateway. Le front n'appelle aucun autre serveur (règle d'architecture).
- * - chaque requête porte un identifiant de corrélation (suivi de bout en bout) ;
+ * - l'identifiant de corrélation est créé par la gateway (une valeur envoyée par le client est ignorée,
+ *   et l'en-tête n'est pas autorisé par sa politique CORS) : il est relu dans la réponse ;
  * - sur 401, la session est renouvelée une fois puis la requête est rejouée ;
  * - toute erreur est convertie en ApiError (message en français affichable).
  */
 export function createApiClient(options: ApiClientOptions): ApiClient {
   const fetchImpl = options.fetchImpl ?? ((...args: Parameters<typeof fetch>) => fetch(...args));
-  const newCorrelationId = options.newCorrelationId ?? (() => crypto.randomUUID());
 
   function buildUrl(path: string, query?: RequestOptions['query']): string {
     if (!path.startsWith(API_PREFIX)) {
@@ -57,8 +59,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
   }
 
   async function send<T>(method: HttpMethod, path: string, request: RequestOptions, canRetry: boolean) {
-    const correlationId = newCorrelationId();
-    const headers: Record<string, string> = { Accept: 'application/json', 'x-correlation-id': correlationId };
+    const headers: Record<string, string> = { Accept: 'application/json' };
     if (request.body !== undefined) headers['Content-Type'] = 'application/json';
     if (request.idempotencyKey) headers['Idempotency-Key'] = request.idempotencyKey;
     const token = request.auth === false ? null : (options.getAccessToken?.() ?? null);
@@ -78,7 +79,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       });
     } catch (error) {
       if ((error as Error).name === 'AbortError') throw error;
-      throw ApiError.network(correlationId);
+      throw ApiError.network();
     }
 
     if (response.status === 401 && canRetry && request.auth !== false && options.refreshSession) {
@@ -87,7 +88,10 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
 
     if (response.status === 204) return undefined as T;
     const body: unknown = await response.json().catch(() => null);
-    if (!response.ok) throw apiErrorFromResponse(response.status, body, correlationId);
+    if (!response.ok) {
+      const correlationId = response.headers.get(CORRELATION_HEADER) ?? undefined;
+      throw apiErrorFromResponse(response.status, body, correlationId);
+    }
     return body as T;
   }
 

@@ -11,9 +11,13 @@ export const session = createSessionStore({
     const response = await fetch(new URL(SESSION_REFRESH_PATH, publicEnv.apiUrl), {
       method: 'POST',
       credentials: 'include',
-      headers: { Accept: 'application/json', 'x-correlation-id': crypto.randomUUID() },
+      headers: { Accept: 'application/json' },
     });
-    return response.ok ? ((await response.json()) as SessionTokens) : null;
+    if (!response.ok) return null;
+    // Réponse SessionResponse du contrat : la durée se déduit de accessTokenExpiresAt (F-015).
+    const body = (await response.json()) as { accessToken: string; accessTokenExpiresAt: string };
+    const expiresIn = Math.max(0, Math.floor((Date.parse(body.accessTokenExpiresAt) - Date.now()) / 1000));
+    return { accessToken: body.accessToken, expiresIn } satisfies SessionTokens;
   },
 });
 
