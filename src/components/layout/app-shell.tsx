@@ -1,48 +1,77 @@
-import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { SUPER_ADMIN } from '@/config/modules';
+import { Logo } from '@/components/ui/brand/logo';
+import { buttonClasses } from '@/components/ui/button';
+import { IconClose, IconMenu } from '@/components/ui/icons';
+import { MODULES } from '@/config/modules';
 import { siteConfig } from '@/config/site';
-import { visibleModules } from '@/lib/navigation/visible-modules';
+import { getDictionary } from '@/i18n';
+import { cn } from '@/lib/cn';
 import { SidebarNav } from './sidebar-nav';
+import { SidebarPanel } from './sidebar-panel';
+
+/* Identifiant repris par les boutons d'ouverture et de fermeture (popovertarget). */
+const MENU_ID = 'menu-back-office';
+
+const LOGO = { href: '/', label: `${siteConfig.name}, tableau de bord`, suffix: 'Back-office' } as const;
+
+/*
+ * Le même élément est un tiroir sur téléphone (popover) et une colonne fixe sur grand écran : les styles
+ * du navigateur pour `[popover]` (position fixe, marge automatique, bordure, masqué s'il est fermé) sont
+ * neutralisés à partir de `lg`.
+ */
+const PANEL = cn(
+  'border-line bg-surface text-ink flex-col border-0 border-r p-0',
+  'max-lg:drawer-panel max-lg:shadow-raised max-lg:fixed max-lg:inset-y-0 max-lg:right-auto max-lg:left-0 max-lg:m-0',
+  'max-lg:h-dvh max-lg:max-h-none max-lg:w-[min(20rem,88vw)] max-lg:overflow-y-auto max-lg:open:flex',
+  'lg:sticky lg:inset-auto lg:top-0 lg:m-0 lg:flex lg:h-dvh lg:w-auto lg:overflow-y-auto',
+);
 
 /**
- * Cadre du back-office : menu des modules à gauche (repliable sur téléphone), contenu à droite.
- * Tant que la connexion n'est pas branchée (lot 1), le menu montre les modules de la phase en cours
- * tels qu'un super administrateur les verrait.
+ * Cadre du back-office : menu des modules à gauche (tiroir sur téléphone), contenu à droite.
+ * Composant serveur : seules les feuilles client lisent la session (menu filtré par rôle, compte).
+ * `account` : panneau du compte fourni par la route (une fonctionnalité, que ce cadre n'importe pas).
  */
-export function AppShell({ children, current }: { children: ReactNode; current?: string }) {
-  const modules = visibleModules([SUPER_ADMIN]);
+export function AppShell({ children, account }: { children: ReactNode; account?: ReactNode }) {
+  const t = getDictionary();
   return (
-    <div className="lg:grid lg:min-h-dvh lg:grid-cols-[16rem_1fr]">
-      <aside className="border-line bg-surface border-b lg:border-r lg:border-b-0">
-        <div className="flex h-16 items-center justify-between px-4">
-          <Link href="/" className="text-brand-700 font-bold tracking-tight">
-            {siteConfig.name}
-          </Link>
-          <span className="bg-accent text-accent-contrast rounded px-2 py-0.5 text-xs font-semibold">
-            Interne
-          </span>
+    <div className="bg-canvas min-h-dvh lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
+      <header className="border-line bg-canvas sticky top-0 z-(--z-header) flex h-(--header-h) items-center justify-between gap-3 border-b px-4 lg:hidden">
+        <Logo {...LOGO} />
+        <button
+          type="button"
+          popoverTarget={MENU_ID}
+          aria-label={t.shell.openMenu}
+          className={buttonClasses({ variant: 'secondary', size: 'icon' })}
+        >
+          <IconMenu />
+        </button>
+      </header>
+
+      <SidebarPanel id={MENU_ID} label={t.shell.menu} className={PANEL}>
+        <div className="flex h-(--header-h) shrink-0 items-center justify-between gap-2 px-4 lg:h-20 lg:px-5">
+          <Logo {...LOGO} />
+          <button
+            type="button"
+            popoverTarget={MENU_ID}
+            popoverTargetAction="hide"
+            aria-label={t.shell.closeMenu}
+            className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'lg:hidden' })}
+          >
+            <IconClose />
+          </button>
         </div>
-        <details className="group px-3 pb-3 lg:hidden">
-          <summary className="border-line flex min-h-11 cursor-pointer list-none items-center rounded-lg border px-3 text-sm font-medium">
-            Menu
-          </summary>
-          <nav aria-label="Modules" className="mt-2">
-            <SidebarNav modules={modules} current={current} />
-          </nav>
-        </details>
-        <nav aria-label="Modules" className="hidden px-3 pb-6 lg:block">
-          <SidebarNav modules={modules} current={current} />
+        <nav aria-label={t.shell.modules} className="flex-1 px-3 pt-2 pb-6">
+          <p aria-hidden="true" className="text-eyebrow text-ink-subtle mb-2 px-3 font-semibold uppercase">
+            {t.shell.modules}
+          </p>
+          <SidebarNav modules={MODULES} />
         </nav>
-      </aside>
-      <div className="flex min-w-0 flex-col">
-        <div role="status" className="bg-warning/10 text-warning px-4 py-2 text-sm">
-          Aperçu : la connexion, la double authentification et les droits par rôle seront branchés au lot 1.
-        </div>
-        <main id="contenu" className="flex-1 p-4 sm:p-6 lg:p-8">
-          {children}
-        </main>
-      </div>
+        {account ? <div className="border-line border-t p-4">{account}</div> : null}
+      </SidebarPanel>
+
+      <main id="contenu" tabIndex={-1} className="min-w-0 focus:outline-none">
+        <div className="max-w-page px-gutter mx-auto w-full py-8 lg:py-12">{children}</div>
+      </main>
     </div>
   );
 }

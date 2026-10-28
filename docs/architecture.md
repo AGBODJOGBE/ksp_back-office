@@ -23,7 +23,7 @@ Propre au back-office :
 src/
 ├── app/                     routes : page, layout, error, not-found, metadata, robots ; compose, aucune logique
 │   ├── (app)/               espace des agents : tableau de bord, [module] (pages d'attente)
-│   ├── (auth)/connexion/    connexion (téléphone + code, double authentification au lot 1)
+│   ├── (auth)/connexion/    connexion (téléphone + code, double authentification, ADR-023)
 │   └── api/health/          sonde de santé
 ├── features/<domaine>/      une tranche verticale par domaine administré (voir ci-dessous)
 ├── components/
@@ -34,16 +34,16 @@ src/
 └── i18n/                    textes communs de l'interface
 ```
 
-| Dossier                     | Rôle                                                                                                                                                                                                 | Portée                                            |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `app/`                      | Une route = un dossier. La page assemble le cadre et une fonctionnalité ; elle ne calcule rien. Le travail propre à une route (paramètres, `generateStaticParams`, `notFound`, métadonnées) y reste. | Commun                                            |
-| `features/<domaine>/`       | Tout ce qui est propre à un domaine administré : écrans, schémas des réponses de la gateway, composants client qui appellent `api`.                                                                  | Commun (la liste des domaines est propre au site) |
-| `components/ui/`            | Briques sans connaissance du site : `Button`, `ButtonLink`, `Container`. N'importe que `ui` et `lib`.                                                                                                | Commun (voir « Convergence de `components/ui` »)  |
-| `components/layout/`        | Cadre du back-office : `AppShell` (en-tête, bandeau d'aperçu, contenu) et `SidebarNav` (menu des modules). Reçoit le contenu d'une fonctionnalité par `children`, ne l'importe pas.                  | Commun (le contenu est propre au site)            |
-| `lib/`                      | Code technique sans interface : `api` (seul endroit où `fetch` est permis, session en mémoire), `navigation/visible-modules` (filtre d'affichage par rôle et par phase), `seo`.                      | Commun (`navigation` propre au back-office)       |
-| `config/`                   | `env.ts` (zod), `site.ts` ; pour le back-office, `modules.ts` : le catalogue des modules (adresse, libellé, description, rôles, phase), analogue de `metiers.ts` du portail.                         | Commun (`modules.ts` propre au back-office)       |
-| `i18n/`                     | Textes communs de l'interface (français ; anglais prévu). Les textes d'un écran vivent dans sa fonctionnalité.                                                                                       | Commun                                            |
-| `scripts/first-load-js.mjs` | Mesure du poids JavaScript par page (`pnpm size`), identique au portail.                                                                                                                             | Commun                                            |
+| Dossier                     | Rôle                                                                                                                                                                                                                   | Portée                                            |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `app/`                      | Une route = un dossier. La page assemble le cadre et une fonctionnalité ; elle ne calcule rien. Le travail propre à une route (paramètres, `generateStaticParams`, `notFound`, métadonnées) y reste.                   | Commun                                            |
+| `features/<domaine>/`       | Tout ce qui est propre à un domaine administré : écrans, schémas des réponses de la gateway, composants client qui appellent `api`.                                                                                    | Commun (la liste des domaines est propre au site) |
+| `components/ui/`            | Briques sans connaissance du site : `Button`, `ButtonLink`, `Container`. N'importe que `ui` et `lib`.                                                                                                                  | Commun (voir « Convergence de `components/ui` »)  |
+| `components/layout/`        | Cadre du back-office : `AppShell` (menu à gauche, tiroir `popover` sur téléphone), `SidebarNav` (menu filtré par rôle, page courante), `ModuleGate` (module hors des rôles). Reçoit le compte et le contenu par props. | Commun (le contenu est propre au site)            |
+| `lib/`                      | Code technique sans interface : `api` (seul endroit où `fetch` est permis, session en mémoire), `navigation/visible-modules` (filtre d'affichage par rôle et par phase), `seo`.                                        | Commun (`navigation` propre au back-office)       |
+| `config/`                   | `env.ts` (zod), `site.ts` ; pour le back-office, `modules.ts` : le catalogue des modules (adresse, libellé, description, rôles, phase), analogue de `metiers.ts` du portail.                                           | Commun (`modules.ts` propre au back-office)       |
+| `i18n/`                     | Textes communs de l'interface (français ; anglais prévu). Les textes d'un écran vivent dans sa fonctionnalité.                                                                                                         | Commun                                            |
+| `scripts/first-load-js.mjs` | Mesure du poids JavaScript par page (`pnpm size`), identique au portail.                                                                                                                                               | Commun                                            |
 
 ### Où vit chaque élément existant
 
@@ -54,7 +54,7 @@ src/
 | Cadre et menu                                  | `components/layout/` (anciennement `components/shell`)        | Même rôle que `components/layout` dans les autres fronts.                                                                                                                                              |
 | Tableau de bord                                | `features/dashboard`                                          | Écran propre au domaine « tableau de bord » ; la route `(app)/page.tsx` ne fait plus que l'assembler avec le cadre.                                                                                    |
 | Route `(app)/[module]`                         | `app/`, inchangée                                             | Pages d'attente générées depuis le catalogue ; voir « D'une page d'attente à un module ».                                                                                                              |
-| Page `(auth)/connexion`                        | `app/`, inchangée                                             | Écran d'attente sans logique, comme `/mon-espace` du portail. Il deviendra un composant de `features/identity` quand la connexion sera branchée (lot 1).                                               |
+| Page `(auth)/connexion`                        | `app/` (coque statique) + `features/identity` (`LoginFlow`)   | La route pose la coque ; le parcours (téléphone, code, double authentification) est un composant client de `features/identity`.                                                                        |
 
 ### Une fonctionnalité
 
@@ -70,21 +70,21 @@ features/<domaine>/
 
 **Un fichier n'existe que s'il a du contenu.** Dans le back-office, toutes les données sont personnelles ou réservées aux agents, et chaque écriture demande la session de l'agent : lectures et écritures passent par `api` depuis le navigateur (option A, plus bas). `queries.ts`, `server.ts` (lectures côté serveur via `serverApi()`) et `actions.ts` (Server Actions, sans jeton côté serveur) n'y ont donc pas d'usage aujourd'hui, et `content.ts` non plus : les textes des écrans ne viennent pas du CMS.
 
-Le nom d'une fonctionnalité est celui du service du backend, en anglais (le code est en anglais, les adresses en français). Seule `features/dashboard` existe aujourd'hui : les autres domaines n'ont encore que leur entrée dans le catalogue des modules, et **aucun dossier n'est créé avant ses écrans**. Correspondance prévue :
+Le nom d'une fonctionnalité est celui du service du backend, en anglais (le code est en anglais, les adresses en français). Seules `features/dashboard` et `features/identity` (connexion et session) existent aujourd'hui : les autres domaines n'ont encore que leur entrée dans le catalogue des modules, et **aucun dossier n'est créé avant ses écrans**. Correspondance prévue :
 
-| Module (adresse)                   | Fonctionnalité(s)                                               | Service(s) du backend        | Phase | État                                    |
-| ---------------------------------- | --------------------------------------------------------------- | ---------------------------- | ----- | --------------------------------------- |
-| Tableau de bord (`/`)              | `features/dashboard`                                            | — (indicateurs des services) | 1     | présentation provisoire des modules     |
-| Recouvrement (`/recouvrement`)     | `features/recovery`                                             | recovery                     | 1     | page d'attente                          |
-| Nettoyage (`/nettoyage`)           | `features/cleaning`                                             | cleaning                     | 1     | page d'attente                          |
-| Finance (`/finance`)               | `features/payment`, `features/wallet`, `features/billing`       | payment, wallet, billing     | 1     | page d'attente                          |
-| Clients et comptes (`/clients`)    | `features/identity`                                             | identity                     | 1     | page d'attente (et connexion, au lot 1) |
-| Notifications (`/notifications`)   | `features/notification`                                         | notification                 | 1     | page d'attente                          |
-| Administration (`/administration`) | `features/identity` (agents, rôles), `features/audit` (journal) | identity, audit              | 1     | page d'attente                          |
-| Immobilier (`/immobilier`)         | `features/realestate`                                           | realestate                   | 2     | masqué (phase suivante)                 |
-| Impression (`/impression`)         | `features/print`                                                | print                        | 3     | masqué                                  |
-| Livraison (`/livraison`)           | `features/delivery`                                             | delivery                     | 3     | masqué                                  |
-| Marketplace (`/marketplace`)       | `features/catalog`, `features/order`                            | catalog, order               | 4     | masqué                                  |
+| Module (adresse)                   | Fonctionnalité(s)                                               | Service(s) du backend        | Phase | État                                |
+| ---------------------------------- | --------------------------------------------------------------- | ---------------------------- | ----- | ----------------------------------- |
+| Tableau de bord (`/`)              | `features/dashboard`                                            | — (indicateurs des services) | 1     | présentation provisoire des modules |
+| Recouvrement (`/recouvrement`)     | `features/recovery`                                             | recovery                     | 1     | page d'attente                      |
+| Nettoyage (`/nettoyage`)           | `features/cleaning`                                             | cleaning                     | 1     | page d'attente                      |
+| Finance (`/finance`)               | `features/payment`, `features/wallet`, `features/billing`       | payment, wallet, billing     | 1     | page d'attente                      |
+| Clients et comptes (`/clients`)    | `features/identity`                                             | identity                     | 1     | page d'attente ; connexion branchée |
+| Notifications (`/notifications`)   | `features/notification`                                         | notification                 | 1     | page d'attente                      |
+| Administration (`/administration`) | `features/identity` (agents, rôles), `features/audit` (journal) | identity, audit              | 1     | page d'attente                      |
+| Immobilier (`/immobilier`)         | `features/realestate`                                           | realestate                   | 2     | masqué (phase suivante)             |
+| Impression (`/impression`)         | `features/print`                                                | print                        | 3     | masqué                              |
+| Livraison (`/livraison`)           | `features/delivery`                                             | delivery                     | 3     | masqué                              |
+| Marketplace (`/marketplace`)       | `features/catalog`, `features/order`                            | catalog, order               | 4     | masqué                              |
 
 **Finance** (validé le 19 octobre 2026, aligné sur les services `payment`, `wallet` et `billing` du backend) : un seul module dans le menu, `/finance`, et une fonctionnalité par service : `payment` (paiements reçus, rapprochement), `wallet` (portefeuilles, demandes de versement validées par une autre personne), `billing` (factures et avoirs). La page `/finance` assemble les trois ; chaque écran a sa sous-adresse (`/finance/paiements`, `/finance/portefeuilles`, `/finance/factures`). Pas de fonctionnalité `finance` : elle mélangerait trois contrats de la gateway et ses fichiers grossiraient sans frontière.
 
@@ -113,7 +113,7 @@ Une flèche signifie « peut importer ». Les règles, identiques au portail, so
 | Règle                                                                                           | Où                                                             |
 | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | Imports relatifs limités au dossier courant (`./`) ; ailleurs, alias `@/`                       | tout `src/`                                                    |
-| Une fonctionnalité s'importe par `@/features/<domaine>` (ou `@/features/<domaine>/server`)      | tout `src/`                                                    |
+| Une fonctionnalité s'importe par `@/features/<domaine>` (ou `/server`, `/session`)              | tout `src/`                                                    |
 | Dans sa propre fonctionnalité : `./…` ou `@/features/<domaine>/…`, jamais son propre `index.ts` | `features/<domaine>/`                                          |
 | Rien n'importe `@/app`                                                                          | `features`, `components`, `lib`, `config`, `i18n` (hors tests) |
 | Aucune fonctionnalité                                                                           | `components`, `lib`, `config`, `i18n` (hors tests)             |
@@ -130,7 +130,23 @@ Le front **n'autorise rien**. Il reçoit de la gateway la session de l'agent (se
 - `visibleModules(roles, phase)` décide des entrées du menu et des cartes du tableau de bord ; `isModuleVisible` dit seulement si un module figure dans ce menu. Ni l'un ni l'autre ne protège une donnée.
 - Une coque statique ne contient aucune donnée : afficher un module à un agent sans le rôle n'expose rien, puisque la gateway refusera ses appels (403, message affiché par `ApiError`). Inversement, masquer un module n'est pas une protection.
 - Pas de contrôle de rôle dans `proxy.ts` ni dans un layout : il dupliquerait les règles du backend et finirait par diverger.
-- Tant que la connexion n'est pas branchée (lot 1), le cadre affiche le menu d'un super administrateur, avec un bandeau « Aperçu ».
+- Les rôles viennent du jeton d'accès de la session (claim `roles`, lu sans vérification dans `lib/api/claims.ts`) : la gateway ne les renvoie dans aucune réponse.
+- Une page de module ouverte par son adresse hors des rôles de l'agent affiche un message (`ModuleGate`) au lieu du module : confort d'affichage, pas une protection (**à valider**).
+
+## Connexion et session (`features/identity`, ADR-023)
+
+| Route de la gateway (contrat `ksp-api.v1.yaml`) | Écran ou composant                                                                                     |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `POST /api/v1/identity/otp/request`             | `PhoneStep` (numéro), renvoi dans `CodeStep`                                                           |
+| `POST /api/v1/identity/otp/verify`              | `CodeStep` ; `mfa_required` mène à la configuration (`enrollmentRequired`) ou au code de l'application |
+| `POST /api/v1/identity/mfa/totp/enroll`         | `EnrollStep` : QR code calculé dans la page (`uqr`, chargé à cette étape seulement) et clé à la main   |
+| `POST /api/v1/identity/mfa/totp/confirm`        | `EnrollStep` (premier code), puis `RecoveryCodesStep` (10 codes : copie, `.txt`, case à cocher)        |
+| `POST /api/v1/identity/mfa/verify`              | `MfaStep` (code de l'application ou code de récupération, jamais de SMS), `RemainingCodesStep`         |
+| `POST /api/v1/identity/token/refresh`           | `lib/api/refresh.ts` : reprise au chargement d'une page, et une fois sur 401                           |
+| `POST /api/v1/identity/logout`                  | `AccountPanel` (pied du menu)                                                                          |
+| `GET /api/v1/identity/me`                       | `AccountPanel` (nom, téléphone, e-mail vérifié)                                                        |
+
+Le cadre des pages `(app)` importe `@/features/identity/session` (garde et panneau du compte) et non l'index, pour ne pas charger le parcours de connexion sur chaque page : point d'entrée secondaire autorisé par la règle ESLint, comme `/server`. Les pages `(app)` sont gardées par `RequireSession` : sans session, retour à `/connexion?retour=<page demandée>` (chemin interne seulement) ; session terminée pendant la visite (12 h, 30 min sans activité, rôle retiré), explication et lien pour se reconnecter. Le jeton d'accès reste en mémoire ; le jeton de renouvellement est dans le cookie `__Secure-ksp_admin_rt` posé par la gateway. Aucune minuterie ne renouvelle la session : seul l'agent qui agit la prolonge.
 
 ## Stratégie de rendu
 
@@ -139,7 +155,7 @@ Cache Components (`cacheComponents`) n'est pas activé : c'est le modèle de cac
 | Type de route     | Exemples                                       | Rendu                                                                                                                 |
 | ----------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Page d'attente    | tableau de bord, `[module]`, 404               | **Statique** (○ et ● par `generateStaticParams`) ; un module d'une phase suivante répond 404                          |
-| Connexion         | `/connexion`                                   | **Statique** ; au lot 1, un composant client en feuille (formulaire, double authentification) qui appelle `api`       |
+| Connexion         | `/connexion`                                   | **Statique** ; composant client en feuille (`LoginFlow` : formulaire, double authentification) qui appelle `api`      |
 | Écran d'un module | liste des dossiers, fiche, file des versements | **Coque statique** + composants client en feuille qui appellent `api` (F-005, option A) ; état des filtres dans l'URL |
 | Technique         | `/api/health`, `/robots.txt`                   | Sonde dynamique (ƒ) ; `robots.txt` statique                                                                           |
 
@@ -166,6 +182,17 @@ Budgets :
 | Écran du back-office (liste, fiche, formulaire, avec ses composants client) | ≤ 220 Ko                      | validé le 19 octobre 2026                      |
 
 Le budget « écran du back-office » laisse environ 40 Ko au-dessus du socle, la même marge que l'écran d'espace connecté du portail (215 Ko pour un socle de 174,8 Ko). Règle : une page qui dépasse son budget, ou un socle qui grossit, se justifie dans la demande de fusion (mesure avant et après). Pas de nouvelle dépendance (tableau de données, graphiques, dates) sans cette mesure et sans validation.
+
+Mesure du 28 octobre 2026 (connexion et session branchées, `pnpm build && pnpm size`) :
+
+| Page                                          | First Load JS | Avant (19 octobre) |
+| --------------------------------------------- | ------------- | ------------------ |
+| `/connexion`                                  | 211,5 Ko      | 177,2 Ko           |
+| `/` (tableau de bord)                         | 209,4 Ko      | 177,2 Ko           |
+| Pages d'attente des six modules de la phase 1 | 208,7 Ko      | 177,2 Ko           |
+| 404                                           | 178,0 Ko      | 177,2 Ko           |
+
+Les pages de l'espace ne sont plus des coques sans composant client : le cadre lit la session (menu, compte, garde). Elles relèvent donc du budget « écran du back-office » (220 Ko), tenu, mais le cadre en consomme l'essentiel de la marge : zod/mini et le client de la gateway (18,5 Ko, que tout écran paiera de toute façon), le parcours de connexion entier (12,6 Ko) et le cadre (9,1 Ko). Le parcours de connexion est chargé par les pages de l'espace parce que l'index de `features/identity` regroupe connexion et session : importer `AccountPanel` et `RequireSession` sans passer par l'index ramène ces pages à 209,3 Ko (mesuré). La bibliothèque de QR code (`uqr`, 3,8 Ko) n'est chargée qu'à l'étape de configuration. **À valider** : point d'entrée séparé pour la session (`@/features/identity/session`, exception à la règle de l'index) ou chargement différé du parcours de connexion.
 
 ## Ajouter une fonctionnalité
 

@@ -1,19 +1,91 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
-test('le tableau de bord s’affiche avec le menu des modules', async ({ page, isMobile }) => {
-  await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: 'Tableau de bord' })).toBeVisible();
-  if (isMobile) await page.getByText('Menu', { exact: true }).click();
-  await expect(
-    page.getByRole('navigation', { name: 'Modules' }).getByRole('link', { name: 'Recouvrement' }).first(),
-  ).toBeVisible();
+/*
+ * Parcours de fumée sur le site construit, gateway simulée (aucune pile nécessaire en CI).
+ * Le parcours réel contre la gateway locale (connexion, double authentification) se joue à part.
+ */
+
+const segment = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
+const token = `${segment({ alg: 'ES256' })}.${segment({ roles: [{ role: 'super_admin', scopeType: 'global' }] })}.sig`;
+
+const SESSION = {
+  status: 'authenticated',
+  accessToken: token,
+  accessTokenExpiresAt: '2099-01-01T00:15:00Z',
+  refreshTokenExpiresAt: '2099-01-01T12:00:00Z',
+  sessionId: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d9e10',
+  user: {
+    id: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d9e11',
+    status: 'active',
+    firstName: 'Koffi',
+    lastName: 'Adjovi',
+    phone: '+2290197000001',
+    email: null,
+    emailVerified: false,
+    preferredLanguage: 'fr',
+    createdAt: '2026-10-21T09:00:00Z',
+  },
+  profileIncomplete: false,
+  activeContext: { type: 'individual', organizationId: null },
+};
+
+/** Gateway simulée : session ouverte ou absente, réponses CORS comprises (appels avec cookies). */
+async function gateway(page: Page, { signedIn }: { signedIn: boolean }) {
+  await page.route('**/api/v1/identity/**', async (route) => {
+    const request = route.request();
+    const headers = {
+      'Access-Control-Allow-Origin': new URL(page.url() || 'http://localhost:3040').origin,
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Headers': 'Accept, Content-Type, Authorization, Idempotency-Key',
+      'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE',
+      'Content-Type': 'application/json',
+    };
+    if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    const path = new URL(request.url()).pathname;
+    if (path.endsWith('/token/refresh')) {
+      return signedIn
+        ? route.fulfill({ status: 200, headers, body: JSON.stringify(SESSION) })
+        : route.fulfill({
+            status: 401,
+            headers,
+            body: JSON.stringify({
+              error: { code: 'IDENTITY_REFRESH_TOKEN_INVALID', message: 'Session expirée.', details: {} },
+            }),
+          });
+    }
+    if (path.endsWith('/me')) {
+      return route.fulfill({
+        status: 200,
+        headers,
+        body: JSON.stringify({ user: SESSION.user, profileIncomplete: false, pendingEmail: null }),
+      });
+    }
+    return route.fulfill({ status: 404, headers, body: '{}' });
+  });
+}
+
+test('sans session, une page protégée renvoie vers la connexion en gardant la page demandée', async ({
+  page,
+}) => {
+  await gateway(page, { signedIn: false });
+  await page.goto('/finance');
+  await expect(page).toHaveURL(/\/connexion\?retour=%2Ffinance$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Connexion au back-office' })).toBeVisible();
 });
 
-test('un module de la phase en cours s’ouvre depuis le menu', async ({ page, isMobile }) => {
+test('avec une session, le tableau de bord s’affiche avec le menu filtré par rôle', async ({
+  page,
+  isMobile,
+}) => {
+  await gateway(page, { signedIn: true });
   await page.goto('/');
-  if (isMobile) await page.getByText('Menu', { exact: true }).click();
-  await page.getByRole('link', { name: 'Recouvrement' }).filter({ visible: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Bienvenue dans le back-office' })).toBeVisible();
+  if (isMobile) await page.getByRole('button', { name: 'Ouvrir le menu' }).click();
+  const menu = page.getByRole('navigation', { name: 'Modules' });
+  await expect(menu.getByRole('link', { name: 'Tableau de bord' })).toHaveAttribute('aria-current', 'page');
+  await menu.getByRole('link', { name: 'Recouvrement' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Recouvrement' })).toBeVisible();
+  await expect(page.getByText('Koffi Adjovi').first()).toBeAttached();
 });
 
 test('un module d’une phase suivante n’est pas accessible', async ({ page }) => {
@@ -26,11 +98,9 @@ test('l’outil interne n’est jamais indexé', async ({ request }) => {
   expect(await robots.text()).toContain('Disallow: /');
   const home = await request.get('/');
   expect(home.headers()['x-robots-tag']).toBe('noindex, nofollow');
-});
-
-test('la page de connexion s’affiche', async ({ page }) => {
-  await page.goto('/connexion');
-  await expect(page.getByRole('heading', { level: 1, name: 'Connexion' })).toBeVisible();
+  const login = await request.get('/connexion');
+  expect(login.headers()['x-robots-tag']).toBe('noindex, nofollow');
+  expect(await login.text()).toContain('<meta name="robots" content="noindex, nofollow');
 });
 
 test('la sonde de santé répond', async ({ request }) => {
