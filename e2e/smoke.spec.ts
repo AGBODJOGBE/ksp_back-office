@@ -6,7 +6,9 @@ import { expect, type Page, test } from '@playwright/test';
  */
 
 const segment = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
-const token = `${segment({ alg: 'ES256' })}.${segment({ roles: [{ role: 'super_admin', scopeType: 'global' }] })}.sig`;
+const tokenFor = (role: string) =>
+  `${segment({ alg: 'ES256' })}.${segment({ roles: [{ role, scopeType: 'global' }] })}.sig`;
+const token = tokenFor('super_admin');
 
 const SESSION = {
   status: 'authenticated',
@@ -30,21 +32,22 @@ const SESSION = {
 };
 
 /** Gateway simulée : session ouverte ou absente, réponses CORS comprises (appels avec cookies). */
-async function gateway(page: Page, { signedIn }: { signedIn: boolean }) {
+async function gateway(page: Page, { signedIn, role = 'super_admin' }: { signedIn: boolean; role?: string }) {
+  const session = { ...SESSION, accessToken: tokenFor(role) };
   await page.route('**/api/v1/identity/**', async (route) => {
     const request = route.request();
     const headers = {
       'Access-Control-Allow-Origin': new URL(page.url() || 'http://localhost:3040').origin,
       'Access-Control-Allow-Credentials': 'true',
       'Access-Control-Allow-Headers': 'Accept, Content-Type, Authorization, Idempotency-Key',
-      'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE',
       'Content-Type': 'application/json',
     };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
     const path = new URL(request.url()).pathname;
     if (path.endsWith('/token/refresh')) {
       return signedIn
-        ? route.fulfill({ status: 200, headers, body: JSON.stringify(SESSION) })
+        ? route.fulfill({ status: 200, headers, body: JSON.stringify(session) })
         : route.fulfill({
             status: 401,
             headers,
@@ -106,4 +109,61 @@ test('l’outil interne n’est jamais indexé', async ({ request }) => {
 test('la sonde de santé répond', async ({ request }) => {
   const response = await request.get('/api/health');
   expect(await response.json()).toMatchObject({ status: 'ok', site: 'backoffice' });
+});
+
+const REQUEST = {
+  id: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d1001',
+  status: 'received',
+  customerId: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d9e30',
+  customerKind: 'individual',
+  organizationId: null,
+  serviceCode: 'menage_test',
+  premisesType: 'apartment',
+  quantity: 4,
+  options: [],
+  commune: 'Cotonou',
+  address: 'Rue 12, Akpakpa',
+  preferredSlots: [{ start: '2026-11-05T08:00:00Z', end: '2026-11-05T11:00:00Z' }],
+  comment: null,
+  recurrence: null,
+  requestedTeamSize: null,
+  daysPerWeek: null,
+  recommendedTeamSize: 2,
+  estimate: null,
+  visit: null,
+  quote: null,
+  missionId: null,
+  closingReason: null,
+  createdAt: '2026-10-28T09:00:00Z',
+  updatedAt: '2026-10-28T09:00:00Z',
+};
+
+test('Nettoyage : la demande reçue s’ouvre avec ses actions, onglets selon le rôle', async ({ page }) => {
+  await gateway(page, { signedIn: true, role: 'cleaning_admin' });
+  await page.route('**/api/v1/{admin/cleaning,cleaning}/**', async (route) => {
+    const headers = {
+      'Access-Control-Allow-Origin': new URL(page.url() || 'http://localhost:3040').origin,
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Headers': 'Accept, Content-Type, Authorization, Idempotency-Key',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE',
+      'Content-Type': 'application/json',
+    };
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    const path = new URL(route.request().url()).pathname;
+    const body = path.endsWith('/admin/cleaning/quote-requests')
+      ? { data: [REQUEST], nextCursor: null }
+      : path.endsWith(`/quote-requests/${REQUEST.id}`)
+        ? REQUEST
+        : path.endsWith('/admin/cleaning/agents')
+          ? { data: [] }
+          : { data: [] };
+    return route.fulfill({ status: 200, headers, body: JSON.stringify(body) });
+  });
+  await page.goto('/nettoyage');
+  await expect(page.getByRole('heading', { level: 1, name: 'Demandes de devis' })).toBeVisible();
+  const tabs = page.getByRole('navigation', { name: 'Sections du Nettoyage' });
+  await expect(tabs.getByRole('link', { name: 'Catalogue' })).toBeVisible();
+  await page.getByRole('link', { name: /Demande du 28 oct\. 2026/ }).click();
+  await expect(page.getByRole('button', { name: 'Planifier la visite' })).toBeVisible();
+  await expect(tabs.getByRole('link', { name: 'Demandes' })).toHaveAttribute('aria-current', 'page');
 });

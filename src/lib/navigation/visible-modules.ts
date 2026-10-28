@@ -1,4 +1,10 @@
-import { type BackofficeModule, CURRENT_PHASE, MODULES, SUPER_ADMIN } from '@/config/modules';
+import {
+  type BackofficeModule,
+  CURRENT_PHASE,
+  MODULES,
+  MODULES_WITH_SCREENS,
+  SUPER_ADMIN,
+} from '@/config/modules';
 
 /**
  * Modules visibles par un agent selon ses rôles et la phase en cours : sert au menu et aux pages d'attente.
@@ -25,4 +31,17 @@ export function isModuleVisible(
   phase: number = CURRENT_PHASE,
 ): boolean {
   return visibleModules(roles, phase).some((module) => module.slug === slug);
+}
+
+/**
+ * Modules de la phase en cours qui n'ont encore qu'une page d'attente (`[module]`) : ni le tableau de
+ * bord (l'accueil), ni les modules qui ont leurs propres écrans.
+ */
+export function waitingModules(
+  phase: number = CURRENT_PHASE,
+  withScreens: readonly string[] = MODULES_WITH_SCREENS,
+): BackofficeModule[] {
+  return visibleModules([SUPER_ADMIN], phase).filter(
+    (module) => module.slug !== 'tableau-de-bord' && !withScreens.includes(module.slug),
+  );
 }

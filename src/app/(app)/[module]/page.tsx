@@ -4,12 +4,13 @@ import { Eyebrow } from '@/components/ui/eyebrow';
 import { Heading } from '@/components/ui/heading';
 import { Placeholder } from '@/components/ui/placeholder';
 import { ModuleGate } from '@/components/layout/module-gate';
-import { MODULES, SUPER_ADMIN } from '@/config/modules';
-import { visibleModules } from '@/lib/navigation/visible-modules';
+import { MODULES } from '@/config/modules';
+import { waitingModules } from '@/lib/navigation/visible-modules';
 
 type Params = Promise<{ module: string }>;
 
-const available = () => visibleModules([SUPER_ADMIN]).filter((module) => module.slug !== 'tableau-de-bord');
+/** Modules sans écrans encore : ceux qui ont leur propre route (Nettoyage…) n'ont pas de page d'attente. */
+const available = () => waitingModules();
 
 /** Seuls les modules de la phase en cours ont une page : toute autre adresse répond 404, sans rendu à la demande. */
 export const dynamicParams = false;

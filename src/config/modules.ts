@@ -35,7 +35,8 @@ export const MODULES: readonly BackofficeModule[] = [
     label: 'Nettoyage',
     description:
       'Grille tarifaire du simulateur, devis, visites techniques, planning des équipes, missions avec photos, contrats récurrents.',
-    roles: ['cleaning_supervisor', 'cleaning_admin'],
+    // cleaning_agent : missions et passages sur le terrain (contrat, routes /admin/cleaning/missions et /interventions).
+    roles: ['cleaning_supervisor', 'cleaning_admin', 'cleaning_agent'],
     phase: 1,
   },
   {
@@ -101,6 +102,12 @@ export const MODULES: readonly BackofficeModule[] = [
     phase: 4,
   },
 ];
+
+/**
+ * Modules qui ont leurs propres écrans (une route statique par module, `src/app/(app)/<slug>`) : ils
+ * sortent des pages d'attente générées par `[module]`, pour qu'une adresse n'ait jamais deux pages.
+ */
+export const MODULES_WITH_SCREENS: readonly string[] = ['nettoyage'];
 
 /** Phase en cours de l'écosystème : les modules des phases suivantes restent masqués. */
 export const CURRENT_PHASE = 1;
