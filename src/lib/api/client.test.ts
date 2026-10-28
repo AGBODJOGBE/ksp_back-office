@@ -131,4 +131,12 @@ describe('client de la gateway', () => {
     const { client } = setup([new Response(null, { status: 204 })]);
     await expect(client.delete('/api/v1/identity/sessions/s1')).resolves.toBeUndefined();
   });
+
+  it('envoie un PUT avec son corps JSON (liste de contrôle, catalogue)', async () => {
+    const { client, calls } = setup([json(200, { ok: true })], { getAccessToken: () => 'jeton' });
+    await client.put('/api/v1/admin/cleaning/catalog/settings', { depositPercent: 30 });
+    expect(calls[0]?.init.method).toBe('PUT');
+    expect(calls[0]?.init.body).toBe('{"depositPercent":30}');
+    expect((calls[0]?.init.headers as Record<string, string>)['Content-Type']).toBe('application/json');
+  });
 });

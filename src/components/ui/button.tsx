@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
-export type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'inverse';
+export type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'inverse' | 'danger';
 export type ButtonSize = 'md' | 'lg' | 'icon';
 
 /*
@@ -24,6 +24,8 @@ const VARIANTS: Record<ButtonVariant, string> = {
   secondary: 'border border-line-strong bg-surface text-ink before:bg-surface-sunken',
   ghost: 'text-ink before:bg-surface-sunken',
   inverse: 'bg-white text-brand-900 before:bg-brand-100',
+  // Action destructrice confirmée (refus, annulation, désactivation) : voile sombre au survol.
+  danger: 'bg-danger text-white before:bg-black/15',
 };
 
 const SIZES: Record<ButtonSize, string> = {

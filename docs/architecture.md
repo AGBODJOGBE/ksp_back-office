@@ -22,7 +22,7 @@ Propre au back-office :
 ```
 src/
 ├── app/                     routes : page, layout, error, not-found, metadata, robots ; compose, aucune logique
-│   ├── (app)/               espace des agents : tableau de bord, [module] (pages d'attente)
+│   ├── (app)/               espace des agents : tableau de bord, nettoyage/ (écrans), [module] (pages d'attente)
 │   ├── (auth)/connexion/    connexion (téléphone + code, double authentification, ADR-023)
 │   └── api/health/          sonde de santé
 ├── features/<domaine>/      une tranche verticale par domaine administré (voir ci-dessous)
@@ -53,7 +53,7 @@ src/
 | Filtre d'affichage par rôle                    | `lib/navigation/visible-modules.ts` (anciennement `lib/auth`) | Fonction pure (rôles, phase, catalogue → modules à afficher) qui sert la navigation. Le dossier `auth` laissait croire à un contrôle d'accès ; `navigation` dit ce qu'il fait : choisir quoi afficher. |
 | Cadre et menu                                  | `components/layout/` (anciennement `components/shell`)        | Même rôle que `components/layout` dans les autres fronts.                                                                                                                                              |
 | Tableau de bord                                | `features/dashboard`                                          | Écran propre au domaine « tableau de bord » ; la route `(app)/page.tsx` ne fait plus que l'assembler avec le cadre.                                                                                    |
-| Route `(app)/[module]`                         | `app/`, inchangée                                             | Pages d'attente générées depuis le catalogue ; voir « D'une page d'attente à un module ».                                                                                                              |
+| Route `(app)/[module]`                         | `app/`                                                        | Pages d'attente générées depuis le catalogue, sauf les modules qui ont leurs écrans (`MODULES_WITH_SCREENS`) ; voir « D'une page d'attente à un module ».                                              |
 | Page `(auth)/connexion`                        | `app/` (coque statique) + `features/identity` (`LoginFlow`)   | La route pose la coque ; le parcours (téléphone, code, double authentification) est un composant client de `features/identity`.                                                                        |
 
 ### Une fonctionnalité
@@ -70,13 +70,13 @@ features/<domaine>/
 
 **Un fichier n'existe que s'il a du contenu.** Dans le back-office, toutes les données sont personnelles ou réservées aux agents, et chaque écriture demande la session de l'agent : lectures et écritures passent par `api` depuis le navigateur (option A, plus bas). `queries.ts`, `server.ts` (lectures côté serveur via `serverApi()`) et `actions.ts` (Server Actions, sans jeton côté serveur) n'y ont donc pas d'usage aujourd'hui, et `content.ts` non plus : les textes des écrans ne viennent pas du CMS.
 
-Le nom d'une fonctionnalité est celui du service du backend, en anglais (le code est en anglais, les adresses en français). Seules `features/dashboard` et `features/identity` (connexion et session) existent aujourd'hui : les autres domaines n'ont encore que leur entrée dans le catalogue des modules, et **aucun dossier n'est créé avant ses écrans**. Correspondance prévue :
+Le nom d'une fonctionnalité est celui du service du backend, en anglais (le code est en anglais, les adresses en français). Seules `features/dashboard`, `features/identity` (connexion et session) et `features/cleaning` (Nettoyage) existent aujourd'hui : les autres domaines n'ont encore que leur entrée dans le catalogue des modules, et **aucun dossier n'est créé avant ses écrans**. Correspondance prévue :
 
 | Module (adresse)                   | Fonctionnalité(s)                                               | Service(s) du backend        | Phase | État                                |
 | ---------------------------------- | --------------------------------------------------------------- | ---------------------------- | ----- | ----------------------------------- |
 | Tableau de bord (`/`)              | `features/dashboard`                                            | — (indicateurs des services) | 1     | présentation provisoire des modules |
 | Recouvrement (`/recouvrement`)     | `features/recovery`                                             | recovery                     | 1     | page d'attente                      |
-| Nettoyage (`/nettoyage`)           | `features/cleaning`                                             | cleaning                     | 1     | page d'attente                      |
+| Nettoyage (`/nettoyage`)           | `features/cleaning`                                             | cleaning                     | 1     | écrans branchés (28 routes)         |
 | Finance (`/finance`)               | `features/payment`, `features/wallet`, `features/billing`       | payment, wallet, billing     | 1     | page d'attente                      |
 | Clients et comptes (`/clients`)    | `features/identity`                                             | identity                     | 1     | page d'attente ; connexion branchée |
 | Notifications (`/notifications`)   | `features/notification`                                         | notification                 | 1     | page d'attente                      |
@@ -148,16 +148,82 @@ Le front **n'autorise rien**. Il reçoit de la gateway la session de l'agent (se
 
 Le cadre des pages `(app)` importe `@/features/identity/session` (garde et panneau du compte) et non l'index, pour ne pas charger le parcours de connexion sur chaque page : point d'entrée secondaire autorisé par la règle ESLint, comme `/server`. Les pages `(app)` sont gardées par `RequireSession` : sans session, retour à `/connexion?retour=<page demandée>` (chemin interne seulement) ; session terminée pendant la visite (12 h, 30 min sans activité, rôle retiré), explication et lien pour se reconnecter. Le jeton d'accès reste en mémoire ; le jeton de renouvellement est dans le cookie `__Secure-ksp_admin_rt` posé par la gateway. Aucune minuterie ne renouvelle la session : seul l'agent qui agit la prolonge.
 
+## Nettoyage (`features/cleaning`)
+
+Module branché sur les 28 routes `/api/v1/admin/cleaning/*` du contrat (`ksp-api.v1.yaml`), plus la route publique `GET /api/v1/cleaning/services` (noms des prestations : les fiches ne portent que leur code). Aucune règle métier dans le front : prix, lignes du devis, acompte, transitions et refus viennent de la gateway ; l'écran propose les actions que l'état permet et affiche le refus du backend (message français, référence pour le support sur une erreur serveur).
+
+```
+features/cleaning/
+├── index.ts               onglets, écrans (relais à la demande), textes des titres
+├── api.ts                 28 appels admin + noms publics des prestations
+├── schemas.ts             zod/mini, champ par champ selon le contrat
+├── access.ts              rôles → sections affichées (affichage seulement)
+├── paths.ts, errors.ts    adresses des écrans ; message affichable d'une erreur
+├── texts.ts               libellés communs et états ; *-texts.ts : textes propres à chaque écran
+└── components/
+    ├── lazy.tsx           relais next/dynamic : une page ne télécharge que son écran
+    ├── cleaning-tabs.tsx  onglets du module filtrés par rôle
+    ├── requests-list.tsx, request-detail.tsx, quote-form.tsx
+    ├── missions-list.tsx, mission-detail.tsx, intervention-form.tsx, intervention-screen.tsx
+    ├── catalog-screen.tsx, service-form.tsx, zones-screen.tsx, team-screen.tsx
+    └── parts.tsx          états communs (chargement, erreur, panneaux), droits de la session
+```
+
+| Adresse                                         | Écran                                                                                    | Onglet visible pour                                 |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `/nettoyage`                                    | Demandes : filtres état (gateway), commune et type de client (pages chargées) dans l'URL | `cleaning_supervisor`, `cleaning_admin`             |
+| `/nettoyage/demandes/[id]`                      | Fiche : client, locaux, visite, devis, historique ; visite, compte rendu, devis, refus   | idem                                                |
+| `/nettoyage/missions`                           | Missions, filtre par état dans l'URL                                                     | les trois rôles (l'agent ne reçoit que les siennes) |
+| `/nettoyage/missions/[id]`                      | Fiche : passages, paiement ; planifier un passage, paiement manuel, annulation           | les trois rôles ; actions : superviseur et admin    |
+| `/nettoyage/missions/[id]/passages/[passageId]` | Passage (téléphone de l'agent) : démarrer, liste de contrôle, incident, reprise, clôture | les trois rôles                                     |
+| `/nettoyage/catalogue`                          | Prestations et grille, réglages                                                          | `cleaning_admin`                                    |
+| `/nettoyage/zones`                              | Zones desservies : ouverture, désactivation, réactivation                                | `cleaning_admin`                                    |
+| `/nettoyage/equipe`                             | Agents (rattachement, indisponibilités) et équipes                                       | superviseur (lecture) et admin                      |
+
+| Route de la gateway                                            | Écran ou composant                                    |
+| -------------------------------------------------------------- | ----------------------------------------------------- |
+| `GET /admin/cleaning/quote-requests`                           | `RequestsList`                                        |
+| `GET /admin/cleaning/quote-requests/{id}`                      | `RequestDetail` (et type de client d'une mission)     |
+| `POST /admin/cleaning/quote-requests/{id}/reject`              | `RequestDetail` (confirmation, motif obligatoire)     |
+| `POST /admin/cleaning/quote-requests/{id}/visits`              | `RequestDetail` (boîte « Planifier la visite »)       |
+| `POST /admin/cleaning/visits/{id}/complete`                    | `RequestDetail` (compte rendu)                        |
+| `POST /admin/cleaning/quote-requests/{id}/quote`               | `QuoteForm` (chargé à l'ouverture)                    |
+| `GET /admin/cleaning/missions`                                 | `MissionsList`                                        |
+| `GET /admin/cleaning/missions/{id}`                            | `MissionDetail`, `InterventionScreen`                 |
+| `POST /admin/cleaning/missions/{id}/interventions`             | `InterventionForm` (chargé à l'ouverture)             |
+| `POST /admin/cleaning/missions/{id}/payments`                  | `MissionDetail` (particulier seulement, confirmation) |
+| `POST /admin/cleaning/missions/{id}/cancel`                    | `MissionDetail` (confirmation, motif obligatoire)     |
+| `POST /admin/cleaning/interventions/{id}/start`                | `InterventionScreen`                                  |
+| `PUT /admin/cleaning/interventions/{id}/checklist`             | `InterventionScreen` (case par case)                  |
+| `POST /admin/cleaning/interventions/{id}/incident`             | `InterventionScreen` (confirmation, note)             |
+| `POST /admin/cleaning/interventions/{id}/resume`               | `InterventionScreen`                                  |
+| `POST /admin/cleaning/interventions/{id}/complete`             | `InterventionScreen` (confirmation)                   |
+| `GET /admin/cleaning/catalog`                                  | `CatalogScreen`                                       |
+| `PUT /admin/cleaning/catalog/services/{code}`                  | `ServiceForm` (chargé à l'ouverture)                  |
+| `PUT /admin/cleaning/catalog/settings`                         | `CatalogScreen` (réglages)                            |
+| `GET /admin/cleaning/zones`                                    | `ZonesScreen`                                         |
+| `POST /admin/cleaning/zones`                                   | `ZonesScreen` (ouverture et réactivation)             |
+| `POST /admin/cleaning/zones/{code}/deactivate`                 | `ZonesScreen` (confirmation)                          |
+| `GET /admin/cleaning/agents`                                   | `TeamScreen`, choix des agents (visite, passage)      |
+| `POST /admin/cleaning/agents`                                  | `TeamScreen` (rattacher un compte)                    |
+| `POST /admin/cleaning/agents/{id}/unavailabilities`            | `TeamScreen`                                          |
+| `GET /admin/cleaning/teams`                                    | `TeamScreen`, `InterventionForm`                      |
+| `POST /admin/cleaning/teams`, `PUT /admin/cleaning/teams/{id}` | `TeamScreen` (composer, modifier)                     |
+
+Aucune de ces routes ne demande de clé d'idempotence dans le contrat. Les photos des passages ne sont pas envoyables : la gateway n'expose aucune route du service `file` (l'écran le dit). `super_admin` n'ouvre pas les routes du Nettoyage (contrat) : il ne voit aucun onglet. Le module est ouvert à `cleaning_agent` dans `config/modules.ts` (missions et passages) : **à valider**.
+
+Briques ajoutées à `components/ui` (à faire converger avec le portail avant `ksp-ui`) : `ResponsiveTable` (tableau qui devient des cartes sous 768 px), `ConfirmAction` (`<dialog>` modal natif), `SubNav` (onglets en liens), `SelectField` et `TextAreaField`, `DescriptionList`, variante `danger` de `Button`. Côté `lib` : `format.ts` (XOF, dates `Africa/Porto-Novo`, champs `datetime-local`), `use-resource.ts` (repris du portail), `put` dans le client de la gateway.
+
 ## Stratégie de rendu
 
 Cache Components (`cacheComponents`) n'est pas activé : c'est le modèle de cache « précédent » de Next 16 qui s'applique (voir le modèle du portail).
 
-| Type de route     | Exemples                                       | Rendu                                                                                                                 |
-| ----------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Page d'attente    | tableau de bord, `[module]`, 404               | **Statique** (○ et ● par `generateStaticParams`) ; un module d'une phase suivante répond 404                          |
-| Connexion         | `/connexion`                                   | **Statique** ; composant client en feuille (`LoginFlow` : formulaire, double authentification) qui appelle `api`      |
-| Écran d'un module | liste des dossiers, fiche, file des versements | **Coque statique** + composants client en feuille qui appellent `api` (F-005, option A) ; état des filtres dans l'URL |
-| Technique         | `/api/health`, `/robots.txt`                   | Sonde dynamique (ƒ) ; `robots.txt` statique                                                                           |
+| Type de route     | Exemples                                       | Rendu                                                                                                                                                                                                     |
+| ----------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page d'attente    | tableau de bord, `[module]`, 404               | **Statique** (○ et ● par `generateStaticParams`) ; un module d'une phase suivante répond 404                                                                                                              |
+| Connexion         | `/connexion`                                   | **Statique** ; composant client en feuille (`LoginFlow` : formulaire, double authentification) qui appelle `api`                                                                                          |
+| Écran d'un module | liste des dossiers, fiche, file des versements | **Coque statique** + composants client en feuille qui appellent `api` (F-005, option A) ; état des filtres dans l'URL ; une fiche (`[id]`) est rendue à la demande (ƒ) sans donnée, comme dans le portail |
+| Technique         | `/api/health`, `/robots.txt`                   | Sonde dynamique (ƒ) ; `robots.txt` statique                                                                                                                                                               |
 
 Interdits : `serverApi()` pour une donnée d'agent ou de client (il n'envoie ni cookie ni jeton : routes publiques seulement) ; données personnelles dans un cache partagé (`next.revalidate`, `tags`) ; `cookies()` ou `headers()` dans un layout commun (toutes les pages deviendraient dynamiques) ; retrait de `X-Robots-Tag`, de `robots.txt` ou de `robots: { index: false }`.
 
@@ -194,6 +260,18 @@ Mesure du 28 octobre 2026 (connexion et session branchées, `pnpm build && pnpm 
 
 Les pages de l'espace ne sont plus des coques sans composant client : le cadre lit la session (menu, compte, garde). Elles relèvent donc du budget « écran du back-office » (220 Ko), tenu, mais le cadre en consomme l'essentiel de la marge : zod/mini et le client de la gateway (18,5 Ko, que tout écran paiera de toute façon), le parcours de connexion entier (12,6 Ko) et le cadre (9,1 Ko). Le parcours de connexion est chargé par les pages de l'espace parce que l'index de `features/identity` regroupe connexion et session : importer `AccountPanel` et `RequireSession` sans passer par l'index ramène ces pages à 209,3 Ko (mesuré). La bibliothèque de QR code (`uqr`, 3,8 Ko) n'est chargée qu'à l'étape de configuration. **À valider** : point d'entrée séparé pour la session (`@/features/identity/session`, exception à la règle de l'index) ou chargement différé du parcours de connexion.
 
+Mesure du 28 octobre 2026, Nettoyage branché (`pnpm build && pnpm size`) :
+
+| Page                                                  | First Load JS | Avant    |
+| ----------------------------------------------------- | ------------- | -------- |
+| `/nettoyage` et ses quatre sous-pages statiques       | 214,4 Ko      | 208,7 Ko |
+| `/` (tableau de bord)                                 | 210,2 Ko      | 209,4 Ko |
+| Pages d'attente des cinq autres modules de la phase 1 | 209,5 Ko      | 208,7 Ko |
+| `/connexion`                                          | 211,6 Ko      | 211,5 Ko |
+| 404                                                   | 178,0 Ko      | 178,0 Ko |
+
+Sans le relais `components/lazy.tsx`, l'index de la fonctionnalité faisait charger les neuf écrans à chaque page du module : 232,7 Ko (mesuré), au-delà du budget. Avec lui, la coque du module (onglets, états communs) ajoute 4,9 Ko et chaque écran est demandé après la reprise de la session. JavaScript réellement téléchargé jusqu'à l'affichage de l'écran (build de production, gateway simulée, navigateur récent, donc sans les polyfills que compte `pnpm size`) : 177,7 Ko pour une page d'attente ; de 182,8 Ko (zones) à 185,7 Ko (fiche d'une demande), soit +5,1 à +8,0 Ko. Les formulaires lourds (devis, planification d'un passage, prestation) ne sont chargés qu'à leur ouverture. Les fiches (`[id]`, rendues à la demande) n'apparaissent pas dans `pnpm size`. Le socle des autres pages a pris 0,8 Ko (briques partagées regroupées par Turbopack : variante `danger`, `put`, catalogue des modules ; cause exacte **à confirmer**).
+
 ## Ajouter une fonctionnalité
 
 1. Nommer le domaine comme le service du backend : `src/features/<domaine>/`.
@@ -208,11 +286,11 @@ Les pages de l'espace ne sont plus des coques sans composant client : le cadre l
 
 ### D'une page d'attente à un module
 
-Aujourd'hui, `(app)/[module]/page.tsx` génère une page d'attente par module de la phase en cours à partir du catalogue (`generateStaticParams`) et répond 404 pour les autres. Elle reste telle quelle tant que les modules sont des pages d'attente. Quand les écrans d'un module arrivent (exemple : recouvrement) :
+`(app)/[module]/page.tsx` génère une page d'attente par module de la phase en cours à partir du catalogue (`generateStaticParams`, via `waitingModules()` de `lib/navigation/visible-modules.ts`) et répond 404 pour les autres. Les modules listés dans `MODULES_WITH_SCREENS` (`config/modules.ts`) en sont exclus : le Nettoyage a été le premier (28 octobre 2026). Quand les écrans d'un module arrivent (exemple : recouvrement) :
 
 1. Créer `src/features/recovery/` (schémas, écrans, `index.ts`).
 2. Créer la route statique `src/app/(app)/recouvrement/page.tsx` (puis ses sous-routes, par exemple `recouvrement/[dossier]/page.tsx`) : `AppShell current="recouvrement"` + l'écran de la fonctionnalité. L'adresse ne change pas : le menu pointe déjà vers `/recouvrement`.
-3. Retirer ce module des pages générées par `[module]`, pour qu'une adresse n'ait jamais deux pages : filtre explicite dans `available()` (à écrire au premier module concerné, avec son test).
+3. Ajouter son adresse à `MODULES_WITH_SCREENS` (`config/modules.ts`) : `waitingModules()` le retire des pages générées par `[module]`, pour qu'une adresse n'ait jamais deux pages (test dans `visible-modules.test.ts`).
 4. Le catalogue `config/modules.ts` garde l'entrée du module (libellé, rôles, phase) : le menu et le tableau de bord continuent de la lire.
 5. Quand le dernier module a sa route, supprimer `[module]`.
 
@@ -228,7 +306,7 @@ Conséquences pour le back-office :
 
 ## Convergence de `components/ui`
 
-`components/ui` du back-office (`Button`, `ButtonLink`, `Container`) n'a pas été aligné sur celui du portail : le copier changerait le rendu, et la charte du back-office viendra avec son design (F-009). Les deux devront **converger avant la création de `ksp-ui`** (F-003) : mêmes noms, mêmes propriétés, mêmes jetons sémantiques, seules les couleurs d'accent différant.
+`components/ui` du back-office (`Button`, `ButtonLink`, `Container`, et depuis le Nettoyage `ResponsiveTable`, `ConfirmAction`, `SubNav`, `SelectField`, `DescriptionList`) n'a pas été aligné sur celui du portail : le copier changerait le rendu, et la charte du back-office viendra avec son design (F-009). Les deux devront **converger avant la création de `ksp-ui`** (F-003) : mêmes noms, mêmes propriétés, mêmes jetons sémantiques, seules les couleurs d'accent différant.
 
 ## Volontairement exclu
 
