@@ -1,46 +1,413 @@
 @import 'tailwindcss';
 
 /*
- * Charte KSP — jetons de design communs aux sites de l'écosystème.
- * Couleurs provisoires (à valider avec la charte graphique) ; elles migreront dans ksp-ui.
- * Seule la couleur d'accent change d'un site à l'autre.
+ * Charte KSP — jetons de design communs aux sites de l'écosystème (migreront dans ksp-ui).
+ *
+ * Trois niveaux :
+ *   1. primitifs   — gammes brutes (bleu nuit, ocre, neutres chauds, états) ;
+ *   2. sémantiques — rôles (fond, encre, trait, marque, accent…) : les seuls utilisés par les composants ;
+ *   3. composants  — quelques variables locales (hauteur d'en-tête, durées).
+ *
+ * Seule la gamme d'accent change d'un site à l'autre (F-002). Couleurs proposées, à valider (F-009).
+ * Un futur mode sombre redéfinira uniquement les jetons sémantiques (voir [data-tone='inverse']).
+ *
+ * Back-office : copie des jetons du portail, avec la même gamme d'accent, l'ocre (F-016). Toute
+ * modification se fait d'abord dans le portail, puis ici, jusqu'à la création de ksp-ui (F-003).
+ * Retiré par rapport au portail : les transitions entre pages (F-013, propres au portail).
  */
+
+/* La palette par défaut de Tailwind est retirée : seules les couleurs de la charte existent. */
+@theme static {
+  --color-*: initial;
+
+  --color-white: #ffffff;
+
+  /* Bleu nuit — couleur de marque du groupe. */
+  --color-brand-50: #eef3f9;
+  --color-brand-100: #dbe4f0;
+  --color-brand-200: #b8c8de;
+  --color-brand-300: #8aa3c5;
+  --color-brand-400: #5a7aa8;
+  --color-brand-500: #3a5b8c;
+  --color-brand-600: #264673;
+  --color-brand-700: #1b345a;
+  --color-brand-800: #132746;
+  --color-brand-900: #0c1b33;
+  --color-brand-950: #071224;
+
+  /* Ocre, terre du Bénin — accent du portail, repris par le back-office (F-016). */
+  --color-ochre-50: #fbf4ea;
+  --color-ochre-100: #f5e4cc;
+  --color-ochre-200: #ecc898;
+  --color-ochre-300: #e0a862;
+  --color-ochre-400: #d28c3c;
+  --color-ochre-500: #bd7229;
+  --color-ochre-600: #9e5a1f;
+  --color-ochre-700: #7f461b;
+  --color-ochre-800: #65381a;
+  --color-ochre-900: #522e18;
+
+  /* Neutres chauds (papier) ; les encres restent bleutées. */
+  --color-neutral-25: #fcfbf8;
+  --color-neutral-50: #f7f5f0;
+  --color-neutral-100: #efece5;
+  --color-neutral-200: #e3dfd6;
+  --color-neutral-300: #cfc9bd;
+  --color-neutral-400: #a7a194;
+  --color-neutral-500: #716d66;
+  --color-neutral-600: #5a5d63;
+  --color-neutral-700: #464a52;
+
+  /* États. */
+  --color-green-50: #e9f5ee;
+  --color-green-700: #1f7a4d;
+  --color-amber-50: #fdf3e1;
+  --color-amber-700: #8a5100;
+  --color-red-50: #fdecea;
+  --color-red-700: #b42318;
+  --color-whatsapp-700: #0e7a3f;
+
+  /* ——— Jetons sémantiques ——— */
+
+  /* Fonds */
+  --color-canvas: var(--color-neutral-25);
+  --color-surface: var(--color-white);
+  --color-surface-muted: var(--color-neutral-50);
+  --color-surface-sunken: var(--color-neutral-100);
+  --color-surface-inverse: var(--color-brand-900);
+
+  /* Encres (texte et icônes) */
+  --color-ink: var(--color-brand-900);
+  --color-ink-muted: var(--color-neutral-700);
+  --color-ink-subtle: var(--color-neutral-600);
+  --color-ink-inverse: var(--color-white);
+
+  /* Traits */
+  --color-line: var(--color-neutral-200);
+  --color-line-strong: var(--color-neutral-300);
+  --color-line-control: var(--color-neutral-500);
+
+  /* Marque (bleu nuit) */
+  --color-brand: var(--color-brand-800);
+  --color-brand-strong: var(--color-brand-950);
+  --color-brand-soft: var(--color-brand-50);
+  --color-brand-ink: var(--color-brand-700);
+  --color-on-brand: var(--color-white);
+
+  /* Accent (ocre) — la seule famille qui change d'un site à l'autre */
+  --color-accent: var(--color-ochre-600);
+  --color-accent-strong: var(--color-ochre-700);
+  --color-accent-soft: var(--color-ochre-50);
+  --color-accent-muted: var(--color-ochre-200);
+  --color-accent-ink: var(--color-ochre-700);
+  --color-accent-bright: var(--color-ochre-300);
+  --color-on-accent: var(--color-white);
+
+  /* Focus */
+  --color-focus: var(--color-brand-600);
+
+  /* États */
+  --color-success: var(--color-green-700);
+  --color-success-soft: var(--color-green-50);
+  --color-warning: var(--color-amber-700);
+  --color-warning-soft: var(--color-amber-50);
+  --color-danger: var(--color-red-700);
+  --color-danger-soft: var(--color-red-50);
+  --color-whatsapp: var(--color-whatsapp-700);
+}
+
 @theme {
-  --color-brand-50: #eef5fb;
-  --color-brand-100: #d5e6f4;
-  --color-brand-500: #1c6aa8;
-  --color-brand-600: #155689;
-  --color-brand-700: #0f436c;
-  --color-brand-900: #0a2a44;
-
-  --color-accent: #0f766e;
-  --color-accent-contrast: #ffffff;
-
-  --color-surface: #ffffff;
-  --color-surface-muted: #f5f7f9;
-  --color-ink: #13202b;
-  --color-ink-muted: #4d5b67;
-  --color-line: #dde3e8;
-
-  --color-success: #1f7a4d;
-  --color-warning: #a35f00;
-  --color-danger: #b42318;
-  --color-whatsapp: #128c4a;
-
-  /* Polices système : aucun téléchargement, affichage immédiat sur les connexions lentes. */
+  /* Typographie : une police de titres hébergée (F-014), corps en polices système. */
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --font-display: var(--font-ksp-display, ui-sans-serif), system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-  --radius-card: 0.75rem;
+  /* Échelle fluide : 375 px → 1440 px. */
+  --text-display: clamp(2.5rem, 1.55rem + 4.1vw, 5.25rem);
+  --text-display--line-height: 1.02;
+  --text-display--letter-spacing: -0.035em;
+  --text-h1: clamp(2.125rem, 1.6rem + 2.3vw, 3.75rem);
+  --text-h1--line-height: 1.06;
+  --text-h1--letter-spacing: -0.03em;
+  --text-h2: clamp(1.75rem, 1.4rem + 1.5vw, 2.75rem);
+  --text-h2--line-height: 1.1;
+  --text-h2--letter-spacing: -0.025em;
+  --text-h3: clamp(1.25rem, 1.15rem + 0.45vw, 1.5rem);
+  --text-h3--line-height: 1.25;
+  --text-h3--letter-spacing: -0.015em;
+  --text-lead: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);
+  --text-lead--line-height: 1.6;
+  --text-body: 1rem;
+  --text-body--line-height: 1.6;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.5;
+  --text-eyebrow: 0.8125rem;
+  --text-eyebrow--line-height: 1.2;
+  --text-eyebrow--letter-spacing: 0.14em;
+
+  /* Espacements : grille de 4 px de Tailwind, plus le rythme vertical des sections. */
+  --spacing-section: clamp(4rem, 2.6rem + 6vw, 8rem);
+  --spacing-section-sm: clamp(3rem, 2.2rem + 3.4vw, 5rem);
+  --spacing-gutter: clamp(1rem, 0.6rem + 1.7vw, 2rem);
+
+  /* Largeurs */
+  --container-page: 76rem;
+  --container-reading: 42rem;
+  --container-measure: 36rem;
+
+  /* Rayons */
+  --radius-control: 0.625rem;
+  --radius-card: 1rem;
+  --radius-panel: 1.5rem;
+
+  /* Ombres teintées bleu nuit, toujours discrètes. */
+  --shadow-xs: 0 1px 2px rgb(12 27 51 / 0.06);
+  --shadow-card: 0 1px 2px rgb(12 27 51 / 0.05), 0 12px 32px -16px rgb(12 27 51 / 0.22);
+  --shadow-raised: 0 2px 4px rgb(12 27 51 / 0.06), 0 24px 48px -20px rgb(12 27 51 / 0.32);
+
+  /* Mouvement */
+  --ease-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 0.7, 0.2);
+}
+
+/* Variables de composants (hors thème : pas d'utilitaire généré). */
+:root {
+  --header-h: 4rem;
+  --motion-fast: 160ms;
+  --motion-base: 200ms;
+  --motion-slow: 320ms;
+  --motion-reveal: 400ms;
+  --z-header: 40;
+  --z-float: 50;
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --header-h: 4.5rem;
+  }
+}
+
+/*
+ * Ton inversé (pied de page, bandeaux bleu nuit) : on redéfinit les rôles, pas les composants.
+ * C'est aussi le prototype du futur mode sombre.
+ */
+[data-tone='inverse'] {
+  --color-canvas: var(--color-brand-900);
+  --color-surface: var(--color-brand-800);
+  --color-surface-muted: var(--color-brand-800);
+  --color-surface-sunken: var(--color-brand-950);
+  --color-ink: var(--color-white);
+  --color-ink-muted: var(--color-brand-200);
+  --color-ink-subtle: var(--color-brand-200);
+  --color-line: rgb(255 255 255 / 0.12);
+  --color-line-strong: rgb(255 255 255 / 0.22);
+  --color-brand: var(--color-white);
+  --color-brand-strong: var(--color-brand-50);
+  --color-brand-ink: var(--color-brand-100);
+  --color-on-brand: var(--color-brand-900);
+  --color-accent-ink: var(--color-ochre-300);
+  --color-focus: var(--color-ochre-300);
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
 }
 
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    scroll-padding-top: calc(var(--header-h) + 1rem);
+    text-rendering: optimizeLegibility;
   }
   body {
-    @apply bg-surface text-ink font-sans antialiased;
+    @apply bg-canvas text-body text-ink font-sans antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
   }
   :focus-visible {
-    @apply outline-brand-500 outline-2 outline-offset-2;
+    outline: 2px solid var(--color-focus);
+    outline-offset: 3px;
+  }
+  ::selection {
+    background-color: var(--color-accent-muted);
+    color: var(--color-brand-900);
+  }
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  summary {
+    cursor: pointer;
+  }
+  a,
+  button {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Menu mobile ouvert : la page ne défile plus derrière. */
+  html:has([data-scroll-lock]:popover-open) {
+    overflow: hidden;
+  }
+}
+
+/* Lien étiré : rend toute une carte cliquable sans imbriquer de liens. */
+@utility stretched-link {
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+}
+
+/* Voile de survol : fond qui apparaît en fondu (on anime l'opacité, pas la couleur). */
+@utility hover-veil {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background-color: var(--color-surface-sunken);
+    opacity: 0;
+    transition: opacity var(--motion-base) var(--ease-soft);
+  }
+  @media (hover: hover) {
+    &:hover::before {
+      opacity: 1;
+    }
+  }
+}
+
+/* ——— Panneaux (API popover native) : ouverture en fondu et glissement court ——— */
+@utility popover-panel {
+  opacity: 0;
+  transform: translateY(-0.5rem);
+  transition:
+    opacity var(--motion-base) var(--ease-soft),
+    transform var(--motion-base) var(--ease-soft),
+    overlay var(--motion-base) allow-discrete,
+    display var(--motion-base) allow-discrete;
+
+  &:popover-open {
+    opacity: 1;
+    transform: none;
+  }
+  @starting-style {
+    &:popover-open {
+      opacity: 0;
+      transform: translateY(-0.5rem);
+    }
+  }
+}
+
+/*
+ * ——— Apparitions au défilement (amélioration progressive, F-013) ———
+ * Le contenu est visible par défaut ; il n'est masqué que si le navigateur sait l'animer
+ * au défilement et que l'utilisateur n'a pas demandé à réduire les animations.
+ */
+@keyframes ksp-reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ksp-reveal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  /* Écran seulement : à l'impression, tout reste visible. */
+  @media screen and (prefers-reduced-motion: no-preference) {
+    .reveal,
+    .reveal-stagger > * {
+      animation: ksp-reveal-up linear both;
+      animation-timing-function: var(--ease-soft);
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+    .reveal-fade {
+      animation: ksp-reveal-fade linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+    /* Léger décalage entre éléments voisins, exprimé en portion de défilement. */
+    .reveal-stagger > :nth-child(3n + 2) {
+      animation-range: entry 6% entry 61%;
+    }
+    .reveal-stagger > :nth-child(3n + 3) {
+      animation-range: entry 12% entry 67%;
+    }
+  }
+}
+
+/*
+ * ——— Contenu qui change sur place (étapes d'un formulaire guidé, réponse d'une FAQ) ———
+ * Fondu court et léger glissement à l'arrivée, sans masquer le contenu si l'animation est coupée.
+ */
+@keyframes ksp-swap-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .swap-in,
+  details[open] > .disclosure-body {
+    animation: ksp-swap-in var(--motion-slow) var(--ease-soft) both;
+  }
+}
+
+/*
+ * ——— Tiroir latéral (menu du back-office sur téléphone, API popover native) ———
+ * Glisse depuis la gauche ; le fond s'assombrit. Sur grand écran, le même élément est un menu fixe.
+ */
+@utility drawer-panel {
+  transform: translateX(-100%);
+  transition:
+    transform var(--motion-slow) var(--ease-soft),
+    overlay var(--motion-slow) allow-discrete,
+    display var(--motion-slow) allow-discrete;
+
+  &:popover-open {
+    transform: none;
+  }
+  @starting-style {
+    &:popover-open {
+      transform: translateX(-100%);
+    }
+  }
+  &::backdrop {
+    background-color: rgb(7 18 36 / 0.45);
+  }
+}
+
+/* ——— Mouvement réduit : tout ce qui n'est pas essentiel s'arrête ——— */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
   }
 }

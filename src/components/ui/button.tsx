@@ -1,29 +1,66 @@
 import Link from 'next/link';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
+import { cn } from '@/lib/cn';
 
-type Variant = 'primary' | 'secondary' | 'accent';
+export type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'inverse';
+export type ButtonSize = 'md' | 'lg' | 'icon';
 
-const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-brand-600 text-white hover:bg-brand-700',
-  secondary: 'border border-line bg-surface text-ink hover:bg-surface-muted',
-  accent: 'bg-accent text-accent-contrast hover:opacity-90',
+/*
+ * Survol : un voile (pseudo-élément) apparaît en fondu ; appui : léger enfoncement.
+ * Seuls `opacity` et `transform` sont animés.
+ */
+const BASE = cn(
+  'group/button relative isolate inline-flex items-center justify-center gap-2 overflow-hidden',
+  'rounded-control font-semibold whitespace-nowrap select-none',
+  'transition-transform duration-(--motion-fast) ease-soft active:scale-[0.98]',
+  'before:absolute before:inset-0 before:-z-10 before:opacity-0 before:transition-opacity',
+  'before:duration-(--motion-base) before:ease-soft hover:before:opacity-100',
+  'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 disabled:hover:before:opacity-0',
+);
+
+const VARIANTS: Record<ButtonVariant, string> = {
+  primary: 'bg-brand text-on-brand before:bg-brand-strong',
+  accent: 'bg-accent text-on-accent before:bg-accent-strong',
+  secondary: 'border border-line-strong bg-surface text-ink before:bg-surface-sunken',
+  ghost: 'text-ink before:bg-surface-sunken',
+  inverse: 'bg-white text-brand-900 before:bg-brand-100',
 };
 
-const BASE =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-5 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50';
+const SIZES: Record<ButtonSize, string> = {
+  md: 'min-h-11 px-5 text-[0.9375rem]',
+  lg: 'min-h-13 px-7 text-base',
+  icon: 'size-11',
+};
 
-export function Button({
+type StyleProps = { variant?: ButtonVariant; size?: ButtonSize };
+
+export function buttonClasses({
   variant = 'primary',
-  className = '',
-  ...props
-}: ComponentProps<'button'> & { variant?: Variant }) {
-  return <button className={`${BASE} ${VARIANTS[variant]} ${className}`} {...props} />;
+  size = 'md',
+  className,
+}: StyleProps & { className?: string }): string {
+  return cn(BASE, VARIANTS[variant], SIZES[size], className);
 }
 
-export function ButtonLink({
-  variant = 'primary',
-  className = '',
+export function Button({
+  variant,
+  size,
+  className,
+  type = 'button',
   ...props
-}: ComponentProps<typeof Link> & { variant?: Variant }) {
-  return <Link className={`${BASE} ${VARIANTS[variant]} ${className}`} {...props} />;
+}: ComponentProps<'button'> & StyleProps) {
+  return <button type={type} className={buttonClasses({ variant, size, className })} {...props} />;
+}
+
+export function ButtonLink({ variant, size, className, ...props }: ComponentProps<typeof Link> & StyleProps) {
+  return <Link className={buttonClasses({ variant, size, className })} {...props} />;
+}
+
+/** Icône qui glisse au survol du bouton parent (flèche placée après le libellé). */
+export function ButtonArrow({ children }: { children: ReactNode }) {
+  return (
+    <span className="ease-soft transition-transform duration-(--motion-base) group-hover/button:translate-x-0.5">
+      {children}
+    </span>
+  );
 }
