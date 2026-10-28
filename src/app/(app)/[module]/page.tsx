@@ -1,12 +1,18 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { AppShell } from '@/components/layout/app-shell';
+import { Eyebrow } from '@/components/ui/eyebrow';
+import { Heading } from '@/components/ui/heading';
+import { Placeholder } from '@/components/ui/placeholder';
+import { ModuleGate } from '@/components/layout/module-gate';
 import { MODULES, SUPER_ADMIN } from '@/config/modules';
 import { visibleModules } from '@/lib/navigation/visible-modules';
 
 type Params = Promise<{ module: string }>;
 
 const available = () => visibleModules([SUPER_ADMIN]).filter((module) => module.slug !== 'tableau-de-bord');
+
+/** Seuls les modules de la phase en cours ont une page : toute autre adresse répond 404, sans rendu à la demande. */
+export const dynamicParams = false;
 
 export function generateStaticParams() {
   return available().map((module) => ({ module: module.slug }));
@@ -17,23 +23,32 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   return { title: MODULES.find((module) => module.slug === slug)?.label };
 }
 
-/** Page provisoire d'un module : remplacée par ses écrans lors du lot qui le livre. */
+/**
+ * Page d'attente d'un module : remplacée par ses écrans lors du lot qui le livre. Hors des rôles de
+ * l'agent (adresse saisie à la main), un message remplace le module.
+ */
 export default async function ModulePage({ params }: { params: Params }) {
   const { module: slug } = await params;
   const current = available().find((item) => item.slug === slug);
   if (!current) notFound();
   return (
-    <AppShell current={current.slug}>
-      <h1 className="text-2xl font-bold">{current.label}</h1>
-      <p className="text-ink-muted mt-2 max-w-3xl">{current.description}</p>
-      <p className="border-line bg-surface rounded-card mt-6 border p-5 text-sm">
-        Rôles :{' '}
-        {current.roles.map((role) => (
-          <code key={role} className="mr-2">
-            {role}
-          </code>
-        ))}
-      </p>
-    </AppShell>
+    <ModuleGate slug={current.slug} label={current.label}>
+      <Eyebrow>Module</Eyebrow>
+      <Heading as="h1" size="h2" className="mt-3">
+        {current.label}
+      </Heading>
+      <p className="text-ink-muted max-w-reading mt-3">{current.description}</p>
+      <Placeholder title="Écrans en préparation" className="mt-8 max-w-2xl">
+        Ce module affichera ses écrans quand le service correspondant sera livré par la gateway.
+        <span className="mt-3 block">
+          Rôles concernés :{' '}
+          {current.roles.map((role) => (
+            <code key={role} className="bg-surface-sunken text-ink mr-2 rounded px-1.5 py-0.5 text-xs">
+              {role}
+            </code>
+          ))}
+        </span>
+      </Placeholder>
+    </ModuleGate>
   );
 }

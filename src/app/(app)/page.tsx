@@ -1,10 +1,6 @@
-import { AppShell } from '@/components/layout/app-shell';
+import { MODULES } from '@/config/modules';
 import { DashboardOverview } from '@/features/dashboard';
 
 export default function DashboardPage() {
-  return (
-    <AppShell current="tableau-de-bord">
-      <DashboardOverview />
-    </AppShell>
-  );
+  return <DashboardOverview modules={MODULES} />;
 }

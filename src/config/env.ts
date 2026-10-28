@@ -1,17 +1,23 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 
 /**
  * Variables d'environnement validées une seule fois. Une valeur invalide arrête le démarrage
  * avec un message clair, plutôt qu'une erreur obscure en production.
  *
  * Les variables NEXT_PUBLIC_* sont lues une par une : Next.js ne remplace que les accès explicites.
+ *
+ * `zod/mini` plutôt que `zod` (comme le portail) : ce module est aussi chargé par le navigateur (client
+ * de la gateway), et la version complète de zod y pèserait environ 90 Ko compressés. Messages d'erreur
+ * explicites : zod/mini n'embarque pas de traductions.
  */
+const url = () => z.url({ error: 'Adresse complète attendue, par exemple https://admin.ksp.bj.' });
+
 const publicSchema = z.object({
-  siteUrl: z.url(),
-  apiUrl: z.url(),
-  portailUrl: z.url(),
-  shopUrl: z.url(),
-  printUrl: z.url(),
+  siteUrl: url(),
+  apiUrl: url(),
+  portailUrl: url(),
+  shopUrl: url(),
+  printUrl: url(),
 });
 
 const emptyToUndefined = (value: string | undefined) => (value === '' ? undefined : value);

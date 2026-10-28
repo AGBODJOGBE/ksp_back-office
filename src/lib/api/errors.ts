@@ -26,6 +26,17 @@ export class ApiError extends Error {
     );
   }
 
+  /** Réponse de la gateway qui ne respecte pas le contrat (schéma zod refusé). */
+  static invalidResponse(correlationId?: string): ApiError {
+    return new ApiError(
+      502,
+      'INVALID_RESPONSE',
+      'Réponse inattendue du serveur. Réessayez dans quelques instants.',
+      {},
+      correlationId,
+    );
+  }
+
   get isUnauthenticated(): boolean {
     return this.status === 401;
   }

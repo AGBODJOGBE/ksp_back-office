@@ -1,26 +1,24 @@
-import { SUPER_ADMIN } from '@/config/modules';
-import { visibleModules } from '@/lib/navigation/visible-modules';
+import { Eyebrow } from '@/components/ui/eyebrow';
+import { Heading } from '@/components/ui/heading';
+import type { BackofficeModule } from '@/config/modules';
+import { ModuleCards } from './module-cards';
 
 /**
- * Tableau de bord provisoire : présentation des modules de la phase en cours.
- * Les indicateurs de chaque métier remplaceront ces cartes quand les services les exposeront.
+ * Tableau de bord : en attendant les indicateurs des services, les modules ouverts à l'agent.
+ * Coque serveur ; la liste filtrée par rôle est une feuille client qui lit la session.
  */
-export function DashboardOverview() {
-  const modules = visibleModules([SUPER_ADMIN]).filter((module) => module.slug !== 'tableau-de-bord');
+export function DashboardOverview({ modules }: { modules: readonly BackofficeModule[] }) {
   return (
     <>
-      <h1 className="text-2xl font-bold">Tableau de bord</h1>
-      <p className="text-ink-muted mt-2">
-        Indicateurs de chaque métier, tâches du jour et alertes : ils s&apos;afficheront ici selon vos rôles.
+      <Eyebrow>Tableau de bord</Eyebrow>
+      <Heading as="h1" size="h2" className="mt-3">
+        Bienvenue dans le back-office
+      </Heading>
+      <p className="text-ink-muted max-w-reading mt-3">
+        Indicateurs de chaque métier, tâches du jour et alertes : ils s&apos;afficheront ici selon vos rôles,
+        à mesure que les services seront livrés. En attendant, voici les modules qui vous sont ouverts.
       </p>
-      <ul className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {modules.map((module) => (
-          <li key={module.slug} className="border-line bg-surface rounded-card border p-5">
-            <h2 className="font-semibold">{module.label}</h2>
-            <p className="text-ink-muted mt-2 text-sm">{module.description}</p>
-          </li>
-        ))}
-      </ul>
+      <ModuleCards modules={modules} />
     </>
   );
 }
