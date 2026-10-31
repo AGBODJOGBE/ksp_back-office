@@ -76,7 +76,7 @@ Le nom d'une fonctionnalité est celui du service du backend, en anglais (le cod
 | ---------------------------------- | --------------------------------------------------------------- | ---------------------------- | ----- | ----------------------------------- |
 | Tableau de bord (`/`)              | `features/dashboard`                                            | — (indicateurs des services) | 1     | présentation provisoire des modules |
 | Recouvrement (`/recouvrement`)     | `features/recovery`                                             | recovery                     | 1     | page d'attente                      |
-| Nettoyage (`/nettoyage`)           | `features/cleaning`                                             | cleaning                     | 1     | écrans branchés (28 routes)         |
+| Nettoyage (`/nettoyage`)           | `features/cleaning`                                             | cleaning                     | 1     | écrans branchés (28 routes + 3)     |
 | Finance (`/finance`)               | `features/payment`, `features/wallet`, `features/billing`       | payment, wallet, billing     | 1     | page d'attente                      |
 | Clients et comptes (`/clients`)    | `features/identity`                                             | identity                     | 1     | page d'attente ; connexion branchée |
 | Notifications (`/notifications`)   | `features/notification`                                         | notification                 | 1     | page d'attente                      |
@@ -150,15 +150,15 @@ Le cadre des pages `(app)` importe `@/features/identity/session` (garde et panne
 
 ## Nettoyage (`features/cleaning`)
 
-Module branché sur les 28 routes `/api/v1/admin/cleaning/*` du contrat (`ksp-api.v1.yaml`), plus la route publique `GET /api/v1/cleaning/services` (noms des prestations : les fiches ne portent que leur code). Aucune règle métier dans le front : prix, lignes du devis, acompte, transitions et refus viennent de la gateway ; l'écran propose les actions que l'état permet et affiche le refus du backend (message français, référence pour le support sur une erreur serveur).
+Module branché sur les 28 routes `/api/v1/admin/cleaning/*` du contrat (`ksp-api.v1.yaml`), plus deux routes publiques — `GET /api/v1/cleaning/services` (noms des prestations : les fiches ne portent que leur code) et `GET /api/v1/cleaning/zones` (filtre de commune du superviseur) — et la recherche de compte d'identity, `POST /api/v1/admin/identity/accounts/lookup` (ADR-029, dans `features/identity/account-lookup.ts`, exportée par l'index d'identity). Aucune règle métier dans le front : prix, lignes du devis, acompte, transitions et refus viennent de la gateway ; l'écran propose les actions que l'état permet et affiche le refus du backend (message français, référence pour le support sur une erreur serveur).
 
 ```
 features/cleaning/
 ├── index.ts               onglets, écrans (relais à la demande), textes des titres
-├── api.ts                 28 appels admin + noms publics des prestations
+├── api.ts                 28 appels admin + noms des prestations et zones ouvertes (routes publiques)
 ├── schemas.ts             zod/mini, champ par champ selon le contrat
 ├── access.ts              rôles → sections affichées (affichage seulement)
-├── paths.ts, errors.ts    adresses des écrans ; message affichable d'une erreur
+├── paths.ts, errors.ts    adresses des écrans ; message affichable d'une erreur (refus précisés par leurs détails)
 ├── texts.ts               libellés communs et états ; *-texts.ts : textes propres à chaque écran
 └── components/
     ├── lazy.tsx           relais next/dynamic : une page ne télécharge que son écran
@@ -166,51 +166,65 @@ features/cleaning/
     ├── requests-list.tsx, request-detail.tsx, quote-form.tsx
     ├── missions-list.tsx, mission-detail.tsx, intervention-form.tsx, intervention-screen.tsx
     ├── catalog-screen.tsx, service-form.tsx, zones-screen.tsx, team-screen.tsx
+    ├── register-agent.tsx rattacher un agent : recherche du compte par téléphone, puis confirmation
     └── parts.tsx          états communs (chargement, erreur, panneaux), droits de la session
 ```
 
-| Adresse                                         | Écran                                                                                    | Onglet visible pour                                 |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `/nettoyage`                                    | Demandes : filtres état (gateway), commune et type de client (pages chargées) dans l'URL | `cleaning_supervisor`, `cleaning_admin`             |
-| `/nettoyage/demandes/[id]`                      | Fiche : client, locaux, visite, devis, historique ; visite, compte rendu, devis, refus   | idem                                                |
-| `/nettoyage/missions`                           | Missions, filtre par état dans l'URL                                                     | les trois rôles (l'agent ne reçoit que les siennes) |
-| `/nettoyage/missions/[id]`                      | Fiche : passages, paiement ; planifier un passage, paiement manuel, annulation           | les trois rôles ; actions : superviseur et admin    |
-| `/nettoyage/missions/[id]/passages/[passageId]` | Passage (téléphone de l'agent) : démarrer, liste de contrôle, incident, reprise, clôture | les trois rôles                                     |
-| `/nettoyage/catalogue`                          | Prestations et grille, réglages                                                          | `cleaning_admin`                                    |
-| `/nettoyage/zones`                              | Zones desservies : ouverture, désactivation, réactivation                                | `cleaning_admin`                                    |
-| `/nettoyage/equipe`                             | Agents (rattachement, indisponibilités) et équipes                                       | superviseur (lecture) et admin                      |
+| Adresse                                         | Écran                                                                                                   | Onglet visible pour                                 |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `/nettoyage`                                    | Demandes : filtres état, commune (code de zone) et type de client, tous passés à la gateway, dans l'URL | `cleaning_supervisor`, `cleaning_admin`             |
+| `/nettoyage/demandes/[id]`                      | Fiche : client, locaux, visite, devis, historique ; visite, compte rendu, devis, refus                  | idem                                                |
+| `/nettoyage/missions`                           | Missions, filtre par état dans l'URL                                                                    | les trois rôles (l'agent ne reçoit que les siennes) |
+| `/nettoyage/missions/[id]`                      | Fiche : passages, paiement ; planifier un passage, paiement manuel, annulation                          | les trois rôles ; actions : superviseur et admin    |
+| `/nettoyage/missions/[id]/passages/[passageId]` | Passage (téléphone de l'agent) : démarrer, liste de contrôle, incident, reprise, clôture                | les trois rôles                                     |
+| `/nettoyage/catalogue`                          | Prestations et grille, réglages                                                                         | `cleaning_admin`                                    |
+| `/nettoyage/zones`                              | Zones desservies : ouverture, désactivation, réactivation                                               | `cleaning_admin`                                    |
+| `/nettoyage/equipe`                             | Agents (rattachement, indisponibilités) et équipes                                                      | superviseur (lecture) et admin                      |
 
-| Route de la gateway                                            | Écran ou composant                                    |
-| -------------------------------------------------------------- | ----------------------------------------------------- |
-| `GET /admin/cleaning/quote-requests`                           | `RequestsList`                                        |
-| `GET /admin/cleaning/quote-requests/{id}`                      | `RequestDetail` (et type de client d'une mission)     |
-| `POST /admin/cleaning/quote-requests/{id}/reject`              | `RequestDetail` (confirmation, motif obligatoire)     |
-| `POST /admin/cleaning/quote-requests/{id}/visits`              | `RequestDetail` (boîte « Planifier la visite »)       |
-| `POST /admin/cleaning/visits/{id}/complete`                    | `RequestDetail` (compte rendu)                        |
-| `POST /admin/cleaning/quote-requests/{id}/quote`               | `QuoteForm` (chargé à l'ouverture)                    |
-| `GET /admin/cleaning/missions`                                 | `MissionsList`                                        |
-| `GET /admin/cleaning/missions/{id}`                            | `MissionDetail`, `InterventionScreen`                 |
-| `POST /admin/cleaning/missions/{id}/interventions`             | `InterventionForm` (chargé à l'ouverture)             |
-| `POST /admin/cleaning/missions/{id}/payments`                  | `MissionDetail` (particulier seulement, confirmation) |
-| `POST /admin/cleaning/missions/{id}/cancel`                    | `MissionDetail` (confirmation, motif obligatoire)     |
-| `POST /admin/cleaning/interventions/{id}/start`                | `InterventionScreen`                                  |
-| `PUT /admin/cleaning/interventions/{id}/checklist`             | `InterventionScreen` (case par case)                  |
-| `POST /admin/cleaning/interventions/{id}/incident`             | `InterventionScreen` (confirmation, note)             |
-| `POST /admin/cleaning/interventions/{id}/resume`               | `InterventionScreen`                                  |
-| `POST /admin/cleaning/interventions/{id}/complete`             | `InterventionScreen` (confirmation)                   |
-| `GET /admin/cleaning/catalog`                                  | `CatalogScreen`                                       |
-| `PUT /admin/cleaning/catalog/services/{code}`                  | `ServiceForm` (chargé à l'ouverture)                  |
-| `PUT /admin/cleaning/catalog/settings`                         | `CatalogScreen` (réglages)                            |
-| `GET /admin/cleaning/zones`                                    | `ZonesScreen`                                         |
-| `POST /admin/cleaning/zones`                                   | `ZonesScreen` (ouverture et réactivation)             |
-| `POST /admin/cleaning/zones/{code}/deactivate`                 | `ZonesScreen` (confirmation)                          |
-| `GET /admin/cleaning/agents`                                   | `TeamScreen`, choix des agents (visite, passage)      |
-| `POST /admin/cleaning/agents`                                  | `TeamScreen` (rattacher un compte)                    |
-| `POST /admin/cleaning/agents/{id}/unavailabilities`            | `TeamScreen`                                          |
-| `GET /admin/cleaning/teams`                                    | `TeamScreen`, `InterventionForm`                      |
-| `POST /admin/cleaning/teams`, `PUT /admin/cleaning/teams/{id}` | `TeamScreen` (composer, modifier)                     |
+| Route de la gateway                                            | Écran ou composant                                   |
+| -------------------------------------------------------------- | ---------------------------------------------------- |
+| `GET /admin/cleaning/quote-requests`                           | `RequestsList` (`status`, `commune`, `customerKind`) |
+| `GET /admin/cleaning/quote-requests/{id}`                      | `RequestDetail`                                      |
+| `POST /admin/cleaning/quote-requests/{id}/reject`              | `RequestDetail` (confirmation, motif obligatoire)    |
+| `POST /admin/cleaning/quote-requests/{id}/visits`              | `RequestDetail` (boîte « Planifier la visite »)      |
+| `POST /admin/cleaning/visits/{id}/complete`                    | `RequestDetail` (compte rendu)                       |
+| `POST /admin/cleaning/quote-requests/{id}/quote`               | `QuoteForm` (chargé à l'ouverture)                   |
+| `GET /admin/cleaning/missions`                                 | `MissionsList`                                       |
+| `GET /admin/cleaning/missions/{id}`                            | `MissionDetail`, `InterventionScreen`                |
+| `POST /admin/cleaning/missions/{id}/interventions`             | `InterventionForm` (chargé à l'ouverture)            |
+| `POST /admin/cleaning/missions/{id}/payments`                  | `MissionDetail` (particulier, `Idempotency-Key`)     |
+| `POST /admin/cleaning/missions/{id}/cancel`                    | `MissionDetail` (confirmation, motif obligatoire)    |
+| `POST /admin/cleaning/interventions/{id}/start`                | `InterventionScreen`                                 |
+| `PUT /admin/cleaning/interventions/{id}/checklist`             | `InterventionScreen` (case par case)                 |
+| `POST /admin/cleaning/interventions/{id}/incident`             | `InterventionScreen` (confirmation, note)            |
+| `POST /admin/cleaning/interventions/{id}/resume`               | `InterventionScreen`                                 |
+| `POST /admin/cleaning/interventions/{id}/complete`             | `InterventionScreen` (confirmation)                  |
+| `GET /admin/cleaning/catalog`                                  | `CatalogScreen`                                      |
+| `PUT /admin/cleaning/catalog/services/{code}`                  | `ServiceForm` (chargé à l'ouverture)                 |
+| `PUT /admin/cleaning/catalog/settings`                         | `CatalogScreen` (réglages)                           |
+| `GET /admin/cleaning/zones`                                    | `ZonesScreen`, filtre de commune de l'admin          |
+| `POST /admin/cleaning/zones`                                   | `ZonesScreen` (ouverture et réactivation)            |
+| `POST /admin/cleaning/zones/{code}/deactivate`                 | `ZonesScreen` (confirmation)                         |
+| `GET /admin/cleaning/agents`                                   | `TeamScreen`, choix des agents (visite, passage)     |
+| `POST /admin/cleaning/agents`                                  | `RegisterAgentDialog` (après la recherche du compte) |
+| `POST /admin/cleaning/agents/{id}/unavailabilities`            | `TeamScreen`                                         |
+| `GET /admin/cleaning/teams`                                    | `TeamScreen`, `InterventionForm`                     |
+| `POST /admin/cleaning/teams`, `PUT /admin/cleaning/teams/{id}` | `TeamScreen` (composer, modifier)                    |
+| `GET /cleaning/zones` (publique)                               | filtre de commune du superviseur                     |
+| `POST /admin/identity/accounts/lookup`                         | `RegisterAgentDialog` (numéro dans le corps)         |
 
-Aucune de ces routes ne demande de clé d'idempotence dans le contrat. Les photos des passages ne sont pas envoyables : la gateway n'expose aucune route du service `file` (l'écran le dit). `super_admin` n'ouvre pas les routes du Nettoyage (contrat) : il ne voit aucun onglet. Le module est ouvert à `cleaning_agent` dans `config/modules.ts` (missions et passages) : **à valider**.
+Noms et suspensions (PR #25 et #26 du backend, ADR-029 et ADR-030) :
+
+- **Droits** : `super_admin` a la même portée que `cleaning_admin` (`access.ts`, `config/modules.ts`) : tous les onglets, toutes les actions. Le module est aussi ouvert à `cleaning_agent` (missions et passages) : **à valider**.
+- **Noms affichés** (lus dans identity par cleaning, facultatifs, `null` si inconnus) : client et organisation des demandes et des missions, agent de la visite, auteur d'un paiement, auteur de la grille, des réglages et des zones. Repli sur un libellé court (« Client sans nom », « Entreprise sans nom », « un membre de l'équipe ») ; les identifiants techniques ne sont plus affichés, sauf la colonne « Compte » des agents.
+- **Type de client de la mission** (`customerKind`, `organizationId`) : le paiement manuel est masqué pour une entreprise ; la demande d'origine n'est plus relue.
+- **Paiement manuel idempotent** : clé tirée à l'ouverture du formulaire (`ConfirmAction.onOpen`, `newIdempotencyKey` de `lib/api`) et renvoyée telle quelle à chaque nouvel essai ; nouvelle clé à la prochaine ouverture.
+- **Refus précisés** (`errors.ts`) : `CLEANING_INTERVENTION_TOO_EARLY` (jour prévu), `CLEANING_VISIT_TOO_EARLY` (heure prévue), `CLEANING_PAYMENT_INVALID` avec `details.remainingDue` (reste dû), `CLEANING_ORGANIZATION_SUSPENDED`. Les autres refus gardent le message de la gateway.
+- **« Démarrer le passage »** est désactivé avant le jour prévu, à l'heure du Bénin, avec le jour affiché : confort d'affichage seulement, la gateway tranche (la règle est réglable de son côté : **à valider**).
+- **Suspension** : toutes les causes actives (`suspension.causes`, la plus ancienne d'abord) s'affichent en clair, par exemple « Compte entreprise suspendu par KSP » et « 2 factures impayées ».
+- **Rattacher un agent** : l'admin saisit un numéro (sans indicatif, +229 est ajouté), voit le compte trouvé (nom, numéro masqué, état) et confirme, avec un nom affiché modifiable. Compte introuvable (404) et limite de recherches (429, délai de la gateway) ont leur message.
+
+Les photos des passages ne sont pas envoyables : la gateway n'expose aucune route du service `file` (l'écran le dit).
 
 Briques ajoutées à `components/ui` (à faire converger avec le portail avant `ksp-ui`) : `ResponsiveTable` (tableau qui devient des cartes sous 768 px), `ConfirmAction` (`<dialog>` modal natif), `SubNav` (onglets en liens), `SelectField` et `TextAreaField`, `DescriptionList`, variante `danger` de `Button`. Côté `lib` : `format.ts` (XOF, dates `Africa/Porto-Novo`, champs `datetime-local`), `use-resource.ts` (repris du portail), `put` dans le client de la gateway.
 
@@ -271,6 +285,18 @@ Mesure du 28 octobre 2026, Nettoyage branché (`pnpm build && pnpm size`) :
 | 404                                                   | 178,0 Ko      | 178,0 Ko |
 
 Sans le relais `components/lazy.tsx`, l'index de la fonctionnalité faisait charger les neuf écrans à chaque page du module : 232,7 Ko (mesuré), au-delà du budget. Avec lui, la coque du module (onglets, états communs) ajoute 4,9 Ko et chaque écran est demandé après la reprise de la session. JavaScript réellement téléchargé jusqu'à l'affichage de l'écran (build de production, gateway simulée, navigateur récent, donc sans les polyfills que compte `pnpm size`) : 177,7 Ko pour une page d'attente ; de 182,8 Ko (zones) à 185,7 Ko (fiche d'une demande), soit +5,1 à +8,0 Ko. Les formulaires lourds (devis, planification d'un passage, prestation) ne sont chargés qu'à leur ouverture. Les fiches (`[id]`, rendues à la demande) n'apparaissent pas dans `pnpm size`. Le socle des autres pages a pris 0,8 Ko (briques partagées regroupées par Turbopack : variante `danger`, `put`, catalogue des modules ; cause exacte **à confirmer**).
+
+Mesure du 28 octobre 2026, noms, filtres et suspensions (`pnpm build && pnpm size`) :
+
+| Page                                                  | First Load JS | Avant    |
+| ----------------------------------------------------- | ------------- | -------- |
+| `/nettoyage` et ses quatre sous-pages statiques       | 215,6 Ko      | 214,4 Ko |
+| `/` (tableau de bord)                                 | 210,1 Ko      | 210,2 Ko |
+| Pages d'attente des cinq autres modules de la phase 1 | 209,4 Ko      | 209,5 Ko |
+| `/connexion`                                          | 212,4 Ko      | 211,6 Ko |
+| 404                                                   | 178,0 Ko      | 178,0 Ko |
+
+La recherche de compte vit dans `features/identity` (service qui la porte) ; son module est marqué `'use client'`, car l'index d'identity est aussi lu par des pages serveur (`/connexion`) qui ne doivent pas recevoir le client de la gateway.
 
 ## Ajouter une fonctionnalité
 

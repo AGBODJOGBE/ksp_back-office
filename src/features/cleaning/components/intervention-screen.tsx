@@ -8,7 +8,7 @@ import { FormMessage } from '@/components/ui/field';
 import { Heading } from '@/components/ui/heading';
 import { IconCheck, IconImage } from '@/components/ui/icons';
 import { TextAreaField } from '@/components/ui/select-field';
-import { formatDateTime, formatDuration } from '@/lib/format';
+import { beninDay, formatDate, formatDateTime, formatDuration } from '@/lib/format';
 import { useResource } from '@/lib/use-resource';
 import {
   getMission,
@@ -110,6 +110,12 @@ function Actions({
 
   const big = 'min-h-14 w-full text-base sm:w-auto';
   const { status } = intervention;
+  /*
+   * Confort d'affichage : la gateway refuse de démarrer un passage avant son jour prévu, à l'heure du
+   * Bénin (`CLEANING_INTERVENTION_TOO_EARLY`). Le bouton l'annonce plutôt que d'attendre le refus ; le
+   * backend reste seul juge (règle réglable de son côté).
+   */
+  const tooEarly = status === 'planned' && beninDay(new Date()) < beninDay(intervention.scheduledStart);
   if (status === 'completed' || status === 'cancelled') return <Note>{t.closedState}</Note>;
   return (
     <div className="grid gap-3">
@@ -120,7 +126,8 @@ function Actions({
             className={big}
             onClick={() => run('start')}
             aria-busy={pending === 'start' || undefined}
-            disabled={!!pending}
+            aria-describedby={tooEarly ? 'passage-trop-tot' : undefined}
+            disabled={!!pending || tooEarly}
           >
             {pending === 'start' ? common.sending : t.start}
           </Button>
@@ -181,6 +188,11 @@ function Actions({
           </ConfirmAction>
         ) : null}
       </div>
+      {tooEarly ? (
+        <p id="passage-trop-tot" className="text-small text-ink-muted">
+          {t.startFrom(formatDate(intervention.scheduledStart))}
+        </p>
+      ) : null}
       <FormMessage>{error}</FormMessage>
     </div>
   );

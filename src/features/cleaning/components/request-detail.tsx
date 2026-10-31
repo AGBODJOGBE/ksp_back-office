@@ -27,6 +27,7 @@ import type { Agent, QuoteRequest } from '@/features/cleaning/schemas';
 import {
   cleaningTexts,
   customerKind,
+  nameOr,
   premisesType,
   recurrenceText,
   requestStatuses,
@@ -57,7 +58,7 @@ function text(data: FormData, name: string): string {
  * Étapes de la demande dans l'ordre du parcours (données de la gateway seulement). La date de
  * planification de la visite n'est pas fournie : l'étape affiche la date prévue de la visite.
  */
-function history(request: QuoteRequest, agentName: (id: string) => string) {
+function history(request: QuoteRequest, agentName: string | null) {
   const events: Array<{ at: string | null; label: string; note?: string | null }> = [
     { at: request.createdAt, label: t.events.created },
   ];
@@ -66,7 +67,7 @@ function history(request: QuoteRequest, agentName: (id: string) => string) {
       at: null,
       label: t.events.visitScheduled(
         formatDateTime(request.visit.scheduledAt),
-        agentName(request.visit.agentId),
+        agentName ?? common.unknownAgent,
       ),
     });
     if (request.visit.completedAt) {
@@ -249,9 +250,11 @@ function RequestView({
   const access = useCleaningAccess();
   const serviceName = useServiceName();
   const f = t.fields;
-  const agentName = (id: string) =>
-    agents?.find((agent) => agent.agentId === id)?.displayName ?? common.unknownAgent;
   const { visit, quote } = request;
+  // Nom de l'agent de la visite : celui de la gateway (ADR-029), sinon celui de la liste des agents.
+  const agentName = visit
+    ? (visit.agentName ?? agents?.find((agent) => agent.agentId === visit.agentId)?.displayName ?? null)
+    : null;
   return (
     <div className="grid gap-6">
       <div className="grid gap-3">
@@ -276,15 +279,12 @@ function RequestView({
           <DescriptionList
             items={[
               { term: f.kind, value: customerKind(request.customerKind) },
+              { term: f.customerName, value: nameOr(request.customerName, common.unnamed) },
               {
-                term: f.customerId,
-                value: <code className="text-small break-all">{request.customerId}</code>,
-              },
-              {
-                term: f.organizationId,
-                value: request.organizationId ? (
-                  <code className="text-small break-all">{request.organizationId}</code>
-                ) : null,
+                term: f.organizationName,
+                value: request.organizationId
+                  ? nameOr(request.organizationName, common.unnamedBusiness)
+                  : null,
               },
               { term: f.comment, value: request.comment },
               { term: f.closingReason, value: request.closingReason },
@@ -333,7 +333,7 @@ function RequestView({
             <DescriptionList
               items={[
                 { term: t.scheduleVisit.when, value: formatDateTime(visit.scheduledAt) },
-                { term: t.scheduleVisit.agent, value: agentName(visit.agentId) },
+                { term: t.scheduleVisit.agent, value: agentName ?? common.unknownAgent },
                 { term: t.visitReport, value: visit.report },
               ]}
             />

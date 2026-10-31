@@ -11,7 +11,6 @@ import {
   declareUnavailability,
   listAgents,
   listTeams,
-  registerAgent,
   updateTeam,
 } from '@/features/cleaning/api';
 import { attempt } from '@/features/cleaning/errors';
@@ -19,10 +18,10 @@ import type { Agent, Team } from '@/features/cleaning/schemas';
 import { teamTexts as t } from '@/features/cleaning/team-texts';
 import { cleaningTexts } from '@/features/cleaning/texts';
 import { Note, Panel, ResourceView, useCleaningAccess } from './parts';
+import { RegisterAgentDialog } from './register-agent';
 
 const common = cleaningTexts.common;
 const dialog = { cancel: common.cancel, pending: common.sending };
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const value = (data: FormData, name: string) => String(data.get(name) ?? '').trim();
 
@@ -175,7 +174,6 @@ function TeamDialog({
 function TeamView({ data, onChange }: { data: Data; onChange: (data: Data) => void }) {
   const access = useCleaningAccess();
   const administer = !!access?.administer;
-  const r = t.register;
   const setAgent = (agent: Agent) =>
     onChange({ ...data, agents: [...data.agents.filter((item) => item.agentId !== agent.agentId), agent] });
   const setTeam = (team: Team) =>
@@ -187,36 +185,7 @@ function TeamView({ data, onChange }: { data: Data; onChange: (data: Data) => vo
       <Panel
         title={t.agents}
         id="equipe-agents"
-        action={
-          administer ? (
-            <ConfirmAction
-              label={r.label}
-              variant="primary"
-              title={r.title}
-              description={r.text}
-              confirmLabel={r.confirm}
-              labels={dialog}
-              onConfirm={async (form) => {
-                const agentId = value(form, 'agentId');
-                const displayName = value(form, 'displayName');
-                if (!UUID.test(agentId)) return r.accountInvalid;
-                if (!displayName) return `${r.displayName} : ${common.required}`;
-                return attempt(async () => setAgent(await registerAgent({ agentId, displayName })));
-              }}
-            >
-              <TextField
-                id="agent-compte"
-                name="agentId"
-                label={r.accountId}
-                hint={r.accountHint}
-                autoCapitalize="none"
-                spellCheck={false}
-                required
-              />
-              <TextField id="agent-nom" name="displayName" label={r.displayName} maxLength={100} required />
-            </ConfirmAction>
-          ) : null
-        }
+        action={administer ? <RegisterAgentDialog onDone={setAgent} /> : null}
       >
         {data.agents.length ? (
           <ResponsiveTable

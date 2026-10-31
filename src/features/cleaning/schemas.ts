@@ -13,6 +13,12 @@ export const moneySchema = z.object({ amount: z.int(), currency: z.literal('XOF'
 
 export const timeSlotSchema = z.object({ start: z.string(), end: z.string() });
 
+/**
+ * Nom affiché lu dans identity par le service cleaning (ADR-029) : facultatif dans le contrat, `null`
+ * quand il est inconnu ou qu'identity ne répond pas. L'écran retombe alors sur un libellé court.
+ */
+const displayName = z.optional(z.nullable(z.string()));
+
 const priceLineSchema = z.object({
   label: z.string(),
   quantity: z.int(),
@@ -33,6 +39,7 @@ const siteVisitSchema = z.object({
   agentId: z.string(),
   report: z.nullable(z.string()),
   completedAt: z.nullable(z.string()),
+  agentName: displayName,
 });
 
 /** `CleaningQuote` : devis envoyé, prix figé à l'envoi. */
@@ -78,6 +85,8 @@ export const quoteRequestSchema = z.object({
   closingReason: z.nullable(z.string()),
   createdAt: z.string(),
   updatedAt: z.string(),
+  customerName: displayName,
+  organizationName: displayName,
 });
 
 export const quoteRequestListSchema = z.object({
@@ -104,6 +113,17 @@ const interventionSchema = z.object({
   cancellationCause: z.nullable(z.string()),
 });
 
+/**
+ * `CleaningSuspension` (ADR-030) : causes cumulées, la plus ancienne d'abord (`cause` reste la plus
+ * ancienne). `unpaidCount` peut valoir 0 pour une organisation suspendue par KSP.
+ */
+const suspensionSchema = z.object({
+  cause: z.string(),
+  causes: z.array(z.string()),
+  since: z.string(),
+  unpaidCount: z.int(),
+});
+
 const paymentStateSchema = z.object({
   plan: z.object({ option: z.string(), timing: z.string(), method: z.string() }),
   status: z.string(),
@@ -118,6 +138,7 @@ const paymentStateSchema = z.object({
       method: z.string(),
       reference: z.nullable(z.string()),
       recordedBy: z.string(),
+      recordedByName: displayName,
       recordedAt: z.string(),
     }),
   ),
@@ -129,6 +150,11 @@ export const missionSchema = z.object({
   requestId: z.string(),
   quoteId: z.string(),
   customerId: z.string(),
+  /** Particulier ou entreprise (ajout ADR-029) : une mission d'entreprise se règle par sa facture. */
+  customerKind: z.optional(z.string()),
+  organizationId: z.optional(z.nullable(z.string())),
+  customerName: displayName,
+  organizationName: displayName,
   status: z.string(),
   serviceCode: z.string(),
   commune: z.string(),
@@ -141,7 +167,7 @@ export const missionSchema = z.object({
   payment: paymentStateSchema,
   cancellationReason: z.nullable(z.string()),
   daysPerWeek: z.nullable(z.int()),
-  suspension: z.nullable(z.object({ cause: z.string(), since: z.string(), unpaidCount: z.int() })),
+  suspension: z.nullable(suspensionSchema),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -164,6 +190,7 @@ const pricingSchema = z.object({
   teamSize: z.object({ unitsPerAgent: z.int(), minAgents: z.int(), maxAgents: z.int() }),
   checklist: z.array(z.object({ code: z.string(), label: z.string() })),
   updatedBy: z.nullable(z.string()),
+  updatedByName: displayName,
   updatedAt: z.nullable(z.string()),
 });
 
@@ -190,6 +217,7 @@ export const settingsSchema = z.object({
   individualSuspensionUnpaidInterventions: z.int(),
   individualPaymentGraceHours: z.int(),
   updatedBy: z.nullable(z.string()),
+  updatedByName: displayName,
   updatedAt: z.nullable(z.string()),
 });
 
@@ -204,6 +232,7 @@ export const zoneSchema = z.object({
   commune: z.string(),
   active: z.boolean(),
   updatedBy: z.nullable(z.string()),
+  updatedByName: displayName,
   updatedAt: z.nullable(z.string()),
 });
 
@@ -226,6 +255,11 @@ export const teamSchema = z.object({ id: z.string(), name: z.string(), members: 
 
 export const teamListSchema = z.object({ data: z.array(teamSchema) });
 
+/** `CleaningServedZoneList` (route publique) : zones actives, code et nom affiché. */
+export const servedZoneListSchema = z.object({
+  data: z.array(z.object({ code: z.string(), commune: z.string() })),
+});
+
 /** `CleaningServiceList` (route publique) : seuls le code et le nom servent au back-office. */
 export const serviceNamesSchema = z.object({
   data: z.array(z.object({ code: z.string(), name: z.string() })),
@@ -237,6 +271,7 @@ export type QuoteRequest = z.infer<typeof quoteRequestSchema>;
 export type QuoteRequestList = z.infer<typeof quoteRequestListSchema>;
 export type Mission = z.infer<typeof missionSchema>;
 export type MissionList = z.infer<typeof missionListSchema>;
+export type Suspension = z.infer<typeof suspensionSchema>;
 export type Intervention = z.infer<typeof interventionSchema>;
 export type ServiceDefinition = z.infer<typeof serviceDefinitionSchema>;
 export type Settings = z.infer<typeof settingsSchema>;

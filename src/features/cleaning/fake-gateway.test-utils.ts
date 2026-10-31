@@ -12,6 +12,7 @@ export interface GatewayCall {
   path: string;
   search: string;
   body: unknown;
+  headers: Record<string, string>;
 }
 
 export const ids = {
@@ -171,7 +172,8 @@ export function stubGateway(routes: Record<string, Handler | Handler[]>) {
     const url = new URL(String(input));
     const method = init.method ?? 'GET';
     const body = typeof init.body === 'string' ? (JSON.parse(init.body) as unknown) : undefined;
-    calls.push({ method, path: url.pathname, search: url.search, body });
+    const headers = { ...(init.headers as Record<string, string> | undefined) };
+    calls.push({ method, path: url.pathname, search: url.search, body, headers });
     const queue = queues.get(`${method} ${url.pathname}`);
     if (!queue?.length) throw new Error(`Route non simulée : ${method} ${url.pathname}`);
     const handler = (queue.length > 1 ? queue.shift() : queue[0]) as Handler;

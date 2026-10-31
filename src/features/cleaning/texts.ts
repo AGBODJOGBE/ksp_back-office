@@ -69,10 +69,41 @@ export const paymentMethod = names({
 });
 export const paymentOption = names({ deposit: 'Acompte', full: 'Totalité' });
 export const paymentTiming = names({ before: 'avant la prestation', after: 'après la prestation' });
-export const suspensionCause = names({
-  unpaid_invoices: 'factures d’entreprise impayées',
-  unpaid_interventions: 'passages impayés',
-});
+const plural = (count: number, one: string, many: string) => `${count} ${count > 1 ? many : one}`;
+
+/**
+ * Causes actives d'une suspension (ADR-030), la plus ancienne d'abord, en clair : « Compte entreprise
+ * suspendu par KSP », « 2 factures impayées ». Le nombre d'impayés est celui de la dernière décision.
+ */
+export function suspensionCauses(suspension: { causes: string[]; unpaidCount: number }): string[] {
+  const count = suspension.unpaidCount;
+  return suspension.causes.map((cause) => {
+    if (cause === 'organization_suspended') return 'Compte entreprise suspendu par KSP';
+    if (cause === 'unpaid_invoices')
+      return count ? plural(count, 'facture impayée', 'factures impayées') : 'Factures impayées';
+    if (cause === 'unpaid_interventions')
+      return count ? plural(count, 'passage impayé', 'passages impayés') : 'Passages impayés';
+    return cause;
+  });
+}
+
+/** Nom affiché lu dans identity, ou libellé court quand il manque (`null` : inconnu ou identity indisponible). */
+export function nameOr(name: string | null | undefined, fallback: string): string {
+  return name?.trim() || fallback;
+}
+
+/** Client d'une demande ou d'une mission : raison sociale de l'organisation, sinon nom du compte. */
+export function customerLabel(item: {
+  customerKind?: string;
+  customerName?: string | null;
+  organizationName?: string | null;
+}): string {
+  if (item.organizationName) return item.organizationName;
+  return nameOr(
+    item.customerName,
+    item.customerKind === 'business' ? cleaningTexts.common.unnamedBusiness : cleaningTexts.common.unnamed,
+  );
+}
 
 export function recurrenceText(recurrence: {
   period: string;
@@ -115,11 +146,25 @@ export const cleaningTexts = {
     back: 'Retour',
     none: 'Aucun',
     unknownAgent: 'Agent non rattaché',
+    unnamed: 'Client sans nom',
+    unnamedBusiness: 'Entreprise sans nom',
+    someone: 'un membre de l’équipe',
     beninTime: 'Heure du Bénin.',
     all: 'Tous',
     allFeminine: 'Toutes',
     details: 'Détails',
     actions: 'Actions',
+  },
+  /** Refus de la gateway dont les détails précisent la suite (voir `errors.ts`). */
+  errors: {
+    interventionTooEarly: (date: string) =>
+      `Ce passage est prévu le ${date} : il pourra être démarré à partir de ce jour (heure du Bénin).`,
+    visitTooEarly: (date: string) =>
+      `La visite est prévue le ${date} : son compte rendu pourra être saisi à partir de cette heure.`,
+    paymentExceeds: (due: string) => `Ce montant dépasse le reste dû. Reste dû : ${due}.`,
+    paymentSettled: 'Cette mission est déjà entièrement payée : aucun paiement de plus n’est possible.',
+    organizationSuspended:
+      'Ce compte entreprise est suspendu par KSP : rien de nouveau ne peut être fait en son nom avant sa réactivation.',
   },
 } as const;
 

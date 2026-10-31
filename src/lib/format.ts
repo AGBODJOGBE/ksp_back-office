@@ -53,6 +53,18 @@ export function formatSlot(slot: { start: string; end: string }): string {
   return `${formatDate(slot.start)}, ${time.format(new Date(slot.start))} – ${time.format(new Date(slot.end))}`;
 }
 
+const day = new Intl.DateTimeFormat('en-CA', {
+  timeZone: BENIN_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+/** Jour du calendrier à l'heure du Bénin (`2026-11-05`), pour comparer deux dates au jour près. */
+export function beninDay(value: string | Date): string {
+  return day.format(typeof value === 'string' ? new Date(value) : value);
+}
+
 /** « 3 h », « 1 h 30 », « 45 min ». */
 export function formatDuration(minutes: number): string {
   const hours = Math.floor(minutes / 60);

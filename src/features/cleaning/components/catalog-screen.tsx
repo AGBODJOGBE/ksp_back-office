@@ -11,7 +11,7 @@ import { getCatalog, type SettingsInput, updateSettings } from '@/features/clean
 import { catalogTexts as t } from '@/features/cleaning/catalog-texts';
 import { errorText } from '@/features/cleaning/errors';
 import type { Catalog, ServiceDefinition, Settings } from '@/features/cleaning/schemas';
-import { cleaningTexts, unitName } from '@/features/cleaning/texts';
+import { cleaningTexts, nameOr, unitName } from '@/features/cleaning/texts';
 import { LoadingBlock, Note, Panel, ResourceView, useCleaningAccess } from './parts';
 
 const common = cleaningTexts.common;
@@ -70,7 +70,11 @@ function ServiceCard({ service, onEdit }: { service: ServiceDefinition; onEdit: 
       </ul>
       <p className="text-small text-ink-subtle">
         {pricing.updatedAt
-          ? t.version(pricing.version, formatDateTime(pricing.updatedAt), pricing.updatedBy ?? '—')
+          ? t.version(
+              pricing.version,
+              formatDateTime(pricing.updatedAt),
+              nameOr(pricing.updatedByName, common.someone),
+            )
           : t.versionNever}
       </p>
       <Button variant="secondary" className="justify-self-start" onClick={onEdit}>
@@ -181,7 +185,10 @@ function CatalogView({ catalog, onChange }: { catalog: Catalog; onChange: (catal
         <p className="text-small text-ink-muted">
           {t.settings.lead}{' '}
           {settings.updatedAt
-            ? t.settings.updated(formatDateTime(settings.updatedAt), settings.updatedBy ?? '—')
+            ? t.settings.updated(
+                formatDateTime(settings.updatedAt),
+                nameOr(settings.updatedByName, common.someone),
+              )
             : null}
         </p>
         <SettingsForm settings={settings} onSaved={(next) => onChange({ ...catalog, settings: next })} />

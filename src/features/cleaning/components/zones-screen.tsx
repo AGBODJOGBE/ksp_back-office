@@ -11,7 +11,7 @@ import { useResource } from '@/lib/use-resource';
 import { deactivateZone, listZones, saveZone } from '@/features/cleaning/api';
 import { attempt, errorText } from '@/features/cleaning/errors';
 import type { Zone } from '@/features/cleaning/schemas';
-import { cleaningTexts } from '@/features/cleaning/texts';
+import { cleaningTexts, nameOr } from '@/features/cleaning/texts';
 import { zonesTexts as t } from '@/features/cleaning/zones-texts';
 import { Note, Panel, ResourceView, useCleaningAccess } from './parts';
 
@@ -67,7 +67,9 @@ function columns(onChange: (zone: Zone) => void): TableColumn<Zone>[] {
       key: 'updated',
       header: t.columns.updated,
       cell: (zone) =>
-        zone.updatedAt ? t.updated(formatDateTime(zone.updatedAt), zone.updatedBy ?? '—') : t.neverUpdated,
+        zone.updatedAt
+          ? t.updated(formatDateTime(zone.updatedAt), nameOr(zone.updatedByName, common.someone))
+          : t.neverUpdated,
     },
     {
       key: 'action',

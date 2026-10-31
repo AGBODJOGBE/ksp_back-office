@@ -8,8 +8,6 @@ export const requestsTexts = {
   statusFilter: 'État',
   communeFilter: 'Commune',
   kindFilter: 'Type de client',
-  localFilterNote:
-    'La commune et le type de client filtrent les demandes déjà chargées (la gateway ne filtre que par état) : « Afficher plus » charge la suite.',
   columns: {
     request: 'Demande',
     status: 'État',
@@ -35,8 +33,8 @@ export const requestTexts = {
   noAction: 'Aucune action possible dans cet état.',
   fields: {
     kind: 'Type de client',
-    customerId: 'Compte client',
-    organizationId: 'Organisation',
+    customerName: 'Nom du client',
+    organizationName: 'Organisation',
     address: 'Adresse',
     commune: 'Commune',
     premisesType: 'Type de locaux',

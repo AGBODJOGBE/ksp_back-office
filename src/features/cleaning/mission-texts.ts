@@ -8,6 +8,7 @@ export const missionsTexts = {
   columns: {
     mission: 'Mission',
     status: 'État',
+    customer: 'Client',
     commune: 'Commune',
     slot: 'Créneau choisi',
     progress: 'Passages',
@@ -30,13 +31,17 @@ export const missionTexts = {
     recurrence: 'Récurrence',
     progress: 'Passages réalisés',
     daysPerWeek: 'Jours par semaine',
-    customerId: 'Compte client',
+    customerName: 'Client',
+    organizationName: 'Organisation',
     kind: 'Type de client',
     request: 'Demande d’origine',
     cancellationReason: 'Motif d’annulation',
   },
-  suspended: (cause: string, since: string, count: number) =>
-    `Mission suspendue depuis le ${since} : ${count} ${cause}. Aucune planification possible jusqu’à la régularisation.`,
+  suspended: (since: string) => `Mission suspendue depuis le ${since}`,
+  suspendedHint: (count: number) =>
+    count > 1
+      ? 'Aucune planification possible : la mission reprend quand toutes ces causes sont levées.'
+      : 'Aucune planification possible : la mission reprend quand cette cause est levée.',
   interventions: 'Passages',
   noIntervention: 'Aucun passage planifié.',
   openIntervention: (date: string) => `Passage du ${date}`,
@@ -105,6 +110,7 @@ export const interventionTexts = {
     'L’envoi des photos n’est pas encore possible : la gateway n’expose pas encore le service des fichiers.',
   photosCount: (before: number, after: number) => `${before} photo(s) avant, ${after} photo(s) après.`,
   start: 'Démarrer le passage',
+  startFrom: (date: string) => `Démarrage possible à partir du ${date} (heure du Bénin).`,
   resume: 'Reprendre le passage',
   complete: {
     label: 'Clôturer le passage',

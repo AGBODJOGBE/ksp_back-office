@@ -36,7 +36,8 @@ export const MODULES: readonly BackofficeModule[] = [
     description:
       'Grille tarifaire du simulateur, devis, visites techniques, planning des équipes, missions avec photos, contrats récurrents.',
     // cleaning_agent : missions et passages sur le terrain (contrat, routes /admin/cleaning/missions et /interventions).
-    roles: ['cleaning_supervisor', 'cleaning_admin', 'cleaning_agent'],
+    // super_admin : même portée que cleaning_admin sur toutes les routes du Nettoyage (contrat).
+    roles: ['cleaning_supervisor', 'cleaning_admin', 'cleaning_agent', SUPER_ADMIN],
     phase: 1,
   },
   {
