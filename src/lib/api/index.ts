@@ -14,6 +14,7 @@ export {
   type SessionUser,
 } from './session';
 export { sessionPayloadSchema, sessionUserSchema } from './session-schema';
+export { newIdempotencyKey } from './idempotency';
 export { parseResponse } from './validate';
 
 /** Client à utiliser dans les composants du navigateur (jeton d'accès de la session, cookies inclus). */

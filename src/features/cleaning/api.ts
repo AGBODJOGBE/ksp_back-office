@@ -13,6 +13,7 @@ import {
   type QuoteRequestList,
   quoteRequestListSchema,
   serviceNamesSchema,
+  servedZoneListSchema,
   quoteRequestSchema,
   type ServiceDefinition,
   serviceDefinitionSchema,
@@ -30,7 +31,8 @@ import {
 /**
  * Appels du navigateur à la gateway pour le Nettoyage du back-office (`/api/v1/admin/cleaning/*`,
  * 28 routes). Option A (F-005) : jeton d'accès de la session, jamais de passage par le serveur Next.
- * Aucune de ces routes ne demande de clé d'idempotence dans le contrat.
+ * Seul le paiement manuel accepte une clé d'idempotence (facultative dans le contrat) : le back-office
+ * l'envoie toujours.
  */
 
 const ADMIN = '/api/v1/admin/cleaning';
@@ -67,12 +69,36 @@ export function forgetServiceNames(): void {
   serviceNames = null;
 }
 
+/** Zone desservie, pour un filtre : code (paramètre `commune` des listes) et nom affiché. */
+export interface ZoneOption {
+  code: string;
+  commune: string;
+}
+
+/**
+ * Zones proposées dans le filtre des demandes. L'admin lit toutes les zones, désactivées comprises (des
+ * demandes anciennes peuvent y être) ; le superviseur, qui n'a pas cette route, lit les zones ouvertes
+ * sur la route publique.
+ */
+export async function listZoneOptions(includeInactive: boolean): Promise<ZoneOption[]> {
+  if (includeInactive) return listZones();
+  return parseResponse(servedZoneListSchema, await api.get(`/api/v1/cleaning/zones`, { auth: false })).data;
+}
+
 // ——— Demandes de devis ———
 
-export async function listRequests(status: string | undefined, cursor?: string): Promise<QuoteRequestList> {
+/** Filtres de la liste, tous facultatifs et cumulables (gateway) : état, code de zone, type de client. */
+export interface RequestFilters {
+  status?: string;
+  commune?: string;
+  customerKind?: string;
+}
+
+export async function listRequests(filters: RequestFilters, cursor?: string): Promise<QuoteRequestList> {
+  const { status, commune, customerKind } = filters;
   return parseResponse(
     quoteRequestListSchema,
-    await api.get(REQUESTS, { query: { limit: PAGE_SIZE, cursor, status } }),
+    await api.get(REQUESTS, { query: { limit: PAGE_SIZE, cursor, status, commune, customerKind } }),
   );
 }
 
@@ -140,8 +166,19 @@ export interface PaymentInput {
   reference?: string;
 }
 
-export async function recordPayment(id: string, input: PaymentInput): Promise<Mission> {
-  return parseResponse(missionSchema, await api.post(at(MISSIONS, id, 'payments'), input));
+/**
+ * Paiement manuel. `idempotencyKey` : clé tirée à l'ouverture du formulaire et gardée pendant les
+ * renvois ; un second envoi avec la même clé ne crée pas de second paiement (gateway).
+ */
+export async function recordPayment(
+  id: string,
+  input: PaymentInput,
+  idempotencyKey: string,
+): Promise<Mission> {
+  return parseResponse(
+    missionSchema,
+    await api.post(at(MISSIONS, id, 'payments'), input, { idempotencyKey }),
+  );
 }
 
 export async function cancelMission(id: string, reason: string): Promise<Mission> {
@@ -194,7 +231,7 @@ export async function saveService(code: string, input: ServiceInput): Promise<Se
   );
 }
 
-export type SettingsInput = Omit<Settings, 'updatedBy' | 'updatedAt'>;
+export type SettingsInput = Omit<Settings, 'updatedBy' | 'updatedByName' | 'updatedAt'>;
 
 export async function updateSettings(input: SettingsInput): Promise<Settings> {
   return parseResponse(settingsSchema, await api.put(`${ADMIN}/catalog/settings`, input));

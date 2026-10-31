@@ -13,7 +13,13 @@ import { errorText } from '@/features/cleaning/errors';
 import { missionsTexts as t } from '@/features/cleaning/mission-texts';
 import { cleaningPaths } from '@/features/cleaning/paths';
 import type { Mission } from '@/features/cleaning/schemas';
-import { cleaningTexts, missionStatuses, paymentStatuses } from '@/features/cleaning/texts';
+import {
+  cleaningTexts,
+  customerKind,
+  customerLabel,
+  missionStatuses,
+  paymentStatuses,
+} from '@/features/cleaning/texts';
 import { Note, StatusBadge } from './parts';
 import { useServiceName } from './use-service-names';
 
@@ -34,6 +40,18 @@ const columns = (serviceName: (code: string) => string): TableColumn<Mission>[] 
     key: 'status',
     header: t.columns.status,
     cell: (mission) => <StatusBadge map={missionStatuses} code={mission.status} />,
+  },
+  {
+    key: 'customer',
+    header: t.columns.customer,
+    cell: (mission) => (
+      <span className="grid">
+        <span>{customerLabel(mission)}</span>
+        {mission.customerKind ? (
+          <span className="text-small text-ink-muted">{customerKind(mission.customerKind)}</span>
+        ) : null}
+      </span>
+    ),
   },
   { key: 'slot', header: t.columns.slot, cell: (mission) => formatSlot(mission.chosenSlot) },
   {

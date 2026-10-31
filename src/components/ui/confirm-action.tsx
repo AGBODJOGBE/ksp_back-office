@@ -24,6 +24,7 @@ export function ConfirmAction({
   labels,
   children,
   onConfirm,
+  onOpen,
   variant = 'secondary',
   danger = false,
   className,
@@ -41,6 +42,8 @@ export function ConfirmAction({
   labels: ConfirmActionLabels;
   children?: ReactNode;
   onConfirm: (data: FormData) => Promise<string | null>;
+  /** Appelé à chaque ouverture de la boîte, par exemple pour tirer une clé d'idempotence. */
+  onOpen?: () => void;
   variant?: ButtonVariant;
   /** Action destructrice (refus, annulation, désactivation) : bouton de confirmation rouge. */
   danger?: boolean;
@@ -53,6 +56,7 @@ export function ConfirmAction({
 
   function open() {
     setError(null);
+    onOpen?.();
     ref.current?.showModal();
   }
 
