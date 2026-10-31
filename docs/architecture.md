@@ -22,7 +22,7 @@ Propre au back-office :
 ```
 src/
 ├── app/                     routes : page, layout, error, not-found, metadata, robots ; compose, aucune logique
-│   ├── (app)/               espace des agents : tableau de bord, nettoyage/ (écrans), [module] (pages d'attente)
+│   ├── (app)/               espace des agents : tableau de bord, nettoyage/, finance/, clients/ (écrans), [module] (pages d'attente)
 │   ├── (auth)/connexion/    connexion (téléphone + code, double authentification, ADR-023)
 │   └── api/health/          sonde de santé
 ├── features/<domaine>/      une tranche verticale par domaine administré (voir ci-dessous)
@@ -70,15 +70,15 @@ features/<domaine>/
 
 **Un fichier n'existe que s'il a du contenu.** Dans le back-office, toutes les données sont personnelles ou réservées aux agents, et chaque écriture demande la session de l'agent : lectures et écritures passent par `api` depuis le navigateur (option A, plus bas). `queries.ts`, `server.ts` (lectures côté serveur via `serverApi()`) et `actions.ts` (Server Actions, sans jeton côté serveur) n'y ont donc pas d'usage aujourd'hui, et `content.ts` non plus : les textes des écrans ne viennent pas du CMS.
 
-Le nom d'une fonctionnalité est celui du service du backend, en anglais (le code est en anglais, les adresses en français). Seules `features/dashboard`, `features/identity` (connexion et session) et `features/cleaning` (Nettoyage) existent aujourd'hui : les autres domaines n'ont encore que leur entrée dans le catalogue des modules, et **aucun dossier n'est créé avant ses écrans**. Correspondance prévue :
+Le nom d'une fonctionnalité est celui du service du backend, en anglais (le code est en anglais, les adresses en français). Seules `features/dashboard`, `features/identity` (connexion, session, comptes entreprise), `features/cleaning` (Nettoyage), `features/billing` (factures) et `features/payment` (paiements en ligne) existent aujourd'hui : les autres domaines n'ont encore que leur entrée dans le catalogue des modules, et **aucun dossier n'est créé avant ses écrans**. Correspondance prévue :
 
 | Module (adresse)                   | Fonctionnalité(s)                                               | Service(s) du backend        | Phase | État                                |
 | ---------------------------------- | --------------------------------------------------------------- | ---------------------------- | ----- | ----------------------------------- |
 | Tableau de bord (`/`)              | `features/dashboard`                                            | — (indicateurs des services) | 1     | présentation provisoire des modules |
 | Recouvrement (`/recouvrement`)     | `features/recovery`                                             | recovery                     | 1     | page d'attente                      |
 | Nettoyage (`/nettoyage`)           | `features/cleaning`                                             | cleaning                     | 1     | écrans branchés (28 routes + 3)     |
-| Finance (`/finance`)               | `features/payment`, `features/wallet`, `features/billing`       | payment, wallet, billing     | 1     | page d'attente                      |
-| Clients et comptes (`/clients`)    | `features/identity`                                             | identity                     | 1     | page d'attente ; connexion branchée |
+| Finance (`/finance`)               | `features/payment`, `features/wallet`, `features/billing`       | payment, wallet, billing     | 1     | factures et paiements branchés      |
+| Clients et comptes (`/clients`)    | `features/identity`                                             | identity                     | 1     | comptes entreprise branchés         |
 | Notifications (`/notifications`)   | `features/notification`                                         | notification                 | 1     | page d'attente                      |
 | Administration (`/administration`) | `features/identity` (agents, rôles), `features/audit` (journal) | identity, audit              | 1     | page d'attente                      |
 | Immobilier (`/immobilier`)         | `features/realestate`                                           | realestate                   | 2     | masqué (phase suivante)             |
@@ -86,7 +86,7 @@ Le nom d'une fonctionnalité est celui du service du backend, en anglais (le cod
 | Livraison (`/livraison`)           | `features/delivery`                                             | delivery                     | 3     | masqué                              |
 | Marketplace (`/marketplace`)       | `features/catalog`, `features/order`                            | catalog, order               | 4     | masqué                              |
 
-**Finance** (validé le 19 octobre 2026, aligné sur les services `payment`, `wallet` et `billing` du backend) : un seul module dans le menu, `/finance`, et une fonctionnalité par service : `payment` (paiements reçus, rapprochement), `wallet` (portefeuilles, demandes de versement validées par une autre personne), `billing` (factures et avoirs). La page `/finance` assemble les trois ; chaque écran a sa sous-adresse (`/finance/paiements`, `/finance/portefeuilles`, `/finance/factures`). Pas de fonctionnalité `finance` : elle mélangerait trois contrats de la gateway et ses fichiers grossiraient sans frontière.
+**Finance** (validé le 19 octobre 2026, aligné sur les services `payment`, `wallet` et `billing` du backend) : un seul module dans le menu, `/finance`, et une fonctionnalité par service : `payment` (paiements reçus, rapprochement), `wallet` (portefeuilles, demandes de versement validées par une autre personne), `billing` (factures et avoirs). Le module assemble les trois ; chaque écran a sa sous-adresse (`/finance/paiements`, `/finance/portefeuilles`, `/finance/factures`) et `/finance` ouvre les factures. Pas de fonctionnalité `finance` : elle mélangerait trois contrats de la gateway et ses fichiers grossiraient sans frontière.
 
 **Administration** : agents et rôles relèvent d'`identity` (les rôles sont déclarés par chaque service auprès d'identity), le journal d'audit d'`audit`. Le service des « paramètres généraux » reste **à préciser** avec les contrats de la gateway. **Marketplace** : la validation des vendeurs est rangée provisoirement dans `catalog`, les litiges, retours et commissions dans `order` (**à valider** au lot de la phase 4).
 
@@ -228,6 +228,61 @@ Les photos des passages ne sont pas envoyables : la gateway n'expose aucune rout
 
 Briques ajoutées à `components/ui` (à faire converger avec le portail avant `ksp-ui`) : `ResponsiveTable` (tableau qui devient des cartes sous 768 px), `ConfirmAction` (`<dialog>` modal natif), `SubNav` (onglets en liens), `SelectField` et `TextAreaField`, `DescriptionList`, variante `danger` de `Button`. Côté `lib` : `format.ts` (XOF, dates `Africa/Porto-Novo`, champs `datetime-local`), `use-resource.ts` (repris du portail), `put` dans le client de la gateway.
 
+## Finance et comptes entreprise (`features/billing`, `features/payment`, `features/identity`)
+
+Branchés sur 12 routes du contrat (`ksp-api.v1.yaml`) : facturation (ADR-025, ADR-028), paiements en ligne (ADR-031) et comptes entreprise (ADR-027). Même modèle que le Nettoyage : coque statique, écrans client chargés à la demande (`components/lazy.tsx`, `organizations-lazy.tsx`), schémas `zod/mini` champ par champ, états chargement, vide et erreur avec « Réessayer », filtres dans l'adresse.
+
+```
+features/billing/            factures, paiement manuel, réglages (service billing)
+├── access.ts                rôles du contrat (affichage seulement)
+├── api.ts, schemas.ts       5 routes /admin/billing/*
+├── errors.ts, texts.ts      refus précisés (details.reason), libellés, adresses
+└── components/              invoices-list, invoice-detail, billing-settings, lazy
+features/payment/            paiements en ligne (service payment)
+├── access.ts, api.ts, schemas.ts, texts.ts
+└── components/              payments-list, lazy
+features/identity/           + comptes entreprise, point d'entrée organizations.ts : organization-*.ts, organizations-api.ts,
+                               components/organizations-list, organization-detail, organizations-lazy
+app/(app)/finance/           layout (onglets filtrés par rôle : finance-tabs.tsx), factures, paiements, réglages
+app/(app)/clients/           layout, entreprises, entreprises/[id]
+```
+
+| Adresse                     | Écran                                                                                                        | Rôles (contrat)                                                           |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `/finance`                  | redirige vers `/finance/factures`                                                                            | —                                                                         |
+| `/finance/factures`         | Factures : filtres `?etat=`, `?entreprise=` (organisation), `?mission=` (contrat), passés à la gateway       | `finance_officer`, `cleaning_supervisor`, `cleaning_admin`, `super_admin` |
+| `/finance/factures/[id]`    | Fiche : montants, échéance, en-tête figé, lignes au prorata, règlements ; paiement manuel (confirmation)     | idem                                                                      |
+| `/finance/paiements`        | Paiements en ligne : filtres `?etat=`, `?objet-type=`, `?objet=` ; alerte des paiements « à examiner »       | `finance_officer`, `cleaning_admin`, `super_admin`                        |
+| `/finance/reglages`         | Délai de règlement ; renvoi vers les seuils d'impayés du Nettoyage                                           | `finance_officer`, `cleaning_admin`, `super_admin`                        |
+| `/clients`                  | redirige vers `/clients/entreprises`                                                                         | —                                                                         |
+| `/clients/entreprises`      | Comptes entreprise, filtre `?etat=` (`pending_review` : demandes à traiter)                                  | `super_admin`, `support_agent`                                            |
+| `/clients/entreprises/[id]` | Fiche : identité légale, membres (demandeur signalé, téléphone), motifs ; valider, refuser, suspendre, lever | lecture : les deux rôles ; décisions : `super_admin`                      |
+
+| Route du contrat                                     | Écran                                                         |
+| ---------------------------------------------------- | ------------------------------------------------------------- |
+| `GET /admin/billing/invoices`                        | `InvoicesList` (`status`, `organizationId`, `contractId`)     |
+| `GET /admin/billing/invoices/{id}`                   | `InvoiceDetail`                                               |
+| `POST /admin/billing/invoices/{id}/payments`         | `InvoiceDetail` (boîte « Enregistrer un paiement »)           |
+| `GET /admin/billing/settings`                        | `BillingSettingsScreen`                                       |
+| `PUT /admin/billing/settings`                        | `BillingSettingsScreen` (délai de 1 à 90 jours)               |
+| `GET /admin/payment/payments`                        | `PaymentsList` (`status`, `subjectType`, `subjectId`), alerte |
+| `GET /admin/identity/organizations`                  | `OrganizationsList` (`status`)                                |
+| `GET /admin/identity/organizations/{id}`             | `OrganizationDetail`                                          |
+| `POST /admin/identity/organizations/{id}/validate`   | `OrganizationDetail` (confirmation)                           |
+| `POST /admin/identity/organizations/{id}/reject`     | `OrganizationDetail` (confirmation, motif obligatoire)        |
+| `POST /admin/identity/organizations/{id}/suspend`    | `OrganizationDetail` (confirmation, motif obligatoire)        |
+| `POST /admin/identity/organizations/{id}/reactivate` | `OrganizationDetail` (confirmation)                           |
+
+- **Point d'entrée `@/features/identity/organizations`** (troisième exception à la règle de l'index, après `/server` et `/session`, ajoutée à `eslint.config.mjs`) : passées par l'index d'identity, les pages du module chargeaient le parcours de connexion (220,2 Ko, au-delà du budget) et `/connexion` chargeait les écrans des comptes entreprise (+3 Ko). **À valider**, comme `/session`.
+- **Modules** (`config/modules.ts`) : Finance s'ouvre aux rôles des factures (`finance_officer`, `cleaning_supervisor`, `cleaning_admin`) ; « Clients et comptes » à `support_agent` seul (`recovery_admin` et `cleaning_admin` retirés : aucune route du module ne leur est ouverte, **à valider**). `super_admin` voit tout.
+- **Liens entre fiches**, montrés seulement si le module cible est dans le menu de l'agent : facture → mission du Nettoyage et compte entreprise ; facture → ses paiements en ligne ; paiement → mission ou facture payée, et entreprise payeuse ; compte entreprise → ses factures. Les adresses d'une autre fonctionnalité sont écrites en dur quand l'importer créerait un cycle entre index (comme le portail).
+- **Paiement manuel** : sans clé d'idempotence (le contrat n'en prévoit pas sur cette route, **à valider** côté backend) ; le bouton est désactivé pendant l'envoi. Refus précisés : `BILLING_PAYMENT_INVALID` (`exceeds_balance`, `amount_invalid`, `method_not_allowed`) ; `BILLING_INVALID_TRANSITION` et `BILLING_CONCURRENT_UPDATE` relisent la fiche.
+- **Décisions sur un compte entreprise** : `IDENTITY_ORGANIZATION_INVALID_TRANSITION` (décision prise ailleurs entre-temps) relit la fiche ; les membres restent affichés après une décision (la réponse ne porte que l'organisation).
+- **Période facturée** : `periodEnd` est la borne de fin (minuit, heure du Bénin, du lendemain du dernier jour facturé, service billing) : l'écran affiche le jour qui la précède. Le contrat ne le précise pas : **à valider** (le portail affiche la borne telle quelle).
+- **Paiements « à examiner »** (`amount_mismatch`) : badge rouge, en tête du filtre d'état, et alerte au-dessus de la liste (une lecture `limit=1` filtrée), avec un lien vers le filtre.
+
+Briques ajoutées : `components/ui/loading-block.tsx`, `panel.tsx`, `back-link.tsx`, `resource-view.tsx` (sorties de `features/cleaning/components/parts.tsx`, qui les reprend) ; `lib/api/error-text.ts` (`apiErrorText`) ; `lib/api/gateway.test-utils.ts` (gateway simulée commune aux tests).
+
 ## Stratégie de rendu
 
 Cache Components (`cacheComponents`) n'est pas activé : c'est le modèle de cache « précédent » de Next 16 qui s'applique (voir le modèle du portail).
@@ -297,6 +352,20 @@ Mesure du 28 octobre 2026, noms, filtres et suspensions (`pnpm build && pnpm siz
 | 404                                                   | 178,0 Ko      | 178,0 Ko |
 
 La recherche de compte vit dans `features/identity` (service qui la porte) ; son module est marqué `'use client'`, car l'index d'identity est aussi lu par des pages serveur (`/connexion`) qui ne doivent pas recevoir le client de la gateway.
+
+Mesure du 31 octobre 2026, Finance et comptes entreprise branchés (`pnpm build && pnpm size`) :
+
+| Page                                                   | First Load JS | Avant              |
+| ------------------------------------------------------ | ------------- | ------------------ |
+| `/finance` et ses trois sous-pages statiques           | 215,3 Ko      | 209,4 Ko (attente) |
+| `/clients` et `/clients/entreprises`                   | 212,8 Ko      | 209,4 Ko (attente) |
+| `/nettoyage` et ses quatre sous-pages statiques        | 216,0 Ko      | 215,6 Ko           |
+| `/` (tableau de bord)                                  | 210,3 Ko      | 210,1 Ko           |
+| Pages d'attente des trois autres modules de la phase 1 | 209,6 Ko      | 209,4 Ko           |
+| `/connexion`                                           | 212,5 Ko      | 212,4 Ko           |
+| 404                                                    | 178,1 Ko      | 178,0 Ko           |
+
+Les écrans sont chargés à la demande (`lazy.tsx`) ; les fiches (`[id]`) n'apparaissent pas dans `pnpm size`. Passées par l'index d'identity, les pages du module « Clients et comptes » pesaient 220,2 Ko (parcours de connexion chargé) et `/connexion` 215,4 Ko : d'où le point d'entrée `@/features/identity/organizations`.
 
 ## Ajouter une fonctionnalité
 

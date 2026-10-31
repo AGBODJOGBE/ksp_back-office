@@ -16,6 +16,7 @@ export {
 export { sessionPayloadSchema, sessionUserSchema } from './session-schema';
 export { newIdempotencyKey } from './idempotency';
 export { parseResponse } from './validate';
+export { apiErrorText } from './error-text';
 
 /** Client à utiliser dans les composants du navigateur (jeton d'accès de la session, cookies inclus). */
 export const api: ApiClient = createApiClient({

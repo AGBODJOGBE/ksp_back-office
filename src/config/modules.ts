@@ -45,7 +45,9 @@ export const MODULES: readonly BackofficeModule[] = [
     label: 'Finance',
     description:
       'Paiements reçus, portefeuilles, demandes de versement validées par une autre personne, factures et avoirs, rapprochement.',
-    roles: ['finance_officer'],
+    // Rôles du contrat : factures (finance, superviseur et admin du Nettoyage), réglages (sans le
+    // superviseur), paiements en ligne (finance, admin du Nettoyage). super_admin voit tout.
+    roles: ['finance_officer', 'cleaning_supervisor', 'cleaning_admin', SUPER_ADMIN],
     phase: 1,
   },
   {
@@ -53,7 +55,8 @@ export const MODULES: readonly BackofficeModule[] = [
     label: 'Clients et comptes',
     description:
       "Recherche de comptes et d'organisations, détail, suspension et réactivation, historique de connexion.",
-    roles: ['support_agent', 'recovery_admin', 'cleaning_admin'],
+    // Rôles du contrat (comptes entreprise) : consultation super_admin et support_agent, décisions super_admin.
+    roles: ['support_agent', SUPER_ADMIN],
     phase: 1,
   },
   {
@@ -108,7 +111,7 @@ export const MODULES: readonly BackofficeModule[] = [
  * Modules qui ont leurs propres écrans (une route statique par module, `src/app/(app)/<slug>`) : ils
  * sortent des pages d'attente générées par `[module]`, pour qu'une adresse n'ait jamais deux pages.
  */
-export const MODULES_WITH_SCREENS: readonly string[] = ['nettoyage'];
+export const MODULES_WITH_SCREENS: readonly string[] = ['nettoyage', 'finance', 'clients'];
 
 /** Phase en cours de l'écosystème : les modules des phases suivantes restent masqués. */
 export const CURRENT_PHASE = 1;

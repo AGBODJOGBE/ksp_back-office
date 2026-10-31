@@ -31,6 +31,10 @@ describe('accès aux modules du back-office', () => {
   it('refuse un module hors des rôles de l’agent', () => {
     expect(isModuleVisible('finance', ['recovery_agent'])).toBe(false);
     expect(isModuleVisible('finance', ['finance_officer'])).toBe(true);
+    // Rôles du contrat : factures ouvertes au Nettoyage, comptes entreprise au support seul.
+    expect(isModuleVisible('finance', ['cleaning_supervisor'])).toBe(true);
+    expect(isModuleVisible('clients', ['support_agent'])).toBe(true);
+    expect(isModuleVisible('clients', ['cleaning_admin'])).toBe(false);
   });
 
   it('un agent de terrain du Nettoyage voit son module', () => {
@@ -41,7 +45,9 @@ describe('accès aux modules du back-office', () => {
     const waiting = waitingModules().map((module) => module.slug);
     expect(waiting).not.toContain('nettoyage');
     expect(waiting).not.toContain('tableau-de-bord');
-    expect(waiting).toEqual(['recouvrement', 'finance', 'clients', 'notifications', 'administration']);
+    expect(waiting).not.toContain('finance');
+    expect(waiting).not.toContain('clients');
+    expect(waiting).toEqual(['recouvrement', 'notifications', 'administration']);
     expect(waitingModules(1, []).map((module) => module.slug)).toContain('nettoyage');
   });
 });
