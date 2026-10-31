@@ -20,7 +20,7 @@ describe('accès à la page d’un module', () => {
   });
 
   it('explique qu’un module hors des rôles de l’agent n’est pas ouvert', () => {
-    session.set(sessionBody(['cleaning_admin']));
+    session.set(sessionBody(['recovery_agent']));
     gate();
     expect(screen.queryByText('Contenu du module')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
