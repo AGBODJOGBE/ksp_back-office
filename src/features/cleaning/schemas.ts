@@ -40,6 +40,8 @@ const siteVisitSchema = z.object({
   report: z.nullable(z.string()),
   completedAt: z.nullable(z.string()),
   agentName: displayName,
+  /** Visite commune à plusieurs demandes du groupe (ADR-035) ; null pour une visite propre à la demande. */
+  groupVisitId: z.optional(z.nullable(z.string())),
 });
 
 /** `CleaningQuote` : devis envoyé, prix figé à l'envoi. */
@@ -59,7 +61,79 @@ const quoteSchema = z.object({
   sentAt: z.string(),
 });
 
-/** `CleaningQuoteRequest`. */
+/** `Money` ou `null`. */
+const optionalMoney = z.nullable(moneySchema);
+
+/** `CleaningAnswers` : réponses au formulaire par code de champ (entier, code d'une valeur, oui/non). */
+const answersSchema = z.record(z.string(), z.union([z.int(), z.string(), z.boolean()]));
+
+/** `CleaningCalculationLine`. */
+const calculationLineSchema = z.object({
+  kind: z.string(),
+  optionCode: z.nullable(z.string()),
+  fieldCode: z.nullable(z.string()),
+  choiceCode: z.nullable(z.string()),
+  label: z.string(),
+  quantity: z.int(),
+  unitLabel: z.nullable(z.string()),
+  unitPrice: moneySchema,
+  amount: moneySchema,
+});
+
+/** `CleaningPriceCalculation` (ADR-033) : détail du calcul fait par le serveur au moment de la demande. */
+const calculationSchema = z.object({
+  pricingVersion: z.nullable(z.int()),
+  priced: z.boolean(),
+  reason: z.nullable(z.string()),
+  missingPrices: z.array(
+    z.object({
+      optionCode: z.nullable(z.string()),
+      fieldCode: z.nullable(z.string()),
+      choiceCode: z.nullable(z.string()),
+    }),
+  ),
+  lines: z.array(calculationLineSchema),
+  baseAmount: optionalMoney,
+  coefficients: z.array(
+    z.object({
+      source: z.string(),
+      optionCode: z.nullable(z.string()),
+      fieldCode: z.nullable(z.string()),
+      code: z.nullable(z.string()),
+      label: z.string(),
+      coefficientBp: z.int(),
+    }),
+  ),
+  subtotal: optionalMoney,
+  minimumPrice: optionalMoney,
+  minimumApplied: z.boolean(),
+  computedPrice: optionalMoney,
+  estimate: z.nullable(priceRangeSchema),
+  recommendedTeamSize: z.int(),
+});
+
+/** `CleaningGeoLocation` : position GPS (degrés décimaux WGS 84), précision en mètres ou `null`. */
+const geoLocationSchema = z.object({
+  latitude: z.number(),
+  longitude: z.number(),
+  accuracyMeters: z.nullable(z.number()),
+});
+
+/** `CleaningGroupedRequest` : autre demande du même groupe (détail d'une demande seulement). */
+const groupedRequestSchema = z.object({
+  id: z.string(),
+  serviceCode: z.string(),
+  serviceName: z.nullable(z.string()),
+  status: z.string(),
+  visitScheduledAt: z.nullable(z.string()),
+  quoteTotal: optionalMoney,
+  missionId: z.nullable(z.string()),
+});
+
+/**
+ * `CleaningQuoteRequest`. `premisesType` et `quantity`, dépréciés (ADR-033), ne sont plus lus : les réponses
+ * au formulaire (`answers`, `selectedOptions`, `frequency`) et le calcul (`calculation`) les remplacent.
+ */
 export const quoteRequestSchema = z.object({
   id: z.string(),
   status: z.string(),
@@ -67,9 +141,12 @@ export const quoteRequestSchema = z.object({
   customerKind: z.string(),
   organizationId: z.nullable(z.string()),
   serviceCode: z.string(),
-  premisesType: z.string(),
-  quantity: z.int(),
   options: z.array(z.string()),
+  answers: z.nullable(answersSchema),
+  selectedOptions: z.array(z.object({ code: z.string(), answers: answersSchema })),
+  frequency: z.nullable(z.string()),
+  pricingVersion: z.nullable(z.int()),
+  calculation: z.nullable(calculationSchema),
   commune: z.string(),
   address: z.string(),
   preferredSlots: z.array(timeSlotSchema),
@@ -87,8 +164,19 @@ export const quoteRequestSchema = z.object({
   updatedAt: z.string(),
   customerName: displayName,
   organizationName: displayName,
+  /** Groupe des demandes créées ensemble pour un même lieu (ADR-034) ; `null` pour une demande seule. */
+  groupId: z.nullable(z.string()),
+  groupSize: z.int(),
+  placeType: z.nullable(z.string()),
+  placeTypeLabel: z.nullable(z.string()),
   /** Nom de la prestation, résolu par cleaning au moment de la réponse (ADR-034). */
-  serviceName: z.optional(z.nullable(z.string())),
+  serviceName: z.nullable(z.string()),
+  location: z.nullable(geoLocationSchema),
+  landmark: z.nullable(z.string()),
+  geocodingProvider: z.nullable(z.string()),
+  geocodedAddress: z.nullable(z.string()),
+  /** Détail d'une demande seulement : les autres demandes du groupe. */
+  groupRequests: z.optional(z.array(groupedRequestSchema)),
 });
 
 export const quoteRequestListSchema = z.object({
@@ -182,7 +270,7 @@ export const missionListSchema = z.object({
 /**
  * `CleaningVisit` (ADR-035) : visite technique, une seule entrée pour une visite commune ; chaque demande
  * garde sa propre visite (`visitId`, compte rendu par demande). Pour un agent, adresse, repère et position
- * d'une visite terminée ou annulée sont `null` (la position n'est pas lue par le back-office).
+ * d'une visite terminée ou annulée sont `null`.
  */
 export const visitSchema = z.object({
   id: z.string(),
@@ -199,6 +287,7 @@ export const visitSchema = z.object({
   organizationName: z.nullable(z.string()),
   commune: z.string(),
   address: z.nullable(z.string()),
+  location: z.nullable(geoLocationSchema),
   landmark: z.nullable(z.string()),
   geocodedAddress: z.nullable(z.string()),
   placeType: z.nullable(z.string()),
@@ -297,6 +386,62 @@ export const teamSchema = z.object({ id: z.string(), name: z.string(), members: 
 
 export const teamListSchema = z.object({ data: z.array(teamSchema) });
 
+/** `CleaningSkippedRequest` : demande laissée de côté par une opération de groupe, avec sa raison. */
+const skippedRequestSchema = z.object({ requestId: z.string(), status: z.string(), reason: z.string() });
+
+/** `CleaningGroupOutcome` (ADR-035) : résultat d'une opération de groupe, avec toutes les demandes du groupe. */
+export const groupOutcomeSchema = z.object({
+  groupId: z.string(),
+  affectedRequestIds: z.array(z.string()),
+  skipped: z.array(skippedRequestSchema),
+  groupVisitId: z.nullable(z.string()),
+  missionIds: z.array(z.string()),
+  requests: z.array(quoteRequestSchema),
+});
+
+/** `CleaningLocationCorrection` (ADR-035) : demande à jour et dossiers modifiés par la correction. */
+export const locationCorrectionSchema = z.object({
+  request: quoteRequestSchema,
+  updatedRequestIds: z.array(z.string()),
+  updatedMissionIds: z.array(z.string()),
+});
+
+/** `CleaningPlaceTypeList` (back-office) : seuls le code, le libellé et l'état servent au filtre. */
+export const placeTypeListSchema = z.object({
+  data: z.array(z.object({ code: z.string(), label: z.string(), active: z.boolean() })),
+});
+
+/** `CleaningPlaceCatalog` (route publique) : seuls les types de lieu actifs (code et libellé) servent au filtre. */
+export const publicPlaceTypesSchema = z.object({
+  placeTypes: z.array(z.object({ code: z.string(), label: z.string() })),
+});
+
+const formFieldSchema = z.object({
+  code: z.string(),
+  label: z.string(),
+  type: z.string(),
+  unitLabel: z.nullable(z.string()),
+  choices: z.array(z.object({ code: z.string(), label: z.string() })),
+});
+
+/**
+ * Formulaires publics des prestations (`CleaningServiceForm`, route `GET /cleaning/services`) : libellés des
+ * champs, valeurs, options et fréquences, pour afficher les réponses d'une demande. Éléments actifs seulement :
+ * une réponse à un élément retiré s'affiche avec son code.
+ */
+export const serviceFormsSchema = z.object({
+  data: z.array(
+    z.object({
+      code: z.string(),
+      form: z.object({
+        fields: z.array(formFieldSchema),
+        options: z.array(z.object({ code: z.string(), label: z.string(), fields: z.array(formFieldSchema) })),
+        frequencies: z.array(z.object({ code: z.string(), label: z.string() })),
+      }),
+    }),
+  ),
+});
+
 /** `CleaningServedZoneList` (route publique) : zones actives, code et nom affiché. */
 export const servedZoneListSchema = z.object({
   data: z.array(z.object({ code: z.string(), commune: z.string() })),
@@ -311,6 +456,13 @@ export type Money = z.infer<typeof moneySchema>;
 export type TimeSlot = z.infer<typeof timeSlotSchema>;
 export type QuoteRequest = z.infer<typeof quoteRequestSchema>;
 export type QuoteRequestList = z.infer<typeof quoteRequestListSchema>;
+export type Calculation = z.infer<typeof calculationSchema>;
+export type GeoLocation = z.infer<typeof geoLocationSchema>;
+export type GroupOutcome = z.infer<typeof groupOutcomeSchema>;
+export type SkippedRequest = z.infer<typeof skippedRequestSchema>;
+export type LocationCorrection = z.infer<typeof locationCorrectionSchema>;
+export type ServiceForm = z.infer<typeof serviceFormsSchema>['data'][number]['form'];
+export type FormField = z.infer<typeof formFieldSchema>;
 export type Visit = z.infer<typeof visitSchema>;
 export type VisitList = z.infer<typeof visitListSchema>;
 export type Mission = z.infer<typeof missionSchema>;

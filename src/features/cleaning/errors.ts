@@ -56,6 +56,41 @@ export function errorText(error: unknown): string {
     : error.message;
 }
 
+/** Statut HTTP d'une erreur de la gateway (0 : coupure réseau), `null` pour une autre erreur. */
+export const errorStatus = (error: unknown): number | null =>
+  error instanceof ApiError ? error.status : null;
+
+/**
+ * Message d'une lecture en échec (écran entier) : message de la gateway et référence pour le support dès
+ * qu'elle est connue, puisque l'agent n'a rien d'autre à l'écran.
+ */
+export function loadErrorText(error: unknown): string {
+  const message = errorText(error);
+  if (!(error instanceof ApiError) || !error.correlationId || message.includes(error.correlationId)) {
+    return message;
+  }
+  return `${message} ${cleaningTexts.common.reference(error.correlationId)}`;
+}
+
+/**
+ * Comme `attempt`, pour une écriture sans clé d'idempotence : après une coupure réseau (on ne sait pas si
+ * la gateway a reçu l'ordre), `reread` relit la fiche et `note` est ajoutée au message.
+ */
+export async function attemptOrReread(
+  action: () => Promise<unknown>,
+  reread: () => void,
+  note: string,
+): Promise<string | null> {
+  try {
+    await action();
+    return null;
+  } catch (error) {
+    if (errorStatus(error) !== 0) return errorText(error);
+    reread();
+    return `${errorText(error)} ${note}`;
+  }
+}
+
 /** Exécute une action et renvoie `null` si elle a réussi, sinon le message à afficher (boîtes de confirmation). */
 export async function attempt(action: () => Promise<unknown>): Promise<string | null> {
   try {

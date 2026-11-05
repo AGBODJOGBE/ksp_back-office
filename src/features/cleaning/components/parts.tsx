@@ -9,7 +9,7 @@ import { ResourceView as BaseResourceView } from '@/components/ui/resource-view'
 import { useSession } from '@/lib/api';
 import type { Resource } from '@/lib/use-resource';
 import { type CleaningAccess, cleaningAccess } from '@/features/cleaning/access';
-import { errorText } from '@/features/cleaning/errors';
+import { errorStatus, errorText, loadErrorText } from '@/features/cleaning/errors';
 import { cleaningTexts, statusOf } from '@/features/cleaning/texts';
 
 export { BackLink } from '@/components/ui/back-link';
@@ -50,18 +50,35 @@ export function LoadError({ error, onRetry }: { error: unknown; onRetry: () => v
   );
 }
 
-/** États d'une ressource lue à la gateway : chargement, erreur avec « Réessayer », contenu. */
+/**
+ * États d'une ressource lue à la gateway : chargement, erreur avec « Réessayer », contenu. Avec `refusals`,
+ * un 403 devient une note neutre et un 404 un message « introuvable », sans « Réessayer » ; les autres erreurs
+ * gardent la référence pour le support.
+ */
 export function ResourceView<T>({
   resource,
   lines,
+  refusals,
   children,
 }: {
   resource: Resource<T>;
   lines?: number;
+  refusals?: { forbidden: string; notFound: string };
   children: (data: T) => ReactNode;
 }) {
+  const { state } = resource;
+  if (refusals && state.status === 'error') {
+    const status = errorStatus(state.error);
+    if (status === 403) return <Note>{refusals.forbidden}</Note>;
+    if (status === 404) return <FormMessage tone="info">{refusals.notFound}</FormMessage>;
+  }
   return (
-    <BaseResourceView resource={resource} lines={lines} labels={t} describe={errorText}>
+    <BaseResourceView
+      resource={resource}
+      lines={lines}
+      labels={t}
+      describe={refusals ? loadErrorText : errorText}
+    >
       {children}
     </BaseResourceView>
   );

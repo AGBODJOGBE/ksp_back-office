@@ -39,6 +39,7 @@ function cleaningVisit(overrides: Record<string, unknown> = {}) {
     organizationName: null,
     commune: 'Cotonou',
     address: 'Rue 12, Akpakpa',
+    location: null,
     landmark: 'Près du marché',
     geocodedAddress: null,
     placeType: 'house',

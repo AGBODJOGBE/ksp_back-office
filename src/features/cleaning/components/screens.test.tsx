@@ -67,7 +67,7 @@ describe('liste des demandes de devis', () => {
     render(<RequestsList />);
     const link = await screen.findByRole('link', { name: /Demande du 28 oct\. 2026/ });
     expect(link).toHaveAttribute('href', `/nettoyage/demandes/${ids.request}`);
-    expect(await screen.findByText('Prestation de test')).toBeInTheDocument();
+    expect(await within(screen.getByRole('table')).findByText('Prestation de test')).toBeInTheDocument();
     expect(calls.find((call) => call.path.endsWith('/quote-requests'))?.search).toBe(
       '?limit=20&status=received',
     );
@@ -262,8 +262,12 @@ describe('fiche d’une demande', () => {
     });
     render(<RequestDetail id={ids.request} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Établir le devis' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Envoyer le devis au client' }));
-    expect(await screen.findByText('Le prix de cette prestation n’est pas encore fixé.')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Vérifier avant l’envoi' }));
+    const dialog = screen.getByRole('dialog', { name: 'Envoyer — le prix est figé à l’envoi' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Envoyer le devis' }));
+    expect(
+      await within(dialog).findByText('Le prix de cette prestation n’est pas encore fixé.'),
+    ).toBeInTheDocument();
     expect(calls.find((call) => call.path.endsWith('/quote'))?.body).toEqual({
       proposedSlots: [{ start: '2026-11-05T08:00:00.000Z', end: '2026-11-05T11:00:00.000Z' }],
       durationMinutes: 180,

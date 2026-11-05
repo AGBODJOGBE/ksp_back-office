@@ -54,6 +54,103 @@ export function quoteRequest(overrides: Record<string, unknown> = {}) {
     closingReason: null,
     createdAt: '2026-10-28T09:00:00Z',
     updatedAt: '2026-10-28T09:00:00Z',
+    // ADR-033 : demande antérieure à la grille paramétrable (réponses et calcul absents).
+    answers: null,
+    selectedOptions: [],
+    frequency: null,
+    pricingVersion: null,
+    calculation: null,
+    // ADR-034 : demande seule, sans position.
+    groupId: null,
+    groupSize: 1,
+    placeType: null,
+    placeTypeLabel: null,
+    serviceName: null,
+    location: null,
+    landmark: null,
+    geocodingProvider: null,
+    geocodedAddress: null,
+    ...overrides,
+  };
+}
+
+/** `CleaningPriceCalculation` d'une demande TEST (ADR-033), montants en entiers de FCFA. */
+export function calculation(overrides: Record<string, unknown> = {}) {
+  return {
+    pricingVersion: 3,
+    priced: true,
+    reason: null,
+    missingPrices: [],
+    lines: [
+      {
+        kind: 'unit_price',
+        optionCode: null,
+        fieldCode: 'surface',
+        choiceCode: null,
+        label: 'Superficie',
+        quantity: 120,
+        unitLabel: 'm²',
+        unitPrice: xof(100),
+        amount: xof(12000),
+      },
+    ],
+    baseAmount: xof(12000),
+    coefficients: [
+      {
+        source: 'commune',
+        optionCode: null,
+        fieldCode: null,
+        code: 'cotonou',
+        label: 'Cotonou',
+        coefficientBp: 11500,
+      },
+    ],
+    subtotal: xof(13800),
+    minimumPrice: xof(10000),
+    minimumApplied: false,
+    computedPrice: xof(13800),
+    estimate: { low: xof(12500), high: xof(16000) },
+    recommendedTeamSize: 2,
+    ...overrides,
+  };
+}
+
+/** Demande d'un groupe TEST (ADR-034) : même lieu, position, repère, calcul. */
+export const groupId = '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d7001';
+export const location = { latitude: 6.3703, longitude: 2.3912, accuracyMeters: 8 };
+
+export function groupedRequest(overrides: Record<string, unknown> = {}) {
+  return quoteRequest({
+    groupId,
+    groupSize: 2,
+    placeType: 'house',
+    placeTypeLabel: 'Maison TEST',
+    serviceCode: 'house_cleaning',
+    serviceName: 'Nettoyage de maison TEST',
+    address: 'Portail vert, face à l’école TEST',
+    landmark: 'Portail vert, face à l’école TEST',
+    location,
+    geocodingProvider: 'nominatim',
+    geocodedAddress: 'Rue 12, Akpakpa, Cotonou',
+    answers: { surface: 120, condition: 'dirty', pets: true },
+    selectedOptions: [{ code: 'windows', answers: { window_count: 6 } }],
+    options: ['windows'],
+    frequency: 'once',
+    pricingVersion: 3,
+    calculation: calculation(),
+    ...overrides,
+  });
+}
+
+/** Résultat d'une opération de groupe (`CleaningGroupOutcome`). */
+export function groupOutcome(requests: unknown[], overrides: Record<string, unknown> = {}) {
+  return {
+    groupId,
+    affectedRequestIds: [],
+    skipped: [],
+    groupVisitId: null,
+    missionIds: [],
+    requests,
     ...overrides,
   };
 }

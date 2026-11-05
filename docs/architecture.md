@@ -303,6 +303,34 @@ Accueil `/` : file « À traiter », puis « Vos modules ». Chaque fonctionnali
 
 Écrans liés : `/nettoyage/visites` (`GET /admin/cleaning/visits`, filtres `?etat=` et `?periode=passee|a-venir`, compte rendu par demande sur la ligne via `POST /admin/cleaning/visits/{id}/complete`, onglet ouvert à `cleaning_agent`) ; `/finance/paiements?a-examiner=1` (`underReview=true`) et « Traiter l'écart » (`POST /admin/payment/payments/{id}/resolve-mismatch`, note obligatoire, `Idempotency-Key` tirée à l'ouverture, accusé de réception, liste relue).
 
+## De la demande au devis (`features/cleaning`, étape 3)
+
+Contrat `ksp-api.v1.yaml` (schéma `CleaningQuoteRequest`, ADR-033 à ADR-035). La fiche ne lit plus `premisesType` ni `quantity` (dépréciés) : elle lit les réponses (`answers`, `selectedOptions`, `frequency`, libellés tirés des formulaires publics de `GET /cleaning/services`), le calcul du serveur (`pricingVersion`, `calculation`), le lieu (`placeType*`, `landmark`, `geocodedAddress`, `geocodingProvider`, `location`) et le groupe (`groupId`, `groupSize`, `groupRequests`).
+
+| Adresse                                 | Écran                                                                                                                                                                                                       |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/nettoyage`                            | Filtres ajoutés `?lieu=` (`placeType`), `?prestation=` (`serviceCode`), `?groupe=` (`groupId`, rappelé avec « Retirer ») ; badge « Groupe · N » vers la vue du groupe                                       |
+| `/nettoyage/demandes/[id]`              | Trois étapes ordonnées (Demande, Visite, Devis) ; une seule action principale selon l'état (`workflow.ts`, `primaryAction`) ; bandeau du groupe ; « Corriger la position » dans l'étape Visite              |
+| `/nettoyage/demandes/groupes/[groupId]` | Vue du groupe (nouvelle) : demandes lues par `?groupId=&limit=10`, visite commune (exclusions), compte rendu commun, devis groupés, refus du groupe, demandes ignorées (`skipped`) ; pas de total de groupe |
+| `/nettoyage/visites`                    | Filtre `?groupe=`, compte rendu commun d'une visite de groupe, « Corriger la position » sur une visite planifiée                                                                                            |
+
+| Route du contrat                                                                            | Écran ou composant                                                           |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `GET /admin/cleaning/quote-requests` (+ `groupId`, `placeType`, `serviceCode`)              | `RequestsList`, `GroupDetail` (`limit=10`)                                   |
+| `PUT /admin/cleaning/quote-requests/{id}/location`                                          | `LocationAction` (fiche, étape Visite ; visites planifiées)                  |
+| `POST /admin/cleaning/quote-request-groups/{id}/visits`                                     | `GroupDetail` (`Idempotency-Key`)                                            |
+| `POST /admin/cleaning/quote-request-groups/{id}/visits/complete`                            | `GroupDetail`, `VisitsList` (`Idempotency-Key`)                              |
+| `POST /admin/cleaning/quote-request-groups/{id}/reject`                                     | `GroupDetail` (`Idempotency-Key`, motif de 1 à 500 caractères)               |
+| `POST /admin/cleaning/quote-request-groups/{id}/quotes`                                     | `GroupQuotesForm` (`Idempotency-Key`, erreur nommée par `details.requestId`) |
+| `GET /admin/cleaning/visits` (+ `groupId`)                                                  | `VisitsList`                                                                 |
+| `GET /admin/cleaning/place-types` (admin) ; `GET /cleaning/catalog` (superviseur, publique) | filtre « Type de lieu »                                                      |
+
+- **Envoi d'un devis** (seul ou groupé) : formulaire, puis boîte « Envoyer — le prix est figé à l'envoi » (`SendDialog`) avec le récapitulatif ; bouton désactivé pendant l'envoi. Avant l'envoi, seule l'estimation déjà calculée par le serveur (`calculation`, sinon `estimate`) est montrée, avec « Estimation : prix définitif calculé à l'envoi » : aucun calcul dans le front.
+- **Idempotence** : routes de groupe, clé tirée à l'ouverture de la boîte et renvoyée telle quelle si l'agent renvoie. Routes d'une demande (refus, visite, compte rendu, devis, position), sans clé dans le contrat : bouton désactivé pendant l'envoi, fiche relue après une coupure réseau (`attemptOrReread`).
+- **Position** : en texte seul (coordonnées, précision, repère), ni carte ni lien externe ; saisie à la main ou par l'API de géolocalisation du navigateur (`Permissions-Policy: geolocation=(self)`). Le résultat annonce les demandes et missions mises à jour.
+- **États** : squelette, vide, erreur avec message, référence et « Réessayer » ; 403 en note neutre, 404 « introuvable » (`ResourceView` avec `refusals`).
+- Textes par écran : `request-texts.ts` (liste), `request-detail-texts.ts`, `group-texts.ts`, `quote-texts.ts`, `location-texts.ts`, `visit-texts.ts`. Formulaires et boîtes chargés par `next/dynamic`.
+
 ## Stratégie de rendu
 
 Cache Components (`cacheComponents`) n'est pas activé : c'est le modèle de cache « précédent » de Next 16 qui s'applique (voir le modèle du portail).
@@ -413,6 +441,18 @@ Mesure du 5 novembre 2026, Ma journée (`pnpm build && pnpm size`) :
 | `/connexion`                                            | 212,6 Ko      | 212,6 Ko |
 
 La file elle-même (lectures et schémas des quatre services, boîte « Traiter l'écart ») est un morceau chargé après la reprise de la session : 14,8 Ko compressés, hors « First Load JS ».
+
+Mesure du 5 novembre 2026, de la demande au devis (`pnpm build && pnpm size`) :
+
+| Page                                     | First Load JS | Avant    |
+| ---------------------------------------- | ------------- | -------- |
+| `/nettoyage` et ses sous-pages statiques | 217,3 Ko      | 216,9 Ko |
+| `/finance` et ses trois sous-pages       | 216,3 Ko      | 216,1 Ko |
+| `/` (Ma journée)                         | 212,9 Ko      | 212,7 Ko |
+| `/clients` et `/clients/entreprises`     | 213,4 Ko      | 213,2 Ko |
+| `/connexion`                             | 212,8 Ko      | 212,6 Ko |
+
+Fiche d'une demande, vue du groupe, formulaires de devis et boîte de position sont des morceaux chargés à la demande (environ 9, 5,5, 5 et 4,7 Ko compressés), hors « First Load JS ». Les fiches (`[id]`, `[groupId]`) n'apparaissent pas dans `pnpm size`.
 
 ## Ajouter une fonctionnalité
 

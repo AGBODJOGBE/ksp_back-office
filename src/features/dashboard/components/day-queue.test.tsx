@@ -104,6 +104,7 @@ const lateVisit = {
   organizationName: null,
   commune: 'Abomey-Calavi',
   address: 'Rue TEST',
+  location: null,
   landmark: null,
   geocodedAddress: null,
   placeType: null,
@@ -147,6 +148,19 @@ const receivedRequest = (suffix: string) => ({
   customerName: `Client TEST ${suffix}`,
   organizationName: null,
   serviceName: 'Ménage TEST',
+  answers: null,
+  selectedOptions: [],
+  frequency: null,
+  pricingVersion: null,
+  calculation: null,
+  groupId: null,
+  groupSize: 1,
+  placeType: null,
+  placeTypeLabel: null,
+  location: null,
+  landmark: null,
+  geocodingProvider: null,
+  geocodedAddress: null,
 });
 
 const pendingOrganization = {
