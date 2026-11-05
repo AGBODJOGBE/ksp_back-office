@@ -23,6 +23,8 @@ import {
   teamListSchema,
   teamSchema,
   type TimeSlot,
+  type VisitList,
+  visitListSchema,
   type Zone,
   zoneListSchema,
   zoneSchema,
@@ -134,6 +136,26 @@ export interface QuoteInput {
 
 export async function sendQuote(id: string, input: QuoteInput): Promise<QuoteRequest> {
   return parseResponse(quoteRequestSchema, await api.post(at(REQUESTS, id, 'quote'), input));
+}
+
+// ——— Visites techniques (ADR-035) ———
+
+/**
+ * Filtres de la liste des visites (`GET /admin/cleaning/visits`), tous facultatifs : état, et visites prévues
+ * à partir de `from` (incluse) ou avant `to` (exclue), en ISO 8601. Un agent ne reçoit que ses visites.
+ */
+export interface VisitFilters {
+  status?: string;
+  from?: string;
+  to?: string;
+}
+
+export async function listVisits(filters: VisitFilters, cursor?: string): Promise<VisitList> {
+  const { status, from, to } = filters;
+  return parseResponse(
+    visitListSchema,
+    await api.get(`${ADMIN}/visits`, { query: { limit: PAGE_SIZE, cursor, status, from, to } }),
+  );
 }
 
 // ——— Missions ———

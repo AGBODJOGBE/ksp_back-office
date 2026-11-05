@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { FormMessage } from '@/components/ui/field';
 import { IconAlert, IconClose } from '@/components/ui/icons';
 import { PagedListState } from '@/components/ui/paged-list-state';
 import { ResponsiveTable, type TableColumn } from '@/components/ui/responsive-table';
@@ -14,6 +15,7 @@ import { formatDateTime, formatXof } from '@/lib/format';
 import { isModuleVisible } from '@/lib/navigation/visible-modules';
 import { usePagedList } from '@/lib/use-paged-list';
 import { organizationPaths } from '@/features/identity/organizations';
+import { paymentAccess } from '@/features/payment/access';
 import { listPayments, PAYMENT_STATUSES, type PaymentFilters, SUBJECT_TYPES } from '@/features/payment/api';
 import type { Payment } from '@/features/payment/schemas';
 import {
@@ -25,6 +27,7 @@ import {
   subjectLabel,
   subjectType,
 } from '@/features/payment/texts';
+import { ResolveMismatchAction } from './resolve-mismatch';
 
 const MISMATCH = 'amount_mismatch';
 
@@ -34,11 +37,23 @@ const SUBJECT_PATHS: Record<string, { module: string; path: (id: string) => stri
   billing_invoice: { module: 'finance', path: (id) => `/finance/factures/${encodeURIComponent(id)}` },
 };
 
-/** Paramètres de l'adresse (en français) → filtres de la gateway. */
-const PARAMS = { status: 'etat', subjectType: 'objet-type', subjectId: 'objet' } as const;
+/** Paramètres de l'adresse (en français) → filtres de la gateway. `a-examiner=1` : `underReview=true`. */
+const PARAMS = {
+  status: 'etat',
+  subjectType: 'objet-type',
+  subjectId: 'objet',
+  underReview: 'a-examiner',
+} as const;
 type FilterKey = keyof typeof PARAMS;
 
-function columns(roles: readonly string[]): TableColumn<Payment>[] {
+interface RowActions {
+  /** Le rôle peut traiter un écart (mêmes rôles que la liste dans le contrat). */
+  canResolve: boolean;
+  onResolved: (payment: Payment) => void;
+  onStale: () => void;
+}
+
+function columns(roles: readonly string[], actions: RowActions): TableColumn<Payment>[] {
   const visible = (module: string) => isModuleVisible(module, roles);
   return [
     {
@@ -64,13 +79,28 @@ function columns(roles: readonly string[]): TableColumn<Payment>[] {
         const status = paymentStatus(payment.status);
         return (
           <span className="grid justify-items-end gap-1 text-right md:justify-items-start md:text-left">
-            <Badge tone={status.tone}>
-              {payment.status === MISMATCH ? <IconAlert className="size-3.5" /> : null}
-              {status.label}
-            </Badge>
+            <span className="flex flex-wrap justify-end gap-1 md:justify-start">
+              <Badge tone={status.tone}>
+                {payment.status === MISMATCH ? <IconAlert className="size-3.5" /> : null}
+                {status.label}
+              </Badge>
+              {payment.underReview ? (
+                <Badge tone="danger" dot>
+                  {t.underReview}
+                </Badge>
+              ) : null}
+            </span>
             {payment.failureReason ? (
               <span className="text-small text-ink-muted">
                 {t.failure(failureReason(payment.failureReason))}
+              </span>
+            ) : null}
+            {payment.mismatchResolvedAt ? (
+              <span className="text-small text-ink-muted">
+                {t.resolvedOn(formatDateTime(payment.mismatchResolvedAt))}
+                {payment.mismatchResolutionNote ? (
+                  <span className="block">{t.resolutionNote(payment.mismatchResolutionNote)}</span>
+                ) : null}
               </span>
             ) : null}
           </span>
@@ -126,15 +156,29 @@ function columns(roles: readonly string[]): TableColumn<Payment>[] {
             ? t.expiresAt(formatDateTime(payment.expiresAt))
             : t.notCompleted,
     },
+    {
+      key: 'action',
+      header: t.actionColumn,
+      cell: (payment) =>
+        payment.underReview && actions.canResolve ? (
+          // Au-dessus de la ligne cliquable : le bouton garde son propre clic.
+          <ResolveMismatchAction
+            payment={payment}
+            className="relative z-10"
+            onResolved={actions.onResolved}
+            onStale={actions.onStale}
+          />
+        ) : null,
+    },
   ];
 }
 
-/** Alerte quand des paiements attendent l'arbitrage de la finance (`amount_mismatch`). */
+/** Alerte quand des écarts de montant attendent le traitement de la finance (`underReview=true`). */
 function ToReviewAlert() {
   const [count, setCount] = useState(0);
   useEffect(() => {
     let active = true;
-    listPayments({ status: MISMATCH }, undefined, 1).then(
+    listPayments({ underReview: true }, undefined, 1).then(
       (page) => {
         if (active) setCount(page.data.length);
       },
@@ -160,11 +204,19 @@ function ToReviewAlert() {
   );
 }
 
-function Payments({ filters, filtered }: { filters: PaymentFilters; filtered: boolean }) {
-  const { status, subjectType: type, subjectId } = filters;
+function Payments({
+  filters,
+  filtered,
+  actions,
+}: {
+  filters: PaymentFilters;
+  filtered: boolean;
+  actions: RowActions;
+}) {
+  const { status, subjectType: type, subjectId, underReview } = filters;
   const load = useCallback(
-    (cursor?: string) => listPayments({ status, subjectType: type, subjectId }, cursor),
-    [status, type, subjectId],
+    (cursor?: string) => listPayments({ status, subjectType: type, subjectId, underReview }, cursor),
+    [status, type, subjectId, underReview],
   );
   const list = usePagedList(load, apiErrorText);
   const roles = useSession()?.roles ?? [];
@@ -174,24 +226,35 @@ function Payments({ filters, filtered }: { filters: PaymentFilters; filtered: bo
       empty={<p className="text-small text-ink-muted">{filtered ? t.emptyFiltered : t.empty}</p>}
       labels={t}
     >
-      <ResponsiveTable caption={t.caption} columns={columns(roles)} rows={list.items} rowKey={(p) => p.id} />
+      <ResponsiveTable
+        caption={t.caption}
+        columns={columns(roles, actions)}
+        rows={list.items}
+        rowKey={(p) => p.id}
+      />
     </PagedListState>
   );
 }
 
 /**
- * Paiements en ligne, filtrés dans l'adresse : `?etat=`, `?objet-type=` et `?objet=` (mission ou
- * facture, depuis sa fiche). Les paiements « à examiner » sont signalés en tête de liste.
+ * Paiements en ligne, filtrés dans l'adresse : `?etat=`, `?objet-type=`, `?objet=` (mission ou facture,
+ * depuis sa fiche) et `?a-examiner=1` (écarts pas encore traités). Les écarts à examiner sont signalés en
+ * tête de liste et se traitent sur la ligne (« Traiter l'écart »), avec un accusé de réception.
  */
 export function PaymentsList() {
   const params = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
+  const roles = useSession()?.roles ?? [];
+  const [done, setDone] = useState<string | null>(null);
+  // Relecture de la liste après un traitement : la ligne quitte le filtre « à examiner ».
+  const [version, setVersion] = useState(0);
   const read = (key: FilterKey) => params.get(PARAMS[key]) || undefined;
   const filters: PaymentFilters = {
     status: read('status'),
     subjectType: read('subjectType'),
     subjectId: read('subjectId'),
+    underReview: read('underReview') === '1' || undefined,
   };
 
   function update(key: FilterKey, value: string) {
@@ -199,12 +262,28 @@ export function PaymentsList() {
     if (value) next.set(PARAMS[key], value);
     else next.delete(PARAMS[key]);
     const query = next.toString();
+    setDone(null);
     replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
 
+  const actions: RowActions = {
+    canResolve: paymentAccess(roles).list,
+    onResolved: (payment) => {
+      setDone(t.resolve.done(subjectLabel(payment.subject)));
+      setVersion((value) => value + 1);
+    },
+    onStale: () => setVersion((value) => value + 1),
+  };
+
+  const chips = [
+    filters.underReview ? { key: 'underReview' as const, label: t.underReviewFilter } : null,
+    filters.subjectId ? { key: 'subjectId' as const, label: t.bySubject } : null,
+  ].filter((chip) => chip !== null);
+
   return (
     <div className="grid gap-5">
-      {filters.status === MISMATCH ? null : <ToReviewAlert />}
+      {filters.status === MISMATCH || filters.underReview ? null : <ToReviewAlert key={version} />}
+      <FormMessage tone="success">{done}</FormMessage>
       <div className="flex flex-wrap items-end gap-3">
         <SelectField
           id="filtre-etat-paiement"
@@ -234,25 +313,28 @@ export function PaymentsList() {
             </option>
           ))}
         </SelectField>
-        {filters.subjectId ? (
+        {chips.length ? (
           <ul aria-label={t.filters} className="flex flex-wrap gap-2">
-            <li>
-              <Button
-                variant="secondary"
-                onClick={() => update('subjectId', '')}
-                aria-label={t.removeFilter(t.bySubject)}
-              >
-                {t.bySubject}
-                <IconClose className="size-4" />
-              </Button>
-            </li>
+            {chips.map((chip) => (
+              <li key={chip.key}>
+                <Button
+                  variant="secondary"
+                  onClick={() => update(chip.key, '')}
+                  aria-label={t.removeFilter(chip.label)}
+                >
+                  {chip.label}
+                  <IconClose className="size-4" />
+                </Button>
+              </li>
+            ))}
           </ul>
         ) : null}
       </div>
       <Payments
-        key={`${filters.status}-${filters.subjectType}-${filters.subjectId}`}
+        key={`${filters.status}-${filters.subjectType}-${filters.subjectId}-${filters.underReview}-${version}`}
         filters={filters}
-        filtered={!!(filters.status || filters.subjectType || filters.subjectId)}
+        filtered={!!(filters.status || filters.subjectType || filters.subjectId || filters.underReview)}
+        actions={actions}
       />
     </div>
   );

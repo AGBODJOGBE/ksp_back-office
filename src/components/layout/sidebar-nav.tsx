@@ -2,15 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useId } from 'react';
 import type { BackofficeModule } from '@/config/modules';
 import { getDictionary } from '@/i18n';
 import { cn } from '@/lib/cn';
 // Import direct du magasin de session : ni configuration ni zod pour ce composant présent partout.
 import { useSession } from '@/lib/api/session';
-import { visibleModules } from '@/lib/navigation/visible-modules';
+import { groupModules, visibleModules } from '@/lib/navigation/visible-modules';
 import { ModuleIcon } from './module-icon';
 
-/** Adresse d'un module : le tableau de bord est l'accueil. */
+/** Adresse d'un module : « Ma journée » (`tableau-de-bord`) est l'accueil. */
 export function moduleHref(slug: string): string {
   return slug === 'tableau-de-bord' ? '/' : `/${slug}`;
 }
@@ -39,12 +40,14 @@ const ITEM = cn(
 const SKELETON_WIDTHS = ['62%', '78%', '55%', '70%', '84%', '66%'];
 
 /**
- * Menu des modules : filtré par les rôles de la session (affichage seulement, la gateway reste seule
- * juge des droits) et par la phase en cours ; la page courante est marquée (`aria-current`).
- * Reçoit le catalogue du cadre (serveur). Sans session, un squelette garde la place du menu.
+ * Menu des modules, rangés par groupe (Ma journée, Opérations, Finance, Clients, Pilotage) : filtré par
+ * les rôles de la session (affichage seulement, la gateway reste seule juge des droits) et par la phase en
+ * cours ; la page courante est marquée (`aria-current`). Reçoit le catalogue du cadre (serveur). Sans
+ * session, un squelette garde la place du menu. Aucun compteur : il coûterait des appels à chaque page.
  */
 export function SidebarNav({ modules }: { modules: readonly BackofficeModule[] }) {
   const t = getDictionary();
+  const id = useId();
   const pathname = usePathname();
   const current = useSession();
 
@@ -67,21 +70,45 @@ export function SidebarNav({ modules }: { modules: readonly BackofficeModule[] }
   }
 
   return (
-    <ul className="grid gap-1">
-      {visibleModules(current.roles, undefined, modules).map((item) => {
-        const active = isCurrentModule(item.slug, pathname);
+    <div className="grid gap-5">
+      {groupModules(visibleModules(current.roles, undefined, modules)).map((group) => {
+        const heading = `${id}-${group.id}`;
+        // « Ma journée » n'a qu'une entrée du même nom : pas de titre visible, la liste garde son nom.
+        const titled = group.id !== 'journee';
         return (
-          <li key={item.slug}>
-            <Link href={moduleHref(item.slug)} aria-current={active ? 'page' : undefined} className={ITEM}>
-              <ModuleIcon
-                slug={item.slug}
-                className="text-ink-subtle group-aria-[current=page]/item:text-accent-ink size-5"
-              />
-              {item.label}
-            </Link>
-          </li>
+          <div key={group.id}>
+            {titled ? (
+              <p id={heading} className="text-eyebrow text-ink-subtle mb-1.5 px-3 font-semibold uppercase">
+                {group.label}
+              </p>
+            ) : null}
+            <ul
+              aria-labelledby={titled ? heading : undefined}
+              aria-label={titled ? undefined : group.label}
+              className="grid gap-1"
+            >
+              {group.modules.map((item) => {
+                const active = isCurrentModule(item.slug, pathname);
+                return (
+                  <li key={item.slug}>
+                    <Link
+                      href={moduleHref(item.slug)}
+                      aria-current={active ? 'page' : undefined}
+                      className={ITEM}
+                    >
+                      <ModuleIcon
+                        slug={item.slug}
+                        className="text-ink-subtle group-aria-[current=page]/item:text-accent-ink size-5"
+                      />
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         );
       })}
-    </ul>
+    </div>
   );
 }

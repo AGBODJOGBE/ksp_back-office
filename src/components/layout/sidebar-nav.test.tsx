@@ -14,6 +14,15 @@ beforeEach(() => {
 });
 
 const links = () => screen.getAllByRole('link').map((link) => link.textContent);
+const groups = () =>
+  screen.getAllByRole('list').map((list) => ({
+    name:
+      list.getAttribute('aria-label') ??
+      document.getElementById(list.getAttribute('aria-labelledby') ?? '')?.textContent,
+    links: within(list)
+      .getAllByRole('link')
+      .map((link) => link.textContent),
+  }));
 
 describe('menu des modules', () => {
   it('garde la place du menu tant que la session n’est pas reprise', () => {
@@ -25,11 +34,11 @@ describe('menu des modules', () => {
   it('ne montre que les modules des rôles de la session', () => {
     render(<SidebarNav modules={MODULES} />);
     act(() => session.set(sessionBody(['recovery_agent'])));
-    expect(links()).toEqual(['Tableau de bord', 'Recouvrement']);
+    expect(links()).toEqual(['Ma journée', 'Recouvrement']);
 
     act(() => session.set(sessionBody(['super_admin'])));
     expect(links()).toEqual([
-      'Tableau de bord',
+      'Ma journée',
       'Recouvrement',
       'Nettoyage',
       'Finance',
@@ -39,13 +48,29 @@ describe('menu des modules', () => {
     ]);
   });
 
+  it('range les modules par groupe et masque les groupes vides', () => {
+    session.set(sessionBody(['super_admin']));
+    const { unmount } = render(<SidebarNav modules={MODULES} />);
+    expect(groups()).toEqual([
+      { name: 'Ma journée', links: ['Ma journée'] },
+      { name: 'Opérations', links: ['Recouvrement', 'Nettoyage'] },
+      { name: 'Finance', links: ['Finance'] },
+      { name: 'Clients', links: ['Clients et comptes'] },
+      { name: 'Pilotage', links: ['Notifications', 'Administration'] },
+    ]);
+    unmount();
+
+    session.set(sessionBody(['finance_officer']));
+    render(<SidebarNav modules={MODULES} />);
+    expect(groups().map((group) => group.name)).toEqual(['Ma journée', 'Finance']);
+  });
+
   it('indique la page courante, sous-pages comprises', () => {
     pathname = '/finance/factures';
     session.set(sessionBody(['finance_officer']));
     render(<SidebarNav modules={MODULES} />);
-    const list = screen.getByRole('list');
-    expect(within(list).getByRole('link', { name: 'Finance' })).toHaveAttribute('aria-current', 'page');
-    expect(within(list).getByRole('link', { name: 'Tableau de bord' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('link', { name: 'Finance' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Ma journée' })).not.toHaveAttribute('aria-current');
   });
 
   it('reconnaît le module de chaque adresse', () => {

@@ -120,6 +120,7 @@ export const cleaningTexts = {
   tabs: {
     label: 'Sections du Nettoyage',
     requests: 'Demandes',
+    visits: 'Visites',
     missions: 'Missions',
     catalog: 'Catalogue',
     zones: 'Zones',
@@ -154,6 +155,31 @@ export const cleaningTexts = {
     allFeminine: 'Toutes',
     details: 'Détails',
     actions: 'Actions',
+  },
+  /** Sections de la file « À traiter » du tableau de bord (voir `queue.ts`). */
+  queue: {
+    incidents: {
+      title: 'Incidents',
+      description: 'Missions à l’état « En attente ». Un incident signalé met le passage en attente.',
+      seeAll: 'Voir toutes les missions en attente',
+      action: 'Ouvrir le passage',
+      missionAction: 'Ouvrir la mission',
+      passage: (date: string) => `Passage du ${date}`,
+    },
+    reports: {
+      title: 'Comptes rendus à saisir',
+      description: 'Visites planifiées dont l’heure prévue est passée, sans compte rendu.',
+      seeAll: 'Voir toutes les visites à l’heure passée',
+      action: 'Saisir le compte rendu',
+      scheduled: (date: string) => `Prévue le ${date}`,
+    },
+    toVisit: {
+      title: 'Demandes à visiter',
+      description: 'Demandes reçues : la visite des lieux est obligatoire avant tout devis.',
+      seeAll: 'Voir toutes les demandes reçues',
+      action: 'Planifier la visite',
+      received: (date: string) => `Reçue le ${date}`,
+    },
   },
   /** Refus de la gateway dont les détails précisent la suite (voir `errors.ts`). */
   errors: {

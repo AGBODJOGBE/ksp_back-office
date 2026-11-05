@@ -17,6 +17,8 @@ export function tabsFor(access: CleaningAccess): SubNavItem[] {
       match: ['/nettoyage/demandes'],
       show: access.supervise,
     },
+    // Visites : agent affecté et supervision (`GET /admin/cleaning/visits`, ADR-035).
+    { href: cleaningPaths.visits, label: t.visits, show: access.fieldWork },
     { href: cleaningPaths.missions, label: t.missions, show: access.fieldWork },
     { href: cleaningPaths.catalog, label: t.catalog, show: access.administer },
     { href: cleaningPaths.zones, label: t.zones, show: access.administer },

@@ -12,6 +12,7 @@ describe('droits d’affichage du Nettoyage (le backend reste seul juge)', () =>
   it('l’admin voit toutes les sections', () => {
     expect(labels(['cleaning_admin'])).toEqual([
       'Demandes',
+      'Visites',
       'Missions',
       'Catalogue',
       'Zones',
@@ -20,11 +21,11 @@ describe('droits d’affichage du Nettoyage (le backend reste seul juge)', () =>
   });
 
   it('le superviseur ne voit ni le catalogue ni les zones', () => {
-    expect(labels(['cleaning_supervisor'])).toEqual(['Demandes', 'Missions', 'Agents et équipes']);
+    expect(labels(['cleaning_supervisor'])).toEqual(['Demandes', 'Visites', 'Missions', 'Agents et équipes']);
   });
 
-  it('l’agent de terrain ne voit que ses missions', () => {
-    expect(labels(['cleaning_agent'])).toEqual(['Missions']);
+  it('l’agent de terrain ne voit que ses visites et ses missions', () => {
+    expect(labels(['cleaning_agent'])).toEqual(['Visites', 'Missions']);
   });
 
   it('super_admin a la même portée que cleaning_admin (contrat)', () => {

@@ -26,7 +26,7 @@ describe('accès à la page d’un module', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'Finance : module non ouvert à vos rôles',
     );
-    expect(screen.getByRole('link', { name: 'Retour au tableau de bord' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Retour à Ma journée' })).toHaveAttribute('href', '/');
   });
 
   it('ne montre rien tant que la session n’est pas reprise', () => {

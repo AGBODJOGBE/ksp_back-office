@@ -133,6 +133,15 @@ export const organizationTexts = {
       done: 'Suspension levée.',
     },
   },
+  queue: {
+    title: 'Comptes entreprise à valider',
+    description: 'Demandes de création en attente de validation par KSP.',
+    seeAll: 'Voir toutes les demandes à valider',
+    decide: 'Valider ou refuser',
+    review: 'Examiner la demande',
+    ifu: (ifu: string) => `IFU ${ifu}`,
+    requested: (date: string) => `Demandée le ${date}`,
+  },
   errors: {
     invalidTransition: 'Ce compte a changé d’état entre-temps : la fiche a été actualisée.',
   },

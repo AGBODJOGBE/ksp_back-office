@@ -76,16 +76,13 @@ test('sans session, une page protégée renvoie vers la connexion en gardant la 
   await expect(page.getByRole('heading', { level: 1, name: 'Connexion au back-office' })).toBeVisible();
 });
 
-test('avec une session, le tableau de bord s’affiche avec le menu filtré par rôle', async ({
-  page,
-  isMobile,
-}) => {
+test('avec une session, Ma journée s’affiche avec le menu filtré par rôle', async ({ page, isMobile }) => {
   await gateway(page, { signedIn: true });
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: 'Bienvenue dans le back-office' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Ma journée' })).toBeVisible();
   if (isMobile) await page.getByRole('button', { name: 'Ouvrir le menu' }).click();
   const menu = page.getByRole('navigation', { name: 'Modules' });
-  await expect(menu.getByRole('link', { name: 'Tableau de bord' })).toHaveAttribute('aria-current', 'page');
+  await expect(menu.getByRole('link', { name: 'Ma journée' })).toHaveAttribute('aria-current', 'page');
   await menu.getByRole('link', { name: 'Recouvrement' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Recouvrement' })).toBeVisible();
   await expect(page.getByText('Koffi Adjovi').first()).toBeAttached();

@@ -87,6 +87,8 @@ export const quoteRequestSchema = z.object({
   updatedAt: z.string(),
   customerName: displayName,
   organizationName: displayName,
+  /** Nom de la prestation, résolu par cleaning au moment de la réponse (ADR-034). */
+  serviceName: z.optional(z.nullable(z.string())),
 });
 
 export const quoteRequestListSchema = z.object({
@@ -174,6 +176,46 @@ export const missionSchema = z.object({
 
 export const missionListSchema = z.object({
   data: z.array(missionSchema),
+  nextCursor: z.nullable(z.string()),
+});
+
+/**
+ * `CleaningVisit` (ADR-035) : visite technique, une seule entrée pour une visite commune ; chaque demande
+ * garde sa propre visite (`visitId`, compte rendu par demande). Pour un agent, adresse, repère et position
+ * d'une visite terminée ou annulée sont `null` (la position n'est pas lue par le back-office).
+ */
+export const visitSchema = z.object({
+  id: z.string(),
+  groupVisitId: z.nullable(z.string()),
+  groupId: z.nullable(z.string()),
+  status: z.string(),
+  scheduledAt: z.string(),
+  completedAt: z.nullable(z.string()),
+  report: z.nullable(z.string()),
+  agentId: z.string(),
+  agentName: z.nullable(z.string()),
+  customerId: z.string(),
+  customerName: z.nullable(z.string()),
+  organizationName: z.nullable(z.string()),
+  commune: z.string(),
+  address: z.nullable(z.string()),
+  landmark: z.nullable(z.string()),
+  geocodedAddress: z.nullable(z.string()),
+  placeType: z.nullable(z.string()),
+  placeTypeLabel: z.nullable(z.string()),
+  requests: z.array(
+    z.object({
+      requestId: z.string(),
+      visitId: z.string(),
+      serviceCode: z.string(),
+      serviceName: z.nullable(z.string()),
+      status: z.string(),
+    }),
+  ),
+});
+
+export const visitListSchema = z.object({
+  data: z.array(visitSchema),
   nextCursor: z.nullable(z.string()),
 });
 
@@ -269,6 +311,8 @@ export type Money = z.infer<typeof moneySchema>;
 export type TimeSlot = z.infer<typeof timeSlotSchema>;
 export type QuoteRequest = z.infer<typeof quoteRequestSchema>;
 export type QuoteRequestList = z.infer<typeof quoteRequestListSchema>;
+export type Visit = z.infer<typeof visitSchema>;
+export type VisitList = z.infer<typeof visitListSchema>;
 export type Mission = z.infer<typeof missionSchema>;
 export type MissionList = z.infer<typeof missionListSchema>;
 export type Suspension = z.infer<typeof suspensionSchema>;
