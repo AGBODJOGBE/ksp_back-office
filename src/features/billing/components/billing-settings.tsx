@@ -70,9 +70,10 @@ function TermForm({
         error={error}
         onChange={(event) => setValue(event.target.value)}
       />
-      <FormMessage tone="info">{saved ? t.saved : null}</FormMessage>
+      <FormMessage tone="success">{saved ? t.saved : null}</FormMessage>
       <Button
         type="submit"
+        variant="action"
         className="justify-self-start"
         disabled={pending}
         aria-busy={pending || undefined}

@@ -125,9 +125,10 @@ function SettingsForm({ settings, onSaved }: { settings: Settings; onSaved: (set
           />
         ))}
       </div>
-      <FormMessage tone={message?.error ? 'error' : 'info'}>{message?.text}</FormMessage>
+      <FormMessage tone={message?.error ? 'error' : 'success'}>{message?.text}</FormMessage>
       <Button
         type="submit"
+        variant="action"
         className="justify-self-start"
         aria-busy={pending || undefined}
         disabled={pending}

@@ -132,7 +132,7 @@ export function RecoveryCodesStep({
               }}
               aria-invalid={confirmError ? true : undefined}
               aria-describedby={confirmError ? ids.error : undefined}
-              className="accent-accent mt-0.5 size-5 shrink-0"
+              className="accent-action mt-0.5 size-5 shrink-0"
             />
             <span className="text-ink font-semibold">{t.confirm}</span>
           </label>

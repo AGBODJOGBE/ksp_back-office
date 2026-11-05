@@ -105,7 +105,7 @@ function VisitDialog({
   return (
     <ConfirmAction
       label={again ? s.relabel : s.label}
-      variant={again ? 'secondary' : 'primary'}
+      variant={again ? 'secondary' : 'action'}
       title={s.title}
       description={s.text}
       confirmLabel={s.confirm}
@@ -177,7 +177,7 @@ function Actions({
         {visitPending ? (
           <ConfirmAction
             label={t.report.label}
-            variant="primary"
+            variant="action"
             title={t.report.title}
             confirmLabel={t.report.confirm}
             labels={dialog}
@@ -202,7 +202,7 @@ function Actions({
         )}
         {visitDone && !quoteOpen ? (
           <Button
-            variant={status === 'quote_sent' ? 'secondary' : 'primary'}
+            variant={status === 'quote_sent' ? 'secondary' : 'action'}
             onClick={() => setQuoteOpen(true)}
           >
             {status === 'quote_sent' ? t.sendQuote.relabel : t.sendQuote.label}

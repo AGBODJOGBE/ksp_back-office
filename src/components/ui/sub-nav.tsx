@@ -49,7 +49,7 @@ export function SubNav({
                 className={cn(
                   'relative flex min-h-11 items-center px-3 text-[0.9375rem] font-medium whitespace-nowrap',
                   'text-ink-muted hover:text-ink rounded-t-control',
-                  'after:bg-accent after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:opacity-0',
+                  'after:bg-action after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:opacity-0',
                   'aria-[current=page]:text-ink aria-[current=page]:font-semibold aria-[current=page]:after:opacity-100',
                 )}
               >

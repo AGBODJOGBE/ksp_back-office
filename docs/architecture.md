@@ -367,6 +367,20 @@ Mesure du 31 octobre 2026, Finance et comptes entreprise branchés (`pnpm build 
 
 Les écrans sont chargés à la demande (`lazy.tsx`) ; les fiches (`[id]`) n'apparaissent pas dans `pnpm size`. Passées par l'index d'identity, les pages du module « Clients et comptes » pesaient 220,2 Ko (parcours de connexion chargé) et `/connexion` 215,4 Ko : d'où le point d'entrée `@/features/identity/organizations`.
 
+Mesure du 5 novembre 2026, charte F-017 (F-018 : jetons, `components/ui`, logo, signature ; `pnpm build && pnpm size`) :
+
+| Page                                                   | First Load JS | Avant (31 octobre) |
+| ------------------------------------------------------ | ------------- | ------------------ |
+| `/nettoyage` et ses quatre sous-pages statiques        | 216,2 Ko      | 216,0 Ko           |
+| `/finance` et ses trois sous-pages statiques           | 215,4 Ko      | 215,3 Ko           |
+| `/clients` et `/clients/entreprises`                   | 212,9 Ko      | 212,8 Ko           |
+| `/connexion`                                           | 212,6 Ko      | 212,5 Ko           |
+| `/` (tableau de bord)                                  | 210,5 Ko      | 210,3 Ko           |
+| Pages d'attente des trois autres modules de la phase 1 | 209,8 Ko      | 209,6 Ko           |
+| 404                                                    | 178,1 Ko      | 178,1 Ko           |
+
+Le logo et la signature sont des SVG rendus par le serveur : la charte n'ajoute que 0,1 à 0,2 Ko (nouvelles classes du bouton, du badge et du message de formulaire).
+
 ## Ajouter une fonctionnalité
 
 1. Nommer le domaine comme le service du backend : `src/features/<domaine>/`.
@@ -401,7 +415,9 @@ Conséquences pour le back-office :
 
 ## Convergence de `components/ui`
 
-`components/ui` du back-office (`Button`, `ButtonLink`, `Container`, et depuis le Nettoyage `ResponsiveTable`, `ConfirmAction`, `SubNav`, `SelectField`, `DescriptionList`) n'a pas été aligné sur celui du portail : le copier changerait le rendu, et la charte du back-office viendra avec son design (F-009). Les deux devront **converger avant la création de `ksp-ui`** (F-003) : mêmes noms, mêmes propriétés, mêmes jetons sémantiques, seules les couleurs d'accent différant.
+Depuis F-018 (charte F-017 tirée du logo), les jetons de `globals.css` sont **copiés à l'identique** du portail (seules différences : pas de transitions entre pages, F-013 ; en plus, le tiroir `drawer-panel`). Sont repris tels quels du portail : `Button` (variantes `action`, `primary`, `secondary`, `ghost`, `danger` discret, `inverse`), `Badge` (ton `action`, pastille `dot`), `Eyebrow` (flèche de la signature), `FormMessage` (ton `success`), `PagedListState` (squelette de chargement), les icônes, `brand/logo.tsx` (logo en tracés, version claire automatique sur fond bleu nuit), `brand/signature.tsx` (séparateur, fil de progression, toile de fond) et le favicon `src/app/icon.svg`. Le motif tissé et l'ocre ont disparu.
+
+Restent propres au back-office, recolorés selon les rôles (bleu nuit pour la marque, vert pour l'action et le succès, or pour l'accent seulement en détail ou sur fond bleu nuit, rouge discret pour les actions destructrices) : `ResponsiveTable`, `ConfirmAction`, `SubNav`, `SelectField`, `DescriptionList`, `Panel`, `ResourceView`, `LoadingBlock`, `BackLink`, et dans `components/layout` le cadre bleu nuit et `BackofficeLogo` (logo du groupe suivi de « Back-office »). Ils rejoindront `ksp-ui` quand un deuxième site les utilisera (F-003).
 
 ## Volontairement exclu
 
@@ -412,5 +428,4 @@ Les exclusions communes (couches domaine et application, bibliothèques d'état 
 | Dossiers de fonctionnalités pour les modules encore en attente                  | Ils n'auraient aucun contenu : le catalogue suffit tant qu'il n'y a pas d'écran.                                             |
 | Fonctionnalité `finance` regroupant `payment`, `wallet`, `billing`              | Une fonctionnalité par service garde un contrat de la gateway par dossier.                                                   |
 | Contrôle des rôles dans le front (`proxy.ts`, layout, garde de route)           | Le backend est seul juge des droits ; un contrôle côté front serait une fausse sécurité et un second endroit à tenir à jour. |
-| Copie de `components/ui` du portail                                             | Changement visible ; à faire avec la charte du back-office, avant `ksp-ui`.                                                  |
 | Lectures côté serveur (`queries.ts`, `serverApi()`) pour les données des agents | Option A : aucune donnée personnelle ne passe par le serveur Next ni par son cache.                                          |

@@ -21,7 +21,10 @@ export function LoginSteps({ stage }: { stage: LoginStage }) {
           >
             <span
               aria-hidden="true"
-              className={cn('h-1 rounded-full', done || current ? 'bg-accent' : 'bg-surface-sunken')}
+              className={cn(
+                'h-1 rounded-full',
+                done ? 'bg-signature-1' : current ? 'bg-signature-2' : 'bg-signature-track',
+              )}
             />
             <span
               className={cn(

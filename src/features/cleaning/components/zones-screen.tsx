@@ -125,7 +125,7 @@ function AddZone({ onAdded }: { onAdded: (zone: Zone) => void }) {
         className="w-full"
         required
       />
-      <Button type="submit" aria-busy={pending || undefined} disabled={pending}>
+      <Button type="submit" variant="action" aria-busy={pending || undefined} disabled={pending}>
         {pending ? common.sending : t.addConfirm}
       </Button>
     </form>

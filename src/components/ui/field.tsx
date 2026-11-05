@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactNode, Ref } from 'react';
-import { IconAlert } from '@/components/ui/icons';
+import { IconAlert, IconCheck } from '@/components/ui/icons';
 import { cn } from '@/lib/cn';
 
 /** Identifiants de l'aide et de l'erreur d'un champ, repris par `aria-describedby`. */
@@ -78,14 +78,15 @@ export function FieldError({ id, children }: { id: string; children: ReactNode }
 
 /**
  * Message de formulaire annoncé aux lecteurs d'écran : `alert` pour une erreur, `status` pour une
- * information. La zone reste dans la page (vide) pour que l'annonce soit fiable à son remplissage.
+ * information ou une confirmation (`success`, accusé de réception d'une action). La zone reste dans la
+ * page (vide) pour que l'annonce soit fiable à son remplissage.
  */
 export function FormMessage({
   tone = 'error',
   children,
   className,
 }: {
-  tone?: 'error' | 'info';
+  tone?: 'error' | 'info' | 'success';
   children?: ReactNode;
   className?: string;
 }) {
@@ -96,12 +97,13 @@ export function FormMessage({
         <p
           className={cn(
             'rounded-control text-small flex items-start gap-2 border p-4 font-medium',
-            tone === 'error'
-              ? 'border-danger bg-danger-soft text-danger'
-              : 'border-line bg-surface-muted text-ink',
+            tone === 'error' && 'border-danger bg-danger-soft text-danger',
+            tone === 'info' && 'border-line bg-surface-muted text-ink',
+            tone === 'success' && 'border-action-muted bg-action-soft text-action-ink',
           )}
         >
-          {tone === 'error' ? <IconAlert className="mt-0.5 size-4" /> : null}
+          {tone === 'error' ? <IconAlert className="mt-0.5 size-4 shrink-0" /> : null}
+          {tone === 'success' ? <IconCheck className="mt-0.5 size-4 shrink-0" /> : null}
           <span>{children}</span>
         </p>
       ) : null}

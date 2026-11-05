@@ -134,7 +134,7 @@ export function InterventionForm({
       </SelectField>
       <FormMessage>{error}</FormMessage>
       <div className="flex flex-wrap gap-3">
-        <Button type="submit" aria-busy={pending || undefined} disabled={pending}>
+        <Button type="submit" variant="action" aria-busy={pending || undefined} disabled={pending}>
           {pending ? common.sending : t.confirm}
         </Button>
         <Button variant="ghost" onClick={onCancel} disabled={pending}>

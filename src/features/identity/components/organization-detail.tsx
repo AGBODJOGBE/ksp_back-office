@@ -114,7 +114,7 @@ function Decision({
       description={texts.text}
       confirmLabel={texts.confirm}
       labels={dialog}
-      variant={decision === 'validate' || decision === 'reactivate' ? 'primary' : 'secondary'}
+      variant={decision === 'validate' || decision === 'reactivate' ? 'action' : undefined}
       danger={DANGER.includes(decision)}
       onConfirm={async (data) => {
         const reason = String(data.get('reason') ?? '').trim();
@@ -197,7 +197,7 @@ function OrganizationView({
       </div>
 
       <StatusNotice organization={organization} />
-      <FormMessage tone="info">{done}</FormMessage>
+      <FormMessage tone="success">{done}</FormMessage>
 
       <Panel title={t.decisionsTitle} id="entreprise-decision">
         {!access.decide ? (

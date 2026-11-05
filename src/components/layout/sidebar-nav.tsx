@@ -21,11 +21,17 @@ export function isCurrentModule(slug: string, pathname: string): boolean {
   return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/*
+ * Menu posé sur le cadre bleu nuit (`data-tone="inverse"`) : encres claires, voile clair au survol.
+ * Page courante : fond éclairci, encre blanche en gras, liseré et icône or (l'or est permis sur le bleu
+ * nuit) — jamais la couleur seule.
+ */
 const ITEM = cn(
-  'group/item hover-veil rounded-control relative flex min-h-11 items-center gap-3 px-3 text-[0.9375rem] font-medium',
+  'group/item rounded-control relative isolate flex min-h-11 items-center gap-3 px-3 text-[0.9375rem] font-medium',
   'text-ink-muted hover:text-ink',
-  // Page courante : fond ocre clair, encre pleine, gras et liseré d'accent (pas la couleur seule).
-  'aria-[current=page]:bg-accent-soft aria-[current=page]:text-ink aria-[current=page]:font-semibold',
+  'before:bg-brand-soft before:absolute before:inset-0 before:-z-10 before:rounded-[inherit] before:opacity-0',
+  'before:ease-soft before:transition-opacity before:duration-(--motion-base) hover:before:opacity-100',
+  'aria-[current=page]:text-ink aria-[current=page]:bg-white/10 aria-[current=page]:font-semibold',
   'after:bg-accent after:absolute after:inset-y-2 after:left-0 after:w-1 after:rounded-full after:opacity-0',
   'aria-[current=page]:after:opacity-100',
 );
@@ -51,8 +57,8 @@ export function SidebarNav({ modules }: { modules: readonly BackofficeModule[] }
         <ul aria-hidden="true" className="grid gap-1">
           {SKELETON_WIDTHS.map((width) => (
             <li key={width} className="flex min-h-11 items-center gap-3 px-3">
-              <span className="bg-surface-sunken size-5 shrink-0 rounded-md" />
-              <span className="bg-surface-sunken h-3 rounded-full" style={{ width }} />
+              <span className="bg-brand-soft size-5 shrink-0 rounded-md" />
+              <span className="bg-brand-soft h-3 rounded-full" style={{ width }} />
             </li>
           ))}
         </ul>

@@ -18,7 +18,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   // Valeur littérale exigée par la balise meta : jeton --color-canvas (neutral-25).
-  themeColor: '#fcfbf8',
+  themeColor: '#fafcff',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

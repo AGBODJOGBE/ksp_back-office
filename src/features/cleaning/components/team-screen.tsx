@@ -129,7 +129,7 @@ function TeamDialog({
     <ConfirmAction
       label={team ? t.editTeam : t.createTeam}
       accessibleLabel={team ? `${t.editTeam} ${team.name}` : undefined}
-      variant={team ? 'secondary' : 'primary'}
+      variant={team ? 'secondary' : 'action'}
       title={team ? t.teamTitleEdit(team.name) : t.teamTitleNew}
       confirmLabel={t.teamConfirm}
       labels={dialog}
