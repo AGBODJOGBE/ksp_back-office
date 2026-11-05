@@ -15,11 +15,14 @@ function close(panel: HTMLElement | null) {
 export function SidebarPanel({
   id,
   label,
+  tone,
   className,
   children,
 }: {
   id: string;
   label: string;
+  /** `inverse` : fond bleu nuit, les jetons sémantiques s'inversent (voir globals.css). */
+  tone?: 'inverse';
   className?: string;
   children: ReactNode;
 }) {
@@ -39,6 +42,7 @@ export function SidebarPanel({
       popover="auto"
       aria-label={label}
       data-scroll-lock=""
+      data-tone={tone}
       className={className}
       onClick={closeOnLink}
     >

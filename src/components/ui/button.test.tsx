@@ -9,12 +9,12 @@ describe('boutons', () => {
 
   it('applique la variante et garde les classes ajoutées', () => {
     render(
-      <Button variant="accent" className="mt-4">
+      <Button variant="action" className="mt-4">
         Demander un devis
       </Button>,
     );
     const button = screen.getByRole('button', { name: 'Demander un devis' });
-    expect(button).toHaveClass('bg-accent', 'text-on-accent', 'min-h-11', 'mt-4');
+    expect(button).toHaveClass('bg-action', 'text-on-action', 'min-h-11', 'mt-4');
   });
 
   it('rend un lien qui a l’apparence d’un bouton', () => {

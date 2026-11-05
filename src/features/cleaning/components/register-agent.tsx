@@ -127,7 +127,7 @@ export function RegisterAgentDialog({ onDone }: { onDone: (agent: Agent) => void
   return (
     <ConfirmAction
       label={t.label}
-      variant="primary"
+      variant="action"
       title={t.title}
       description={t.text}
       confirmLabel={t.confirm}

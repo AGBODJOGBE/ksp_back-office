@@ -115,7 +115,9 @@ function Actions({ mission, onChange }: { mission: Mission; onChange: (mission: 
     <div className="grid gap-4">
       <div className="flex flex-wrap gap-3">
         {!closed && !planning && !mission.suspension ? (
-          <Button onClick={() => setPlanning(true)}>{t.schedule.label}</Button>
+          <Button variant="action" onClick={() => setPlanning(true)}>
+            {t.schedule.label}
+          </Button>
         ) : null}
         {!business && mission.payment.status !== 'paid' ? (
           <PaymentDialog mission={mission} onChange={onChange} />

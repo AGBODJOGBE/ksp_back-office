@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { Logo } from '@/components/ui/brand/logo';
-import { WeavePattern } from '@/components/ui/brand/weave';
+import { BackofficeLogo } from '@/components/layout/backoffice-logo';
+import { LogoMark } from '@/components/ui/brand/logo';
+import { SignatureBackdrop, SignatureRule } from '@/components/ui/brand/signature';
 import { Card } from '@/components/ui/card';
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { Heading } from '@/components/ui/heading';
@@ -11,7 +12,7 @@ import { identityTexts, LoginFlow } from '@/features/identity';
 
 export const metadata: Metadata = { title: 'Connexion' };
 
-const LOGO = { href: '/connexion', label: `${siteConfig.name}, connexion`, suffix: 'Back-office' } as const;
+const LOGO = { href: '/connexion', label: `${siteConfig.name}, connexion` } as const;
 
 const PROMISES = [
   'Double authentification obligatoire, avec votre application d’authentification.',
@@ -30,10 +31,13 @@ export default function LoginPage() {
         data-tone="inverse"
         className="relative isolate hidden flex-col justify-between overflow-hidden p-12 lg:sticky lg:top-0 lg:flex lg:h-dvh xl:p-16"
       >
-        <WeavePattern className="text-accent absolute inset-0 -z-10 h-full w-full [mask-image:linear-gradient(to_bottom,black,transparent_85%)] opacity-15" />
-        <Logo {...LOGO} />
+        <SignatureBackdrop className="absolute inset-0 -z-10 size-full [mask-image:linear-gradient(to_top,black,transparent_60%)] opacity-[0.07]" />
+        <div className="grid justify-items-start gap-6">
+          <LogoMark title="Groupe KSP" className="h-auto w-44 xl:w-52" />
+          <p className="text-eyebrow text-ink-muted font-semibold uppercase">Back-office</p>
+        </div>
         <div className="max-w-md">
-          <Eyebrow className="text-accent-ink">{identityTexts.login.eyebrow}</Eyebrow>
+          <Eyebrow>{identityTexts.login.eyebrow}</Eyebrow>
           <Heading as="p" size="h2" className="mt-4">
             {siteConfig.tagline}
           </Heading>
@@ -46,7 +50,10 @@ export default function LoginPage() {
             ))}
           </ul>
         </div>
-        <p className="text-small text-ink-subtle">{siteConfig.domain}</p>
+        <div className="grid gap-4">
+          <SignatureRule size="md" className="max-w-xs" />
+          <p className="text-small text-ink-subtle">{siteConfig.domain}</p>
+        </div>
       </aside>
 
       <main
@@ -54,8 +61,9 @@ export default function LoginPage() {
         tabIndex={-1}
         className="flex min-w-0 flex-col px-4 py-6 focus:outline-none sm:px-8 sm:py-10"
       >
-        <div className="lg:hidden">
-          <Logo {...LOGO} />
+        <div className="grid gap-3 lg:hidden">
+          <BackofficeLogo {...LOGO} className="justify-self-start" />
+          <SignatureRule />
         </div>
         <div className="mx-auto my-auto w-full max-w-[30rem] py-8">
           <Card className="p-5 sm:p-8">

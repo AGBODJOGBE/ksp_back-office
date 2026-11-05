@@ -79,6 +79,17 @@ export function IconCheck(props: IconProps) {
   );
 }
 
+/** Mallette : compte entreprise. */
+export function IconBriefcase(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3.5" y="7.5" width="17" height="12" rx="2" />
+      <path d="M9 7.5V6a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 6v1.5" />
+      <path d="M3.5 12.5h17" />
+    </Icon>
+  );
+}
+
 export function IconClock(props: IconProps) {
   return (
     <Icon {...props}>

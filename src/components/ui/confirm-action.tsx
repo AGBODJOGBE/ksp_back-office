@@ -25,7 +25,7 @@ export function ConfirmAction({
   children,
   onConfirm,
   onOpen,
-  variant = 'secondary',
+  variant,
   danger = false,
   className,
 }: {
@@ -44,8 +44,12 @@ export function ConfirmAction({
   onConfirm: (data: FormData) => Promise<string | null>;
   /** Appelé à chaque ouverture de la boîte, par exemple pour tirer une clé d'idempotence. */
   onOpen?: () => void;
+  /** Bouton d'ouverture : `secondary` par défaut, `danger` (rouge discret) pour une action destructrice. */
   variant?: ButtonVariant;
-  /** Action destructrice (refus, annulation, désactivation) : bouton de confirmation rouge. */
+  /**
+   * Action destructrice (refus, annulation, désactivation) : bouton d'ouverture et de confirmation en
+   * rouge discret. Sinon, la confirmation est l'action principale de la boîte (vert).
+   */
   danger?: boolean;
   className?: string;
 }) {
@@ -78,7 +82,12 @@ export function ConfirmAction({
 
   return (
     <>
-      <Button variant={variant} onClick={open} className={className} aria-label={accessibleLabel}>
+      <Button
+        variant={variant ?? (danger ? 'danger' : 'secondary')}
+        onClick={open}
+        className={className}
+        aria-label={accessibleLabel}
+      >
         {label}
       </Button>
       <dialog
@@ -88,7 +97,7 @@ export function ConfirmAction({
         onCancel={(event) => {
           if (pending) event.preventDefault();
         }}
-        className="rounded-card bg-surface text-ink shadow-raised m-auto w-[min(32rem,calc(100vw-2rem))] max-w-none p-0 backdrop:bg-[rgb(7_18_36/0.45)]"
+        className="rounded-card bg-surface text-ink shadow-raised backdrop:bg-brand-950/45 m-auto w-[min(32rem,calc(100vw-2rem))] max-w-none p-0"
       >
         <form noValidate onSubmit={submit} className="grid gap-4 p-6">
           <h2 id={`${id}-titre`} className="font-display text-h3 font-semibold">
@@ -109,7 +118,8 @@ export function ConfirmAction({
               type="submit"
               aria-busy={pending || undefined}
               disabled={pending}
-              variant={danger ? 'danger' : 'primary'}
+              variant={danger ? 'danger' : 'action'}
+              className={danger ? 'ring-danger/40 ring-1 ring-inset' : undefined}
             >
               {pending ? labels.pending : confirmLabel}
             </Button>

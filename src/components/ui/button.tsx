@@ -2,7 +2,13 @@ import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
-export type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'inverse' | 'danger';
+/**
+ * `action` (vert) : l'action principale d'un écran (simuler, demander un devis, accepter, payer…) ;
+ * `primary` (bleu nuit) : action de marque ou de navigation forte (se connecter, mon espace) ;
+ * `secondary` : action complémentaire ; `ghost` : action discrète ; `danger` : action discrète qui clôt un
+ * dossier (annuler) ; `inverse` : sur fond bleu nuit.
+ */
+export type ButtonVariant = 'action' | 'primary' | 'secondary' | 'ghost' | 'danger' | 'inverse';
 export type ButtonSize = 'md' | 'lg' | 'icon';
 
 /*
@@ -19,13 +25,12 @@ const BASE = cn(
 );
 
 const VARIANTS: Record<ButtonVariant, string> = {
+  action: 'bg-action text-on-action before:bg-action-strong',
   primary: 'bg-brand text-on-brand before:bg-brand-strong',
-  accent: 'bg-accent text-on-accent before:bg-accent-strong',
   secondary: 'border border-line-strong bg-surface text-ink before:bg-surface-sunken',
   ghost: 'text-ink before:bg-surface-sunken',
+  danger: 'text-danger before:bg-danger-soft',
   inverse: 'bg-white text-brand-900 before:bg-brand-100',
-  // Action destructrice confirmée (refus, annulation, désactivation) : voile sombre au survol.
-  danger: 'bg-danger text-white before:bg-black/15',
 };
 
 const SIZES: Record<ButtonSize, string> = {

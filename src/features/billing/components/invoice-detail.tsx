@@ -92,7 +92,7 @@ function PaymentDialog({
   return (
     <ConfirmAction
       label={pay.label}
-      variant="primary"
+      variant="action"
       title={pay.title}
       description={pay.text(balance)}
       confirmLabel={pay.confirm}
@@ -183,7 +183,7 @@ function InvoiceView({
       </div>
 
       <Notice invoice={invoice} />
-      <FormMessage tone="info">{done}</FormMessage>
+      <FormMessage tone="success">{done}</FormMessage>
 
       {canPay ? (
         <div className="flex flex-wrap gap-3">

@@ -122,6 +122,7 @@ function Actions({
       <div className="grid gap-3 sm:flex sm:flex-wrap">
         {status === 'planned' ? (
           <Button
+            variant="action"
             size="lg"
             className={big}
             onClick={() => run('start')}
@@ -134,6 +135,7 @@ function Actions({
         ) : null}
         {status === 'on_hold' ? (
           <Button
+            variant="action"
             size="lg"
             className={big}
             onClick={() => run('resume')}
@@ -151,7 +153,7 @@ function Actions({
                 {t.complete.label}
               </>
             }
-            variant="primary"
+            variant="action"
             className={big}
             title={t.complete.title}
             description={t.complete.text}
