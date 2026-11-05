@@ -6,7 +6,7 @@
 export const fr = {
   common: {
     skipToContent: 'Aller au contenu',
-    backHome: 'Retour au tableau de bord',
+    backHome: 'Retour à Ma journée',
     retry: 'Réessayer',
   },
   shell: {

@@ -3,6 +3,18 @@
  * Un module n'apparaît que pour les agents qui ont l'un de ses rôles, et seulement à partir de sa phase.
  * Les rôles sont ceux des catalogues déclarés par chaque service auprès d'identity.
  */
+
+/** Groupes du menu, dans leur ordre d'affichage. Un groupe sans module visible n'est pas affiché. */
+export const MODULE_GROUPS = [
+  { id: 'journee', label: 'Ma journée' },
+  { id: 'operations', label: 'Opérations' },
+  { id: 'finance', label: 'Finance' },
+  { id: 'clients', label: 'Clients' },
+  { id: 'pilotage', label: 'Pilotage' },
+] as const;
+
+export type ModuleGroup = (typeof MODULE_GROUPS)[number]['id'];
+
 export interface BackofficeModule {
   slug: string;
   label: string;
@@ -10,17 +22,21 @@ export interface BackofficeModule {
   /** Rôles qui donnent accès au module ; '*' = tout agent connecté. */
   roles: readonly string[];
   phase: 1 | 2 | 3 | 4;
+  /** Groupe du menu (`MODULE_GROUPS`). */
+  group: ModuleGroup;
 }
 
 export const SUPER_ADMIN = 'super_admin';
 
 export const MODULES: readonly BackofficeModule[] = [
   {
+    // L'adresse reste `/` (accueil) ; le libellé suit la file « À traiter » (étape 2).
     slug: 'tableau-de-bord',
-    label: 'Tableau de bord',
-    description: 'Indicateurs de chaque métier selon les rôles, tâches du jour, alertes.',
+    label: 'Ma journée',
+    description: 'Ce qui attend une action, du plus urgent au moins urgent, selon vos rôles.',
     roles: ['*'],
     phase: 1,
+    group: 'journee',
   },
   {
     slug: 'recouvrement',
@@ -29,16 +45,19 @@ export const MODULES: readonly BackofficeModule[] = [
       'Dossiers par état, fiche dossier, décisions, affectations, relances planifiées, courriers, reversements, conseil et formations.',
     roles: ['recovery_agent', 'recovery_admin'],
     phase: 1,
+    group: 'operations',
   },
   {
     slug: 'nettoyage',
     label: 'Nettoyage',
     description:
       'Grille tarifaire du simulateur, devis, visites techniques, planning des équipes, missions avec photos, contrats récurrents.',
-    // cleaning_agent : missions et passages sur le terrain (contrat, routes /admin/cleaning/missions et /interventions).
+    // cleaning_agent : missions, passages et visites sur le terrain (contrat, routes /admin/cleaning/missions,
+    // /interventions et /visits).
     // super_admin : même portée que cleaning_admin sur toutes les routes du Nettoyage (contrat).
     roles: ['cleaning_supervisor', 'cleaning_admin', 'cleaning_agent', SUPER_ADMIN],
     phase: 1,
+    group: 'operations',
   },
   {
     slug: 'finance',
@@ -49,6 +68,7 @@ export const MODULES: readonly BackofficeModule[] = [
     // superviseur), paiements en ligne (finance, admin du Nettoyage). super_admin voit tout.
     roles: ['finance_officer', 'cleaning_supervisor', 'cleaning_admin', SUPER_ADMIN],
     phase: 1,
+    group: 'finance',
   },
   {
     slug: 'clients',
@@ -58,6 +78,7 @@ export const MODULES: readonly BackofficeModule[] = [
     // Rôles du contrat (comptes entreprise) : consultation super_admin et support_agent, décisions super_admin.
     roles: ['support_agent', SUPER_ADMIN],
     phase: 1,
+    group: 'clients',
   },
   {
     slug: 'notifications',
@@ -65,6 +86,7 @@ export const MODULES: readonly BackofficeModule[] = [
     description: 'Modèles de messages (SMS, WhatsApp, e-mail), historique des envois et des échecs.',
     roles: ['recovery_admin', 'cleaning_admin'],
     phase: 1,
+    group: 'pilotage',
   },
   {
     slug: 'administration',
@@ -72,6 +94,7 @@ export const MODULES: readonly BackofficeModule[] = [
     description: "Agents, rôles, paramètres généraux, journal d'audit.",
     roles: ['recovery_admin', 'cleaning_admin'],
     phase: 1,
+    group: 'pilotage',
   },
   {
     slug: 'immobilier',
@@ -80,6 +103,7 @@ export const MODULES: readonly BackofficeModule[] = [
       'Projets, étapes et planning, journal de chantier, appels de fonds, budget, fournisseurs, réalisations.',
     roles: ['realestate_site_manager', 'realestate_admin'],
     phase: 2,
+    group: 'operations',
   },
   {
     slug: 'impression',
@@ -88,6 +112,7 @@ export const MODULES: readonly BackofficeModule[] = [
       'File des BAT à valider, production, catalogue des supports, tarifs par palier, devis sur mesure.',
     roles: ['print_prepress', 'print_admin'],
     phase: 3,
+    group: 'operations',
   },
   {
     slug: 'livraison',
@@ -96,6 +121,7 @@ export const MODULES: readonly BackofficeModule[] = [
       'Carte en direct des livreurs et des courses, répartition, livreurs, zones et tarifs, espèces à rapprocher.',
     roles: ['delivery_dispatcher', 'delivery_admin'],
     phase: 3,
+    group: 'operations',
   },
   {
     slug: 'marketplace',
@@ -104,6 +130,7 @@ export const MODULES: readonly BackofficeModule[] = [
       'Validation des vendeurs, modération des produits, commandes, litiges et retours, commissions, catégories.',
     roles: ['commerce_admin'],
     phase: 4,
+    group: 'operations',
   },
 ];
 

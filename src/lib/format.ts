@@ -38,6 +38,19 @@ const time = new Intl.DateTimeFormat('fr-BJ', {
   minute: '2-digit',
 });
 
+const longDate = new Intl.DateTimeFormat('fr-BJ', {
+  timeZone: BENIN_TIME_ZONE,
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
+/** « jeudi 5 novembre 2026 », jour à l'heure du Bénin. */
+export function formatLongDate(value: string | Date): string {
+  return longDate.format(typeof value === 'string' ? new Date(value) : value);
+}
+
 /** « 5 nov. 2026, 09:00 », heure du Bénin. */
 export function formatDateTime(iso: string): string {
   return dateTime.format(new Date(iso));

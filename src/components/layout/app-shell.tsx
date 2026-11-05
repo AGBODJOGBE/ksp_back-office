@@ -13,7 +13,7 @@ import { SidebarPanel } from './sidebar-panel';
 /* Identifiant repris par les boutons d'ouverture et de fermeture (popovertarget). */
 const MENU_ID = 'menu-back-office';
 
-const LOGO = { href: '/', label: `${siteConfig.name}, tableau de bord` } as const;
+const LOGO = { href: '/', label: `${siteConfig.name}, Ma journée` } as const;
 
 /*
  * Le même élément est un tiroir sur téléphone (popover) et une colonne fixe sur grand écran : les styles
@@ -67,9 +67,6 @@ export function AppShell({ children, account }: { children: ReactNode; account?:
         </div>
         <SignatureRule className="mx-4 lg:mx-5" />
         <nav aria-label={t.shell.modules} className="flex-1 px-3 pt-5 pb-6">
-          <p aria-hidden="true" className="text-eyebrow text-ink-subtle mb-2 px-3 font-semibold uppercase">
-            {t.shell.modules}
-          </p>
           <SidebarNav modules={MODULES} />
         </nav>
         {account ? <div className="border-line border-t p-4">{account}</div> : null}

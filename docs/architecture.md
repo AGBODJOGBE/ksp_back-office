@@ -72,19 +72,19 @@ features/<domaine>/
 
 Le nom d'une fonctionnalité est celui du service du backend, en anglais (le code est en anglais, les adresses en français). Seules `features/dashboard`, `features/identity` (connexion, session, comptes entreprise), `features/cleaning` (Nettoyage), `features/billing` (factures) et `features/payment` (paiements en ligne) existent aujourd'hui : les autres domaines n'ont encore que leur entrée dans le catalogue des modules, et **aucun dossier n'est créé avant ses écrans**. Correspondance prévue :
 
-| Module (adresse)                   | Fonctionnalité(s)                                               | Service(s) du backend        | Phase | État                                |
-| ---------------------------------- | --------------------------------------------------------------- | ---------------------------- | ----- | ----------------------------------- |
-| Tableau de bord (`/`)              | `features/dashboard`                                            | — (indicateurs des services) | 1     | présentation provisoire des modules |
-| Recouvrement (`/recouvrement`)     | `features/recovery`                                             | recovery                     | 1     | page d'attente                      |
-| Nettoyage (`/nettoyage`)           | `features/cleaning`                                             | cleaning                     | 1     | écrans branchés (28 routes + 3)     |
-| Finance (`/finance`)               | `features/payment`, `features/wallet`, `features/billing`       | payment, wallet, billing     | 1     | factures et paiements branchés      |
-| Clients et comptes (`/clients`)    | `features/identity`                                             | identity                     | 1     | comptes entreprise branchés         |
-| Notifications (`/notifications`)   | `features/notification`                                         | notification                 | 1     | page d'attente                      |
-| Administration (`/administration`) | `features/identity` (agents, rôles), `features/audit` (journal) | identity, audit              | 1     | page d'attente                      |
-| Immobilier (`/immobilier`)         | `features/realestate`                                           | realestate                   | 2     | masqué (phase suivante)             |
-| Impression (`/impression`)         | `features/print`                                                | print                        | 3     | masqué                              |
-| Livraison (`/livraison`)           | `features/delivery`                                             | delivery                     | 3     | masqué                              |
-| Marketplace (`/marketplace`)       | `features/catalog`, `features/order`                            | catalog, order               | 4     | masqué                              |
+| Module (adresse)                   | Fonctionnalité(s)                                               | Service(s) du backend     | Phase | État                            |
+| ---------------------------------- | --------------------------------------------------------------- | ------------------------- | ----- | ------------------------------- |
+| Ma journée (`/`)                   | `features/dashboard`                                            | — (sections des services) | 1     | file « À traiter » branchée     |
+| Recouvrement (`/recouvrement`)     | `features/recovery`                                             | recovery                  | 1     | page d'attente                  |
+| Nettoyage (`/nettoyage`)           | `features/cleaning`                                             | cleaning                  | 1     | écrans branchés (29 routes + 3) |
+| Finance (`/finance`)               | `features/payment`, `features/wallet`, `features/billing`       | payment, wallet, billing  | 1     | factures et paiements branchés  |
+| Clients et comptes (`/clients`)    | `features/identity`                                             | identity                  | 1     | comptes entreprise branchés     |
+| Notifications (`/notifications`)   | `features/notification`                                         | notification              | 1     | page d'attente                  |
+| Administration (`/administration`) | `features/identity` (agents, rôles), `features/audit` (journal) | identity, audit           | 1     | page d'attente                  |
+| Immobilier (`/immobilier`)         | `features/realestate`                                           | realestate                | 2     | masqué (phase suivante)         |
+| Impression (`/impression`)         | `features/print`                                                | print                     | 3     | masqué                          |
+| Livraison (`/livraison`)           | `features/delivery`                                             | delivery                  | 3     | masqué                          |
+| Marketplace (`/marketplace`)       | `features/catalog`, `features/order`                            | catalog, order            | 4     | masqué                          |
 
 **Finance** (validé le 19 octobre 2026, aligné sur les services `payment`, `wallet` et `billing` du backend) : un seul module dans le menu, `/finance`, et une fonctionnalité par service : `payment` (paiements reçus, rapprochement), `wallet` (portefeuilles, demandes de versement validées par une autre personne), `billing` (factures et avoirs). Le module assemble les trois ; chaque écran a sa sous-adresse (`/finance/paiements`, `/finance/portefeuilles`, `/finance/factures`) et `/finance` ouvre les factures. Pas de fonctionnalité `finance` : elle mélangerait trois contrats de la gateway et ses fichiers grossiraient sans frontière.
 
@@ -110,16 +110,16 @@ Le nom d'une fonctionnalité est celui du service du backend, en anglais (le cod
 
 Une flèche signifie « peut importer ». Les règles, identiques au portail, sont dans `eslint.config.mjs` (`no-restricted-imports`) :
 
-| Règle                                                                                           | Où                                                             |
-| ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Imports relatifs limités au dossier courant (`./`) ; ailleurs, alias `@/`                       | tout `src/`                                                    |
-| Une fonctionnalité s'importe par `@/features/<domaine>` (ou `/server`, `/session`)              | tout `src/`                                                    |
-| Dans sa propre fonctionnalité : `./…` ou `@/features/<domaine>/…`, jamais son propre `index.ts` | `features/<domaine>/`                                          |
-| Rien n'importe `@/app`                                                                          | `features`, `components`, `lib`, `config`, `i18n` (hors tests) |
-| Aucune fonctionnalité                                                                           | `components`, `lib`, `config`, `i18n` (hors tests)             |
-| Aucun composant                                                                                 | `lib`, `config`, `i18n`                                        |
-| `components/ui` n'importe que `components/ui` et `lib` (ni `config`, ni `i18n`, ni le reste)    | `components/ui`                                                |
-| `fetch` interdit hors de `src/lib/api` (F-004)                                                  | tout le dépôt sauf tests et `e2e`                              |
+| Règle                                                                                                          | Où                                                             |
+| -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Imports relatifs limités au dossier courant (`./`) ; ailleurs, alias `@/`                                      | tout `src/`                                                    |
+| Une fonctionnalité s'importe par `@/features/<domaine>` (ou `/server`, `/session`, `/organizations`, `/queue`) | tout `src/`                                                    |
+| Dans sa propre fonctionnalité : `./…` ou `@/features/<domaine>/…`, jamais son propre `index.ts`                | `features/<domaine>/`                                          |
+| Rien n'importe `@/app`                                                                                         | `features`, `components`, `lib`, `config`, `i18n` (hors tests) |
+| Aucune fonctionnalité                                                                                          | `components`, `lib`, `config`, `i18n` (hors tests)             |
+| Aucun composant                                                                                                | `lib`, `config`, `i18n`                                        |
+| `components/ui` n'importe que `components/ui` et `lib` (ni `config`, ni `i18n`, ni le reste)                   | `components/ui`                                                |
+| `fetch` interdit hors de `src/lib/api` (F-004)                                                                 | tout le dépôt sauf tests et `e2e`                              |
 
 Les fonctionnalités sont lues dans `src/features` au lancement d'ESLint : une nouvelle fonctionnalité reçoit ses règles sans modifier la configuration. Limite connue : un `import()` dynamique n'est pas contrôlé.
 
@@ -283,6 +283,26 @@ app/(app)/clients/           layout, entreprises, entreprises/[id]
 
 Briques ajoutées : `components/ui/loading-block.tsx`, `panel.tsx`, `back-link.tsx`, `resource-view.tsx` (sorties de `features/cleaning/components/parts.tsx`, qui les reprend) ; `lib/api/error-text.ts` (`apiErrorText`) ; `lib/api/gateway.test-utils.ts` (gateway simulée commune aux tests).
 
+## Ma journée (`features/dashboard`, étape 2)
+
+Accueil `/` : file « À traiter », puis « Vos modules ». Chaque fonctionnalité fournit ses sections par un point d'entrée `@/features/<domaine>/queue` (forme commune `WorkQueueSection` de `lib/work-queue.ts`) ; le tableau de bord les ordonne, filtre par rôle (`sectionsFor`, affichage seulement) et les lit en parallèle. La file est chargée à la demande (`day-queue-lazy.tsx`). Les points d'entrée `/queue` ne sont pas exportés par les index : une page serveur qui lit un index ne charge donc pas la file (exportés par les index, ils ajoutaient 3,7 à 4,5 Ko aux pages des modules, mesuré).
+
+| Ordre | Section                      | Route et filtres du contrat                                            | Rôles (`x-ksp-roles`)                                             | Action de la ligne                                                     |
+| ----- | ---------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| 1     | Écarts de paiement           | `GET /admin/payment/payments?underReview=true&limit=20`                | finance_officer, cleaning_admin, super_admin                      | « Traiter l'écart » sur place                                          |
+| 2     | Incidents                    | `GET /admin/cleaning/missions?status=on_hold&limit=20`                 | cleaning_supervisor, cleaning_agent, cleaning_admin, super_admin  | passage en attente (`interventions[].status = on_hold`), sinon mission |
+| 3     | Comptes rendus à saisir      | `GET /admin/cleaning/visits?status=scheduled&to=<maintenant>&limit=20` | idem                                                              | fiche de la demande (supervision) ; `/nettoyage/visites` (agent)       |
+| 4     | Demandes à visiter           | `GET /admin/cleaning/quote-requests?status=received&limit=20`          | cleaning_supervisor, cleaning_admin, super_admin                  | fiche de la demande (« Planifier la visite »)                          |
+| 5     | Comptes entreprise à valider | `GET /admin/identity/organizations?status=pending_review&limit=20`     | super_admin, support_agent                                        | fiche (décision : super_admin)                                         |
+| 6     | Factures impayées            | `GET /admin/billing/invoices?status=overdue&limit=20`                  | finance_officer, cleaning_supervisor, cleaning_admin, super_admin | fiche (« Enregistrer un paiement »)                                    |
+
+- Compteur : les listes ne renvoient pas de total ; « N », ou « 20+ » quand `nextCursor` n'est pas nul. 5 lignes au plus, dans l'ordre de la gateway ; « Tout voir » ouvre la liste déjà filtrée.
+- États : squelette par section, section repliée « Rien à traiter », « Tout est à jour » quand toutes sont vides, erreur limitée à la section (message, référence, « Réessayer »), section absente hors des rôles.
+- Hors périmètre (manques du backend) : « Devis à envoyer » (aucun filtre sur la visite réalisée) et « Passages du jour » (aucune liste des passages par date).
+- Menu : modules rangés par groupe (`group` dans `config/modules.ts` : Ma journée, Opérations, Finance, Clients, Pilotage), sans compteur.
+
+Écrans liés : `/nettoyage/visites` (`GET /admin/cleaning/visits`, filtres `?etat=` et `?periode=passee|a-venir`, compte rendu par demande sur la ligne via `POST /admin/cleaning/visits/{id}/complete`, onglet ouvert à `cleaning_agent`) ; `/finance/paiements?a-examiner=1` (`underReview=true`) et « Traiter l'écart » (`POST /admin/payment/payments/{id}/resolve-mismatch`, note obligatoire, `Idempotency-Key` tirée à l'ouverture, accusé de réception, liste relue).
+
 ## Stratégie de rendu
 
 Cache Components (`cacheComponents`) n'est pas activé : c'est le modèle de cache « précédent » de Next 16 qui s'applique (voir le modèle du portail).
@@ -380,6 +400,19 @@ Mesure du 5 novembre 2026, charte F-017 (F-018 : jetons, `components/ui`, logo, 
 | 404                                                    | 178,1 Ko      | 178,1 Ko           |
 
 Le logo et la signature sont des SVG rendus par le serveur : la charte n'ajoute que 0,1 à 0,2 Ko (nouvelles classes du bouton, du badge et du message de formulaire).
+
+Mesure du 5 novembre 2026, Ma journée (`pnpm build && pnpm size`) :
+
+| Page                                                    | First Load JS | Avant    |
+| ------------------------------------------------------- | ------------- | -------- |
+| `/` (Ma journée)                                        | 212,7 Ko      | 210,5 Ko |
+| `/nettoyage` et ses sous-pages statiques (dont visites) | 216,9 Ko      | 216,2 Ko |
+| `/finance` et ses trois sous-pages statiques            | 216,1 Ko      | 215,4 Ko |
+| `/clients` et `/clients/entreprises`                    | 213,2 Ko      | 212,9 Ko |
+| Pages d'attente des trois autres modules                | 210,0 Ko      | 209,8 Ko |
+| `/connexion`                                            | 212,6 Ko      | 212,6 Ko |
+
+La file elle-même (lectures et schémas des quatre services, boîte « Traiter l'écart ») est un morceau chargé après la reprise de la session : 14,8 Ko compressés, hors « First Load JS ».
 
 ## Ajouter une fonctionnalité
 

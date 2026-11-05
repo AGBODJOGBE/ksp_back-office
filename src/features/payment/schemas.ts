@@ -33,6 +33,18 @@ export const paymentSchema = z.object({
   updatedAt: z.string(),
   expiresAt: z.string(),
   completedAt: z.nullable(z.string()),
+  /**
+   * Écart de montant pas encore traité par la finance : tout nouveau paiement de l'objet est refusé
+   * (ADR-032). `false` pour tout autre paiement, et une fois l'écart traité.
+   */
+  underReview: z.boolean(),
+  /** Back-office seulement : nom du payeur et raison sociale, lus dans identity (ADR-029). */
+  customerName: z.optional(z.nullable(z.string())),
+  organizationName: z.optional(z.nullable(z.string())),
+  /** Back-office seulement : traitement de l'écart (date, compte, note) ; `null` tant qu'il n'est pas traité. */
+  mismatchResolvedAt: z.optional(z.nullable(z.string())),
+  mismatchResolvedBy: z.optional(z.nullable(z.string())),
+  mismatchResolutionNote: z.optional(z.nullable(z.string())),
 });
 
 export const paymentListSchema = z.object({

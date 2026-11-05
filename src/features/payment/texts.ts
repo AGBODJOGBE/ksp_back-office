@@ -6,13 +6,15 @@ export const paymentPaths = {
   list: '/finance/paiements',
   /** Paiements d'un objet (mission ou facture), depuis sa fiche. */
   forSubject: (id: string) => `/finance/paiements?objet=${encodeURIComponent(id)}`,
-  toReview: '/finance/paiements?etat=amount_mismatch',
+  /** Écarts de montant pas encore traités (`underReview=true`). */
+  toReview: '/finance/paiements?a-examiner=1',
 } as const;
 
 type StatusLabel = { label: string; tone: BadgeTone };
 
 export const paymentStatuses: Record<string, StatusLabel> = {
-  amount_mismatch: { label: 'À examiner (montant différent)', tone: 'danger' },
+  /** Le statut reste `amount_mismatch` une fois l'écart traité : « à examiner » se lit dans `underReview`. */
+  amount_mismatch: { label: 'Montant différent', tone: 'danger' },
   pending: { label: 'En attente', tone: 'warning' },
   succeeded: { label: 'Réussi', tone: 'success' },
   failed: { label: 'Refusé', tone: 'neutral' },
@@ -88,4 +90,30 @@ export const paymentTexts = {
   failure: (reason: string) => `Motif : ${reason}`,
   expiresAt: (date: string) => `Expire le ${date}`,
   notCompleted: 'Pas encore',
+  queue: {
+    title: 'Écarts de paiement',
+    description:
+      'Paiements approuvés pour un autre montant, pas encore traités : ils bloquent les nouveaux paiements de leur mission ou facture.',
+    seeAll: 'Voir tous les écarts à examiner',
+  },
+  underReviewFilter: 'À examiner',
+  underReview: 'À examiner',
+  resolvedOn: (date: string) => `Écart traité le ${date}`,
+  resolutionNote: (note: string) => `Note : ${note}`,
+  actionColumn: 'Action',
+  resolve: {
+    label: 'Traiter l’écart',
+    accessibleLabel: (subject: string) => `Traiter l’écart : ${subject}`,
+    title: 'Traiter l’écart de montant',
+    summary: (subject: string, amount: string) => `${subject}, ${amount} attendus.`,
+    text: 'Le prestataire a approuvé un autre montant ou une autre devise : rien n’a été enregistré sur la mission ou la facture. Indiquez ce que vous avez fait (remboursement, encaissement enregistré à la main…). Cette action n’enregistre aucun montant.',
+    field: 'Ce qui a été fait',
+    hint: 'Obligatoire, 500 caractères au plus.',
+    required: 'Indiquez ce qui a été fait.',
+    confirm: 'Enregistrer le traitement',
+    pending: 'Envoi…',
+    cancel: 'Annuler',
+    done: (subject: string) =>
+      `Écart traité pour ${subject}. Le paiement n’est plus à examiner et ne bloque plus les nouveaux paiements de cet objet.`,
+  },
 } as const;

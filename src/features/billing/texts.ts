@@ -157,6 +157,14 @@ export const billingTexts = {
     forbidden:
       'Les réglages de la facturation sont réservés à la finance et à l’administration du Nettoyage.',
   },
+  queue: {
+    title: 'Factures impayées',
+    description: 'Factures dont l’échéance est passée sans règlement complet.',
+    seeAll: 'Voir toutes les factures impayées',
+    action: 'Enregistrer un paiement',
+    balance: (amount: string) => `Reste dû ${amount}`,
+    dueAt: (date: string) => `Échéance ${date}`,
+  },
   errors: {
     exceedsBalance: (balance: string) => `Montant supérieur au reste dû (${balance}).`,
     amountInvalid: 'Montant refusé : saisissez un entier supérieur à zéro.',
