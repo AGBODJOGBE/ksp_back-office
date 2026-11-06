@@ -8,7 +8,7 @@ import {
   stubGateway,
   visit,
 } from '@/features/cleaning/fake-gateway.test-utils';
-import { VisitsList } from './visits-list';
+import { measurableFromVisit, VisitsList } from './visits-list';
 
 let search = '';
 const replace = vi.fn();
@@ -161,5 +161,36 @@ describe('visites techniques', () => {
     render(<VisitsList />);
     expect((await screen.findAllByText('Réalisée')).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /^Compte rendu/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('mesures de l’agent préremplies depuis sa visite (ADR-037)', () => {
+  const base = {
+    requestId: SECOND_REQUEST,
+    visitId: SECOND_VISIT,
+    serviceCode: 'house_cleaning',
+    serviceName: 'Nettoyage de maison',
+    status: 'visit_scheduled',
+  };
+
+  it('reprend les réponses du client et les mesures déjà saisies, sans montant inventé', () => {
+    const request = measurableFromVisit({
+      ...base,
+      answers: { surface: 250, bedrooms: 4 },
+      selectedOptions: [],
+      frequency: 'once',
+      calculation: null,
+      measuredAnswers: { surface: 280, bedrooms: 4 },
+    });
+    expect(request).toMatchObject({
+      answers: { surface: 250, bedrooms: 4 },
+      measuredAnswers: { surface: 280, bedrooms: 4 },
+      frequency: 'once',
+      calculation: null,
+    });
+  });
+
+  it('sans réponses (gateway antérieure) : formulaire vide', () => {
+    expect(measurableFromVisit(base)).toBeNull();
   });
 });

@@ -346,6 +346,20 @@ export const visitSchema = z.object({
       serviceCode: z.string(),
       serviceName: z.nullable(z.string()),
       status: z.string(),
+      // Réponses du client et mesures déjà saisies (ADR-037, complément du 2026-11-06) : l'agent n'ouvre pas
+      // la fiche de la demande, il préremplit ses mesures d'ici. Montants à null pour un agent seul.
+      // Facultatifs : une gateway antérieure ne les envoie pas.
+      answers: z.optional(z.nullable(answersSchema)),
+      selectedOptions: z.optional(z.array(optionSelectionSchema)),
+      frequency: z.optional(z.nullable(z.string())),
+      calculation: z.optional(z.nullable(calculationSchema)),
+      answerSummary: z.optional(z.nullable(answerSummarySchema)),
+      measuredAnswers: z.optional(z.nullable(answersSchema)),
+      measuredOptions: z.optional(z.nullable(z.array(optionSelectionSchema))),
+      measuredFrequency: z.optional(z.nullable(z.string())),
+      measuredAt: z.optional(z.nullable(z.string())),
+      measuredByName: displayName,
+      measuredSummary: z.optional(z.nullable(answerSummarySchema)),
     }),
   ),
 });
