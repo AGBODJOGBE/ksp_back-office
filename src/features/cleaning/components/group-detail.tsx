@@ -13,31 +13,34 @@ import { SelectField, TextAreaField } from '@/components/ui/select-field';
 import { newIdempotencyKey } from '@/lib/api';
 import { beninInputToIso, formatDateTime, formatXof } from '@/lib/format';
 import { useResource } from '@/lib/use-resource';
-import {
-  completeGroupVisit,
-  listAgents,
-  listGroupRequests,
-  rejectGroup,
-  scheduleGroupVisit,
-} from '@/features/cleaning/api';
+import { listAgents, listGroupRequests, rejectGroup, scheduleGroupVisit } from '@/features/cleaning/api';
 import { groupErrorText, serviceLabel, skippedLines } from '@/features/cleaning/group-errors';
 import { groupTexts as t } from '@/features/cleaning/group-texts';
 import { cleaningPaths } from '@/features/cleaning/paths';
 import type { Agent, GroupOutcome, QuoteRequest } from '@/features/cleaning/schemas';
 import { cleaningTexts, customerKind, customerLabel, requestStatuses } from '@/features/cleaning/texts';
 import {
+  DOSSIER_STEPS,
   type GroupActionKind,
   groupPrimaryAction,
+  groupStep,
   hasScheduledGroupVisit,
   isOpen,
   isQuotable,
+  type StepState,
 } from '@/features/cleaning/workflow';
+import { requestTexts } from '@/features/cleaning/request-detail-texts';
 import { BackLink, LoadingBlock, Note, ResourceView, StatusBadge, useCleaningAccess } from './parts';
 import { Block, PositionText } from './request-facts';
+import { StepBanner } from './step-banner';
 
 const common = cleaningTexts.common;
 const dialog = { cancel: common.cancel, pending: common.sending };
 
+const GroupReportForm = dynamic(
+  () => import('./group-report-form').then((module_) => module_.GroupReportForm),
+  { loading: () => <LoadingBlock lines={4} /> },
+);
 const GroupQuotesForm = dynamic(
   () => import('./group-quotes-form').then((module_) => module_.GroupQuotesForm),
   { loading: () => <LoadingBlock lines={4} /> },
@@ -151,37 +154,6 @@ function GroupVisitDialog({
           ))}
         </fieldset>
       ) : null}
-    </ConfirmAction>
-  );
-}
-
-function GroupReportDialog({ groupId, requests, primary, onOutcome }: GroupProps & { primary: boolean }) {
-  const key = useOperationKey();
-  const s = t.report;
-  return (
-    <ConfirmAction
-      label={s.label}
-      variant={primary ? 'action' : 'secondary'}
-      title={s.title}
-      description={s.text}
-      confirmLabel={s.confirm}
-      labels={dialog}
-      onOpen={key.draw}
-      onConfirm={async (data) => {
-        const report = text(data, 'report');
-        if (!report) return common.required;
-        return run(() => completeGroupVisit(groupId, report, key.get()), 'report', requests, onOutcome);
-      }}
-    >
-      <TextAreaField
-        id="visite-groupe-compte-rendu"
-        name="report"
-        label={s.field}
-        hint={s.hint}
-        rows={5}
-        maxLength={5000}
-        required
-      />
     </ConfirmAction>
   );
 }
@@ -313,6 +285,7 @@ function GroupView({
   const access = useCleaningAccess();
   const [done, setDone] = useState<Done | null>(null);
   const [quotesOpen, setQuotesOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const first = requests[0];
   const p = t.place;
   if (!first) {
@@ -328,6 +301,7 @@ function GroupView({
   const onOutcome = (next: Done) => {
     setDone(next);
     setQuotesOpen(false);
+    setReportOpen(false);
     onChange(next.outcome.requests);
   };
   const props = { groupId, requests, onOutcome };
@@ -341,20 +315,45 @@ function GroupView({
     actions.visit = <GroupVisitDialog key="visit" {...props} agents={agents} primary={primary === 'visit'} />;
   }
   if (hasScheduledGroupVisit(requests)) {
-    actions.report = <GroupReportDialog key="report" {...props} primary={primary === 'report'} />;
+    actions.report = (
+      <Button
+        key="report"
+        variant={primary === 'report' ? 'action' : 'secondary'}
+        size={primary === 'report' ? 'lg' : undefined}
+        onClick={() => {
+          setQuotesOpen(false);
+          setReportOpen(true);
+        }}
+      >
+        {t.report.label}
+      </Button>
+    );
   }
   if (canQuote) {
     actions.quotes = (
       <Button
         key="quotes"
         variant={primary === 'quotes' ? 'action' : 'secondary'}
-        onClick={() => setQuotesOpen(true)}
+        size={primary === 'quotes' ? 'lg' : undefined}
+        onClick={() => {
+          setReportOpen(false);
+          setQuotesOpen(true);
+        }}
       >
         {t.quotes.label}
       </Button>
     );
   }
   const main = primary ? actions[primary] : null;
+  const current = groupStep(requests);
+  const stateOf = (index: number): StepState => {
+    if (current === 'closed') return 'upcoming';
+    const now = DOSSIER_STEPS.indexOf(current);
+    return index < now ? 'done' : index === now ? 'current' : 'upcoming';
+  };
+  const commonVisit = requests.filter(
+    (r) => isOpen(r) && r.visit?.status === 'scheduled' && !!r.visit.groupVisitId,
+  );
   const others = (Object.keys(actions) as GroupActionKind[])
     .filter((kind) => kind !== primary)
     .map((kind) => actions[kind]);
@@ -369,6 +368,15 @@ function GroupView({
         <p className="text-ink-muted max-w-reading">{t.lead}</p>
       </div>
 
+      <StepBanner
+        label={t.steps}
+        items={DOSSIER_STEPS.map((step, index) => ({
+          key: step,
+          title: requestTexts.steps[step],
+          state: stateOf(index),
+        }))}
+      />
+
       {access?.supervise ? (
         <section aria-labelledby="groupe-actions" className="grid gap-3">
           <h2 id="groupe-actions" className="sr-only">
@@ -378,6 +386,7 @@ function GroupView({
             {main ? (
               <>
                 <span className="text-small text-ink-muted font-semibold">{t.nextStep}</span>
+                {primary ? <span className="text-ink w-full">{t.guidance[primary]}</span> : null}
                 {main}
               </>
             ) : (
@@ -396,6 +405,15 @@ function GroupView({
       ) : null}
 
       <Outcome done={done} requests={requests} />
+
+      {reportOpen && access?.fieldWork ? (
+        <GroupReportForm
+          groupId={groupId}
+          requests={commonVisit}
+          onCancel={() => setReportOpen(false)}
+          onDone={(outcome) => onOutcome({ kind: 'report', outcome })}
+        />
+      ) : null}
 
       {quotesOpen ? (
         <GroupQuotesForm

@@ -2,10 +2,10 @@
 
 export const quoteTexts = {
   title: 'Établir le devis',
-  text: 'Sans ligne saisie, les lignes sont préremplies depuis le calcul de la demande (coefficients et minimum de commande compris). Le prix est figé à l’envoi.',
+  text: 'Sans ligne saisie, les lignes sont préremplies depuis le calcul des mesures constatées (sinon celui de la demande), coefficients et minimum de commande compris. Le prix est figé à l’envoi.',
   gridLines: 'Lignes du devis',
   gridHint:
-    'Laissez vide pour reprendre le calcul de la demande. Un prix négatif est une remise (quantité 1).',
+    'Laissez vide pour reprendre le calcul des mesures (ou de la demande). Un prix négatif est une remise (quantité 1).',
   addLine: 'Ajouter une ligne',
   removeLine: (index: number) => `Retirer la ligne ${index}`,
   lineLabel: 'Libellé',
@@ -31,6 +31,14 @@ export const quoteTexts = {
   durationMonths: 'Durée (mois)',
   review: 'Vérifier avant l’envoi',
   slotsInvalid: 'Chaque créneau doit avoir un début et une fin.',
+  prefill: {
+    measuredTitle: 'Calcul des mesures constatées',
+    notice:
+      'Sans ligne saisie, le devis reprend ce calcul (avec la ligne d’ajustement). Vous pouvez aussi modifier ces lignes avant l’envoi.',
+    edit: 'Modifier ces lignes',
+    adjustmentLine: 'Ajustement (coefficients)',
+    minimumLine: 'Minimum de commande',
+  },
   estimate: {
     title: 'Estimation du serveur',
     notice: 'Estimation : prix définitif calculé à l’envoi.',
@@ -55,7 +63,7 @@ export const quoteTexts = {
     validityDefault: 'valeur des réglages',
     validityDays: (days: number) => `${days} jours`,
     lines: 'Lignes',
-    prefilled: 'Préremplies depuis le calcul de la demande',
+    prefilled: 'Préremplies depuis le calcul des mesures (ou de la demande)',
     customLines: (count: number) => `${count} ligne${count > 1 ? 's' : ''} saisie${count > 1 ? 's' : ''}`,
     recurrence: 'Récurrence',
     none: 'Aucune',

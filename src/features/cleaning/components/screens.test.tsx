@@ -140,7 +140,7 @@ describe('fiche d’une demande', () => {
       ...AGENTS,
     });
     render(<RequestDetail id={ids.request} />);
-    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Demande');
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Dossier');
     expect(screen.getByRole('button', { name: 'Planifier la visite' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Refuser la demande' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Établir le devis' })).not.toBeInTheDocument();
@@ -175,7 +175,7 @@ describe('fiche d’une demande', () => {
       { reason: 'Hors zone' },
       { reason: 'Hors zone' },
     ]);
-    expect(screen.getByText('Aucune action possible dans cet état.')).toBeInTheDocument();
+    expect(screen.getByText('Dossier clos : aucune étape en cours.')).toBeInTheDocument();
   });
 
   it('affiche les noms du client, de l’organisation et de l’agent de la visite', async () => {
@@ -212,7 +212,7 @@ describe('fiche d’une demande', () => {
       ...AGENTS,
     });
     render(<RequestDetail id={ids.request} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Saisir le compte rendu' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Compte rendu sans mesures' }));
     const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText(/Constats de la visite/), { target: { value: 'ok' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Enregistrer le compte rendu' }));
@@ -234,7 +234,7 @@ describe('fiche d’une demande', () => {
     });
     render(<RequestDetail id={ids.request} />);
     expect(await screen.findByText('Awa B.')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Saisir le compte rendu' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Compte rendu sans mesures' }));
     const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText(/Constats de la visite/), {
       target: { value: '4 pièces' },

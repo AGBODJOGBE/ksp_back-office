@@ -112,38 +112,97 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe('fiche d’une demande : trois étapes', () => {
-  it('affiche le lieu en texte seul, les réponses avec leurs libellés et le calcul du serveur', async () => {
+describe('fiche dossier d’une demande', () => {
+  it('bandeau d’étapes, lieu et position avec lien carte, réponses lisibles et prix annoncé', async () => {
     stubGateway({
       [PUBLIC_SERVICES]: SERVICES_WITH_FORM,
       [`GET ${REQUEST}`]: { status: 200, body: groupedRequest({ groupSize: 1, groupId: null }) },
+      [`POST ${REQUEST}/estimate`]: {
+        status: 200,
+        body: {
+          requestId: ids.request,
+          serviceCode: 'house_cleaning',
+          commune: 'Cotonou',
+          calculation: groupedRequest().calculation,
+        },
+      },
       ...AGENTS,
     });
     render(<RequestDetail id={ids.request} />);
-    const steps = await screen.findByRole('list', { name: 'Étapes de la demande' });
+    const banner = await screen.findByRole('navigation', { name: 'Avancement du dossier' });
     expect(
-      within(steps)
-        .getAllByRole('heading', { level: 2 })
-        .map((h) => h.textContent),
-    ).toEqual(['Demande· terminée', 'Visite· en cours', 'Devis· à venir']);
-    expect(screen.getByText('Maison TEST')).toBeInTheDocument();
+      within(banner)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual([
+      '✓Demande, terminéeterminée',
+      '2Visite et mesures, en coursen cours',
+      '3Devis, à venirà venir',
+      '4Mission, à venirà venir',
+      '5Paiement, à venirà venir',
+    ]);
+    expect(within(banner).getByRole('link', { current: 'step' })).toHaveTextContent('Visite et mesures');
+    // Seule l'étape en cours est dépliée.
+    expect(document.getElementById('etape-visit')).toHaveAttribute('open');
+    expect(document.getElementById('etape-request')).not.toHaveAttribute('open');
+    expect(screen.getByRole('button', { name: 'Planifier la visite' })).toBeInTheDocument();
+    expect(screen.getAllByText('Maison TEST').length).toBeGreaterThan(0);
     expect(screen.getByText('Portail vert, face à l’école TEST')).toBeInTheDocument();
     expect(screen.getByText('Rue 12, Akpakpa, Cotonou')).toBeInTheDocument();
     expect(screen.getByText('Latitude 6,3703, longitude 2,3912')).toBeInTheDocument();
     expect(screen.getByText(/± 8 m/)).toBeInTheDocument();
-    // Aucune carte ni lien externe vers la position.
-    expect(
-      screen
-        .queryAllByRole('link')
-        .filter((link) => /google|openstreetmap|^geo:/.test(link.getAttribute('href') ?? '')),
-    ).toHaveLength(0);
+    expect(screen.getByRole('link', { name: /Voir sur la carte/ })).toHaveAttribute(
+      'href',
+      'https://www.google.com/maps/search/?api=1&query=6.3703,2.3912',
+    );
     expect(await screen.findByText('120 m²')).toBeInTheDocument();
-    expect(screen.getByText('Très sale')).toBeInTheDocument();
+    expect(screen.getAllByText('Très sale').length).toBeGreaterThan(0);
     expect(screen.getByText('Option : Vitres')).toBeInTheDocument();
     expect(screen.getByText('6 fenêtres')).toBeInTheDocument();
-    expect(screen.getByText('Une fois')).toBeInTheDocument();
-    expect(screen.getByText('Grille version 3')).toBeInTheDocument();
-    expect(screen.getByText('Cotonou : × 1,15')).toBeInTheDocument();
+    expect(screen.getAllByText('Grille version 3').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Cotonou : × 1,15').length).toBeGreaterThan(0);
+  });
+
+  it('demande au nouveau format : réponses lisibles, sans « Type de locaux » ni « Quantité »', async () => {
+    stubGateway({
+      [PUBLIC_SERVICES]: SERVICES,
+      [`GET ${REQUEST}`]: {
+        status: 200,
+        body: groupedRequest({
+          groupSize: 1,
+          groupId: null,
+          answerSummary: {
+            fields: [
+              {
+                code: 'rooms',
+                label: 'Nombre de pièces',
+                type: 'number',
+                value: 6,
+                display: '6 pièces',
+                unitLabel: 'pièces',
+              },
+              {
+                code: 'pets',
+                label: 'Présence d’animaux',
+                type: 'boolean',
+                value: false,
+                display: 'Non',
+                unitLabel: null,
+              },
+            ],
+            options: [],
+            frequency: { code: 'once', label: 'Une fois' },
+          },
+        }),
+      },
+      ...AGENTS,
+    });
+    render(<RequestDetail id={ids.request} />);
+    expect(await screen.findByText('6 pièces')).toBeInTheDocument();
+    expect(screen.getByText('Présence d’animaux')).toBeInTheDocument();
+    expect(screen.getByText('Nettoyage de maison TEST', { selector: 'dd' })).toBeInTheDocument();
+    expect(screen.queryByText('Type de locaux')).not.toBeInTheDocument();
+    expect(screen.queryByText('Quantité', { selector: 'dt' })).not.toBeInTheDocument();
   });
 
   it('une demande d’un groupe mène au groupe ; la planifier seule avertit qu’elle se détache', async () => {
@@ -176,7 +235,7 @@ describe('fiche d’une demande : trois étapes', () => {
     render(<RequestDetail id={ids.request} />);
     expect(await screen.findByText('Devis envoyé : en attente de la réponse du client.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Renvoyer un devis' })).toBeInTheDocument();
-    expect(screen.queryByText('Prochaine étape')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Établir le devis' })).not.toBeInTheDocument();
   });
 
   it('403 : une note ; 404 : introuvable, sans « Réessayer »', async () => {
@@ -236,8 +295,10 @@ describe('envoi du devis d’une demande', () => {
     expect(await screen.findByText(/Prix d’un passage estimé : 13\s800/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Vérifier avant l’envoi' }));
     const dialog = screen.getByRole('dialog', { name: 'Envoyer — le prix est figé à l’envoi' });
-    expect(within(dialog).getByText('Préremplies depuis le calcul de la demande')).toBeInTheDocument();
-    expect(within(dialog).getByText('Estimation : prix définitif calculé à l’envoi.')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('Préremplies depuis le calcul des mesures (ou de la demande)'),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText(/Sans ligne saisie, le devis reprend ce calcul/)).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Envoyer le devis' }));
     expect(await within(dialog).findByText(/la fiche a été relue/)).toBeInTheDocument();
     await waitFor(() =>
@@ -375,7 +436,9 @@ describe('vue d’un groupe', () => {
     expect(keys[0]).toMatch(/^[A-Za-z0-9_-]{8,100}$/);
     expect(new Set(keys).size).toBe(1);
     // La visite commune planifiée, le compte rendu commun devient l'action principale.
-    expect(screen.getByRole('button', { name: 'Saisir le compte rendu commun' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Saisir le compte rendu commun et les mesures' }),
+    ).toBeInTheDocument();
   });
 
   it('devis groupés : erreur « tout ou rien » qui nomme la demande, puis envoi', async () => {

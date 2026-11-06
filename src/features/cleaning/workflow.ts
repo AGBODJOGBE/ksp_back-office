@@ -128,3 +128,81 @@ export function readLocationInput(values: Record<LocationField, string>):
     },
   };
 }
+
+/** Étapes du dossier, dans l'ordre : demande, visite et mesures, devis, mission, paiement. */
+export const DOSSIER_STEPS = ['request', 'visit', 'quote', 'mission', 'payment'] as const;
+export type DossierStep = (typeof DOSSIER_STEPS)[number];
+
+/** États qui ferment une demande avant toute mission. */
+const CLOSED = new Set(['declined', 'rejected', 'expired', 'cancelled']);
+
+/** Mission liée, quand elle est lue : son état et celui de son paiement. */
+export interface MissionProgress {
+  status: string;
+  payment: { status: string };
+}
+
+/**
+ * Étape en cours d'un dossier : `visit` tant que la visite n'est pas réalisée, `quote` jusqu'à l'accord du
+ * client, `mission` ensuite, `payment` une fois la mission terminée et tant qu'elle n'est pas réglée. `done` :
+ * mission terminée et réglée ; `closed` : demande close (refus, expiration, annulation) ou mission annulée.
+ */
+export function dossierStep(
+  request: Pick<QuoteRequest, 'status' | 'visit'>,
+  mission?: MissionProgress | null,
+): DossierStep | 'done' | 'closed' {
+  if (CLOSED.has(request.status)) return 'closed';
+  if (request.status === 'accepted') {
+    if (!mission) return 'mission';
+    if (mission.status === 'cancelled') return 'closed';
+    if (mission.status !== 'completed') return 'mission';
+    return mission.payment.status === 'paid' ? 'done' : 'payment';
+  }
+  if (request.status === 'quote_sent') return 'quote';
+  return request.visit?.status === 'completed' ? 'quote' : 'visit';
+}
+
+export type StepState = 'done' | 'current' | 'upcoming';
+
+/**
+ * État d'une étape par rapport à l'étape en cours. Dossier clos : les étapes franchies (visite réalisée, devis
+ * envoyé, mission) sont terminées, les autres restent à venir.
+ */
+export function stepState(
+  step: DossierStep,
+  current: DossierStep | 'done' | 'closed',
+  request: Pick<QuoteRequest, 'visit' | 'quote' | 'missionId'>,
+): StepState {
+  if (current === 'done') return 'done';
+  if (current === 'closed') {
+    const reached =
+      step === 'request' ||
+      (step === 'visit' && request.visit?.status === 'completed') ||
+      (step === 'quote' && !!request.quote) ||
+      (step === 'mission' && !!request.missionId);
+    return reached ? 'done' : 'upcoming';
+  }
+  const at = DOSSIER_STEPS.indexOf(step);
+  const now = DOSSIER_STEPS.indexOf(current);
+  return at < now ? 'done' : at === now ? 'current' : 'upcoming';
+}
+
+/** Les mesures constatées se saisissent tant qu'aucun devis n'est envoyé (ADR-037, sinon `CLEANING_MEASUREMENTS_LOCKED`). */
+export const measurementsOpen = (request: Pick<QuoteRequest, 'status'>) =>
+  request.status === 'received' || request.status === 'visit_scheduled';
+
+/**
+ * Étape en cours d'un groupe : celle de la demande la moins avancée parmi les demandes encore actives (closes
+ * ignorées) ; `closed` si toutes sont closes. La mission n'est pas lue : une demande acceptée compte pour `mission`.
+ */
+export function groupStep(
+  requests: ReadonlyArray<Pick<QuoteRequest, 'status' | 'visit'>>,
+): DossierStep | 'closed' {
+  const steps = requests
+    .map((request) => dossierStep(request))
+    .filter((step): step is DossierStep => step !== 'closed' && step !== 'done');
+  if (!steps.length) return 'closed';
+  return steps.reduce((least, step) =>
+    DOSSIER_STEPS.indexOf(step) < DOSSIER_STEPS.indexOf(least) ? step : least,
+  );
+}

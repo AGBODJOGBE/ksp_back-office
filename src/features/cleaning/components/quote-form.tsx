@@ -104,7 +104,7 @@ export function QuoteForm({
         <p className="text-small text-ink-muted mt-1">{t.text}</p>
       </div>
 
-      <EstimateNote request={request} />
+      <EstimateNote request={request} onUseLines={(lines) => setDraft({ ...draft, lines })} />
       <DraftEditor
         draft={draft}
         onChange={setDraft}

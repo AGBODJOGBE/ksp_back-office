@@ -54,7 +54,7 @@ export const groupTexts = {
     confirm: 'Planifier la visite commune',
   },
   report: {
-    label: 'Saisir le compte rendu commun',
+    label: 'Saisir le compte rendu commun et les mesures',
     title: 'Compte rendu commun',
     text: 'Le même compte rendu complète toutes les visites encore planifiées de la visite commune.',
     field: 'Constats de la visite',
@@ -63,6 +63,21 @@ export const groupTexts = {
   },
   quotes: {
     label: 'Établir les devis groupés',
+  },
+  measures: {
+    title: 'Mesures constatées (facultatif)',
+    lead: 'Cochez une demande pour corriger ses dimensions réelles : le prix se recalcule tout seul. Les demandes non cochées gardent les réponses du client.',
+    include: (service: string) => `Joindre les mesures de « ${service} »`,
+    reportRequired: 'Écrivez le compte rendu commun avant de clore la visite.',
+    closeTitle: 'Clore la visite commune ?',
+    closeText: (count: number) =>
+      `La visite sera marquée « réalisée » pour ${count} demande${count > 1 ? 's' : ''}, avec ce compte rendu et les mesures jointes. Les devis pourront ensuite être envoyés.`,
+  },
+  steps: 'Avancement du groupe',
+  guidance: {
+    visit: 'La visite des lieux est obligatoire avant tout devis : planifiez une visite commune.',
+    report: 'Après la visite, saisissez le compte rendu commun et, si besoin, les dimensions réelles.',
+    quotes: 'La visite est faite : envoyez les devis, préremplis avec le calcul des mesures.',
   },
   reject: {
     label: 'Refuser le groupe',

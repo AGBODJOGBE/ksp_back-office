@@ -1,20 +1,50 @@
-/** Textes de la fiche d'une demande de devis (trois étapes : demande, visite, devis). */
+/** Textes de la fiche dossier d'une demande (étapes : demande, visite et mesures, devis, mission, paiement). */
 
 export const requestTexts = {
   back: 'Toutes les demandes',
-  title: (service: string) => `Demande · ${service}`,
+  title: (service: string) => `Dossier · ${service}`,
   receivedAt: (date: string) => `Reçue le ${date}`,
   notFound: 'Demande introuvable. Elle a pu être supprimée, ou l’adresse est incomplète.',
   forbidden:
     'Votre rôle ne permet pas d’ouvrir les demandes de devis. Demandez l’accès à l’admin du Nettoyage.',
   steps: {
-    label: 'Étapes de la demande',
+    label: 'Avancement du dossier',
     request: 'Demande',
-    visit: 'Visite',
+    visit: 'Visite et mesures',
     quote: 'Devis',
+    mission: 'Mission',
+    payment: 'Paiement',
     done: 'terminée',
     current: 'en cours',
     upcoming: 'à venir',
+    closed: 'Dossier clos : aucune étape en cours.',
+    finished: 'Dossier terminé : mission réalisée et réglée.',
+  },
+  /** Phrase qui accompagne l'action principale, selon l'étape. */
+  guidance: {
+    schedule_visit: 'La visite des lieux est obligatoire avant tout devis : planifiez-la.',
+    report: 'Après la visite, corrigez les dimensions réelles : le prix se recalcule tout seul.',
+    quote: 'La visite est faite : envoyez le devis, prérempli avec le calcul des mesures.',
+    mission: 'Le client a accepté : planifiez et suivez les passages de la mission.',
+    payment: 'La mission est terminée : vérifiez que le paiement est réglé.',
+    group: 'Cette étape se traite pour tout le groupe, sur la page du groupe.',
+  },
+  measuresAction: 'Saisir les mesures et le compte rendu',
+  paymentAction: 'Voir le paiement',
+  mission: {
+    none: 'Pas encore de mission : elle est créée quand le client accepte le devis.',
+    status: 'État de la mission',
+    interventions: 'Passages réalisés',
+    open: 'Ouvrir la mission',
+    loading: 'Lecture de la mission…',
+    unavailable: 'Mission illisible pour l’instant : ouvrez-la pour voir son état.',
+  },
+  payment: {
+    none: 'Le paiement se suit sur la mission, une fois le devis accepté.',
+    status: 'État du paiement',
+    paid: 'Déjà réglé',
+    total: 'Total',
+    business: 'Client entreprise : réglé par facture (Finance).',
   },
   group: {
     banner: (size: number) =>
@@ -42,16 +72,19 @@ export const requestTexts = {
   networkReread:
     'La connexion a été coupée pendant l’envoi : la fiche a été relue pour montrer son état réel. Vérifiez-la avant de recommencer.',
   customer: 'Client',
-  place: 'Lieu',
+  place: 'Lieu et prestation',
   answers: 'Réponses du client',
-  calculation: 'Calcul du serveur',
+  calculation: 'Prix annoncé au client',
+  map: 'Voir sur la carte',
+  newTab: '(nouvel onglet)',
   fields: {
     kind: 'Type de client',
     customerName: 'Nom du client',
     organizationName: 'Organisation',
     comment: 'Commentaire du client',
     closingReason: 'Motif de clôture',
-    placeType: 'Type de lieu',
+    placeType: 'Lieu',
+    service: 'Prestation',
     landmark: 'Repère',
     address: 'Adresse',
     geocodedAddress: 'Adresse trouvée par la position',
@@ -147,7 +180,7 @@ export const requestTexts = {
     confirm: 'Planifier',
   },
   report: {
-    label: 'Saisir le compte rendu',
+    label: 'Compte rendu sans mesures',
     labelAlone: 'Compte rendu de cette demande seule',
     title: 'Compte rendu de la visite',
     field: 'Constats de la visite',

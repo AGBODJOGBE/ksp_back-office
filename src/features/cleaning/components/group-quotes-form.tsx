@@ -146,7 +146,10 @@ export function GroupQuotesForm({
             </label>
             {entry.included ? (
               <>
-                <EstimateNote request={entry.request} />
+                <EstimateNote
+                  request={entry.request}
+                  onUseLines={(lines) => update(index, { draft: { ...entry.draft, lines } })}
+                />
                 <DraftEditor
                   draft={entry.draft}
                   onChange={(draft) => update(index, { draft })}

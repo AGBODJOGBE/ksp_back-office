@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { ConfirmAction } from '@/components/ui/confirm-action';
 import { FormMessage } from '@/components/ui/field';
 import { PagedListState } from '@/components/ui/paged-list-state';
@@ -16,10 +17,11 @@ import { completeGroupVisit, completeVisit, listVisits } from '@/features/cleani
 import { attempt, errorText } from '@/features/cleaning/errors';
 import { locationTexts } from '@/features/cleaning/location-texts';
 import { cleaningPaths } from '@/features/cleaning/paths';
-import type { Visit } from '@/features/cleaning/schemas';
+import { measureTexts } from '@/features/cleaning/measure-texts';
+import type { QuoteRequest, Visit } from '@/features/cleaning/schemas';
 import { cleaningTexts, customerLabel, requestStatuses, visitStatuses } from '@/features/cleaning/texts';
 import { visitsTexts as t } from '@/features/cleaning/visit-texts';
-import { Note, StatusBadge, useCleaningAccess } from './parts';
+import { LoadingBlock, Note, StatusBadge, useCleaningAccess } from './parts';
 
 const common = cleaningTexts.common;
 
@@ -27,6 +29,12 @@ const common = cleaningTexts.common;
 const LocationAction = dynamic(() => import('./location-action').then((module_) => module_.LocationAction), {
   loading: () => <span aria-hidden="true" className="bg-surface-sunken rounded-control block h-11 w-40" />,
 });
+
+/** Mesures constatées : formulaire chargé seulement à l'ouverture. */
+const MeasurementsPanel = dynamic(
+  () => import('./measurements-panel').then((module_) => module_.MeasurementsPanel),
+  { loading: () => <LoadingBlock lines={4} /> },
+);
 
 /** Identifiant de groupe dans l'adresse (`?groupe=`, UUID) ; une valeur mal formée est ignorée. */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -148,7 +156,17 @@ export function GroupReportAction({
 /** Visite commune encore planifiée, avec plusieurs demandes : le compte rendu commun est proposé. */
 const isGroupVisit = (visit: Visit) => !!visit.groupVisitId && !!visit.groupId && visit.requests.length > 1;
 
-function columns(supervise: boolean, onDone: (message: string) => void): TableColumn<Visit>[] {
+/** Demande dont on peut encore saisir les mesures : aucun devis envoyé (ADR-037). */
+const measurable = (request: VisitRequest) =>
+  request.status === 'received' || request.status === 'visit_scheduled';
+
+type Measuring = { visit: Visit; request: VisitRequest };
+
+function columns(
+  supervise: boolean,
+  onDone: (message: string) => void,
+  onMeasure: (measuring: Measuring) => void,
+): TableColumn<Visit>[] {
   return [
     {
       key: 'visit',
@@ -238,6 +256,22 @@ function columns(supervise: boolean, onDone: (message: string) => void): TableCo
       cell: (visit) =>
         visit.status === 'scheduled' && visit.requests.length ? (
           <span className="flex flex-wrap justify-end gap-2 md:justify-start">
+            {visit.requests.filter(measurable).map((request) => {
+              const label =
+                visit.requests.length > 1
+                  ? measureTexts.measures.openFor(serviceOf(request))
+                  : measureTexts.measures.open;
+              return (
+                <Button
+                  key={`mesures-${request.requestId}`}
+                  variant={isGroupVisit(visit) ? 'secondary' : 'action'}
+                  aria-label={`${label} — ${serviceOf(request)}, ${customerLabel(visit)}`}
+                  onClick={() => onMeasure({ visit, request })}
+                >
+                  {label}
+                </Button>
+              );
+            })}
             {isGroupVisit(visit) && visit.groupId ? (
               <GroupReportAction visit={visit} groupId={visit.groupId} onDone={onDone} />
             ) : null}
@@ -247,7 +281,7 @@ function columns(supervise: boolean, onDone: (message: string) => void): TableCo
                 visit={visit}
                 request={request}
                 named={visit.requests.length > 1}
-                secondary={isGroupVisit(visit)}
+                secondary
                 onDone={onDone}
               />
             ))}
@@ -272,6 +306,53 @@ function columns(supervise: boolean, onDone: (message: string) => void): TableCo
   ];
 }
 
+/**
+ * Mesures constatées d'une demande de la visite (agent sur place ou supervision) : l'agent n'a pas accès à la
+ * demande, le formulaire part vide ; après l'enregistrement, la demande renvoyée montre l'écart avec le client.
+ * Compte rendu avec les mesures pour une visite propre ; visite commune : mesures seules (compte rendu commun).
+ */
+function MeasurePanel({
+  measuring,
+  measured,
+  onSaved,
+  onClose,
+}: {
+  measuring: Measuring;
+  measured: QuoteRequest | null;
+  onSaved: (request: QuoteRequest, withReport: boolean) => void;
+  onClose: () => void;
+}) {
+  const { visit, request } = measuring;
+  return (
+    <section
+      aria-labelledby="mesures-visite-titre"
+      className="rounded-card border-brand-muted bg-surface grid scroll-mt-4 gap-4 border p-4 sm:p-6"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="mesures-visite-titre" className="font-display text-h3 text-ink font-semibold">
+          {measureTexts.measures.panelTitle(serviceOf(request))}
+        </h2>
+        <Button variant="ghost" onClick={onClose}>
+          {measureTexts.measures.close}
+        </Button>
+      </div>
+      <p className="text-small text-ink-muted">
+        {t.report.summary(serviceOf(request), formatDateTime(visit.scheduledAt), visit.commune)}
+      </p>
+      <MeasurementsPanel
+        key={request.requestId}
+        requestId={request.requestId}
+        serviceCode={request.serviceCode}
+        request={measured}
+        visitId={isGroupVisit(visit) ? null : request.visitId}
+        locked={false}
+        idPrefix={`mesures-${request.requestId}`}
+        onSaved={onSaved}
+      />
+    </section>
+  );
+}
+
 /** Une liste par combinaison de filtres ; l'instant de référence de la période est pris à l'ouverture. */
 function Visits({
   status,
@@ -279,12 +360,14 @@ function Visits({
   group,
   supervise,
   onDone,
+  onMeasure,
 }: {
   status: string;
   period: PeriodParam | '';
   group: string;
   supervise: boolean;
   onDone: (message: string) => void;
+  onMeasure: (measuring: Measuring) => void;
 }) {
   const [now] = useState(() => new Date().toISOString());
   const load = useCallback(
@@ -305,7 +388,7 @@ function Visits({
     <PagedListState list={list} empty={<Note>{t.empty}</Note>} labels={common}>
       <ResponsiveTable
         caption={t.caption}
-        columns={columns(supervise, onDone)}
+        columns={columns(supervise, onDone, onMeasure)}
         rows={list.items}
         rowKey={(visit) => visit.id}
       />
@@ -325,6 +408,8 @@ export function VisitsList() {
   const pathname = usePathname();
   const { replace } = useRouter();
   const [done, setDone] = useState<string | null>(null);
+  const [measuring, setMeasuring] = useState<Measuring | null>(null);
+  const [measured, setMeasured] = useState<QuoteRequest | null>(null);
   // Relecture après un compte rendu : la visite quitte les visites planifiées.
   const [version, setVersion] = useState(0);
   const status = params.get('etat') ?? '';
@@ -391,6 +476,25 @@ export function VisitsList() {
         </div>
       ) : null}
       <FormMessage tone="success">{done}</FormMessage>
+      {measuring ? (
+        <MeasurePanel
+          measuring={measuring}
+          measured={measured}
+          onSaved={(next, withReport) => {
+            setMeasured(next);
+            if (withReport) {
+              setDone(t.report.done(serviceOf(measuring.request), customerLabel(measuring.visit)));
+              setMeasuring(null);
+              setMeasured(null);
+              setVersion((value) => value + 1);
+            }
+          }}
+          onClose={() => {
+            setMeasuring(null);
+            setMeasured(null);
+          }}
+        />
+      ) : null}
       <Visits
         key={`${status}|${period}|${group}|${version}`}
         status={status}
@@ -400,6 +504,14 @@ export function VisitsList() {
         onDone={(message) => {
           setDone(message);
           setVersion((value) => value + 1);
+        }}
+        onMeasure={(next) => {
+          setDone(null);
+          setMeasured(null);
+          setMeasuring(next);
+          requestAnimationFrame(() =>
+            document.getElementById('mesures-visite-titre')?.scrollIntoView?.({ block: 'start' }),
+          );
         }}
       />
     </div>

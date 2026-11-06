@@ -112,6 +112,31 @@ const calculationSchema = z.object({
   recommendedTeamSize: z.int(),
 });
 
+/** `CleaningAnswerSummaryField` (ADR-037) : réponse lisible, valeur affichable déjà mise en forme par cleaning. */
+const answerSummaryFieldSchema = z.object({
+  code: z.string(),
+  label: z.string(),
+  type: z.string(),
+  value: z.union([z.int(), z.string(), z.boolean()]),
+  display: z.string(),
+  unitLabel: z.nullable(z.string()),
+});
+
+/**
+ * `CleaningAnswerSummary` (ADR-037) : réponses lisibles d'une demande, sans prix. Une demande à l'ancien format
+ * donne « Type de locaux » et « Quantité ».
+ */
+export const answerSummarySchema = z.object({
+  fields: z.array(answerSummaryFieldSchema),
+  options: z.array(
+    z.object({ optionCode: z.string(), label: z.string(), fields: z.array(answerSummaryFieldSchema) }),
+  ),
+  frequency: z.nullable(z.object({ code: z.string(), label: z.string() })),
+});
+
+/** `CleaningOptionSelection` : option choisie et ses réponses. */
+const optionSelectionSchema = z.object({ code: z.string(), answers: answersSchema });
+
 /** `CleaningGeoLocation` : position GPS (degrés décimaux WGS 84), précision en mètres ou `null`. */
 const geoLocationSchema = z.object({
   latitude: z.number(),
@@ -143,7 +168,7 @@ export const quoteRequestSchema = z.object({
   serviceCode: z.string(),
   options: z.array(z.string()),
   answers: z.nullable(answersSchema),
-  selectedOptions: z.array(z.object({ code: z.string(), answers: answersSchema })),
+  selectedOptions: z.array(optionSelectionSchema),
   frequency: z.nullable(z.string()),
   pricingVersion: z.nullable(z.int()),
   calculation: z.nullable(calculationSchema),
@@ -177,6 +202,28 @@ export const quoteRequestSchema = z.object({
   geocodedAddress: z.nullable(z.string()),
   /** Détail d'une demande seulement : les autres demandes du groupe. */
   groupRequests: z.optional(z.array(groupedRequestSchema)),
+  /*
+   * ADR-037 : réponses lisibles et mesures constatées après la visite. Obligatoires dans le contrat, lues comme
+   * facultatives : une gateway antérieure à l'ADR-037 ne casse pas la fiche (bloc des mesures sans historique).
+   */
+  answerSummary: z.optional(z.nullable(answerSummarySchema)),
+  measuredAnswers: z.optional(z.nullable(answersSchema)),
+  measuredOptions: z.optional(z.nullable(z.array(optionSelectionSchema))),
+  measuredFrequency: z.optional(z.nullable(z.string())),
+  measuredCalculation: z.optional(z.nullable(calculationSchema)),
+  measuredPricingVersion: z.optional(z.nullable(z.int())),
+  measuredAt: z.optional(z.nullable(z.string())),
+  measuredBy: z.optional(z.nullable(z.string())),
+  measuredByName: displayName,
+  measuredSummary: z.optional(z.nullable(answerSummarySchema)),
+});
+
+/** `CleaningRequestEstimate` (ADR-037) : recalcul d'une demande avec d'autres réponses, rien n'est enregistré. */
+export const requestEstimateSchema = z.object({
+  requestId: z.string(),
+  serviceCode: z.string(),
+  commune: z.string(),
+  calculation: calculationSchema,
 });
 
 export const quoteRequestListSchema = z.object({
@@ -308,31 +355,84 @@ export const visitListSchema = z.object({
   nextCursor: z.nullable(z.string()),
 });
 
-const optionSchema = z.object({ code: z.string(), label: z.string(), price: z.nullable(moneySchema) });
+/** `CleaningFieldChoice` : valeur d'un champ à choix, avec son supplément et/ou son coefficient. */
+const fieldChoiceSchema = z.object({
+  code: z.string(),
+  label: z.string(),
+  supplement: optionalMoney,
+  coefficientBp: z.nullable(z.int()),
+  active: z.boolean(),
+});
 
-/** `CleaningPricing` : grille en vigueur d'une prestation (version datée, auteur). */
+/** `CleaningFieldDefinition` (ADR-033) : champ du formulaire avec ses prix ; propriétés d'un autre type nulles. */
+const fieldDefinitionSchema = z.object({
+  code: z.string(),
+  label: z.string(),
+  type: z.string(),
+  required: z.boolean(),
+  helpText: z.nullable(z.string()),
+  active: z.boolean(),
+  unitLabel: z.nullable(z.string()),
+  min: z.nullable(z.int()),
+  max: z.nullable(z.int()),
+  pricePerUnit: optionalMoney,
+  choices: z.array(fieldChoiceSchema),
+  supplementIfYes: optionalMoney,
+  coefficientBpIfYes: z.nullable(z.int()),
+});
+
+/** `CleaningOptionDefinition` : option (prestation complémentaire), forfait et/ou champs propres. */
+const optionDefinitionSchema = z.object({
+  code: z.string(),
+  label: z.string(),
+  description: z.nullable(z.string()),
+  active: z.boolean(),
+  flatPrice: optionalMoney,
+  fields: z.array(fieldDefinitionSchema),
+});
+
+/**
+ * `CleaningPricing` : grille en vigueur d'une prestation (version datée, auteur). `unitPrice` et `options`,
+ * dépréciés (ADR-033), ne sont plus lus.
+ */
 const pricingSchema = z.object({
   version: z.int(),
-  unitPrice: z.nullable(moneySchema),
-  minimumPrice: z.nullable(moneySchema),
-  options: z.array(optionSchema),
+  minimumPrice: optionalMoney,
+  frequencies: z.array(
+    z.object({ code: z.string(), label: z.string(), coefficientBp: z.int(), active: z.boolean() }),
+  ),
   communeCoefficients: z.array(z.object({ commune: z.string(), coefficientBp: z.int() })),
   defaultCoefficientBp: z.int(),
-  teamSize: z.object({ unitsPerAgent: z.int(), minAgents: z.int(), maxAgents: z.int() }),
+  teamSize: z.object({
+    unitsPerAgent: z.int(),
+    minAgents: z.int(),
+    maxAgents: z.int(),
+    fieldCode: z.optional(z.nullable(z.string())),
+  }),
   checklist: z.array(z.object({ code: z.string(), label: z.string() })),
   updatedBy: z.nullable(z.string()),
   updatedByName: displayName,
   updatedAt: z.nullable(z.string()),
 });
 
-/** `CleaningServiceDefinition`. */
+/** `CleaningServiceDefinition` (ADR-033) : prestation complète ; `unit` (déprécié) n'est plus lu. */
 export const serviceDefinitionSchema = z.object({
   code: z.string(),
   name: z.string(),
   description: z.string(),
-  unit: z.string(),
   active: z.boolean(),
+  fields: z.array(fieldDefinitionSchema),
+  options: z.array(optionDefinitionSchema),
   pricing: pricingSchema,
+  /** Réponse de l'enregistrement seulement : lieux actifs qui proposent encore la prestation désactivée. */
+  affectedPlaceTypes: z.optional(z.array(z.object({ code: z.string(), label: z.string() }))),
+});
+
+/** `CleaningServicePreview` : essai d'une grille, rien n'est enregistré. */
+export const servicePreviewSchema = z.object({
+  serviceCode: z.string(),
+  covered: z.boolean(),
+  calculation: calculationSchema,
 });
 
 /** `CleaningSettings`. */
@@ -347,6 +447,8 @@ export const settingsSchema = z.object({
   businessSuspensionUnpaidInvoices: z.int(),
   individualSuspensionUnpaidInterventions: z.int(),
   individualPaymentGraceHours: z.int(),
+  /** ADR-035 : mois de conservation de la position des dossiers clôturés (facultatif à la lecture). */
+  locationRetentionMonths: z.optional(z.int()),
   updatedBy: z.nullable(z.string()),
   updatedByName: displayName,
   updatedAt: z.nullable(z.string()),
@@ -355,6 +457,8 @@ export const settingsSchema = z.object({
 export const catalogSchema = z.object({
   services: z.array(serviceDefinitionSchema),
   settings: settingsSchema,
+  /** Prestations actives qu'aucun type de lieu actif ne propose (ADR-034) ; facultatif à la lecture. */
+  unplacedServiceCodes: z.optional(z.array(z.string())),
 });
 
 /** `CleaningZone`. */
@@ -406,21 +510,42 @@ export const locationCorrectionSchema = z.object({
   updatedMissionIds: z.array(z.string()),
 });
 
-/** `CleaningPlaceTypeList` (back-office) : seuls le code, le libellé et l'état servent au filtre. */
-export const placeTypeListSchema = z.object({
-  data: z.array(z.object({ code: z.string(), label: z.string(), active: z.boolean() })),
+/** `CleaningPlaceType` (back-office, ADR-034) : type de lieu, prestations proposées et cohérence. */
+export const placeTypeSchema = z.object({
+  code: z.string(),
+  label: z.string(),
+  description: z.nullable(z.string()),
+  icon: z.string(),
+  displayOrder: z.int(),
+  active: z.boolean(),
+  serviceCodes: z.array(z.string()),
+  unknownServiceCodes: z.array(z.string()),
+  inactiveServiceCodes: z.array(z.string()),
+  publiclyVisible: z.boolean(),
+  visibilityReason: z.nullable(z.string()),
+  updatedBy: z.nullable(z.string()),
+  updatedByName: displayName,
+  updatedAt: z.nullable(z.string()),
 });
+
+/** `CleaningPlaceTypeList` (back-office). */
+export const placeTypeListSchema = z.object({ data: z.array(placeTypeSchema) });
 
 /** `CleaningPlaceCatalog` (route publique) : seuls les types de lieu actifs (code et libellé) servent au filtre. */
 export const publicPlaceTypesSchema = z.object({
   placeTypes: z.array(z.object({ code: z.string(), label: z.string() })),
 });
 
+/** `CleaningFormField` (public, sans prix). Bornes, aide et obligation lues comme facultatives. */
 const formFieldSchema = z.object({
   code: z.string(),
   label: z.string(),
   type: z.string(),
+  required: z.optional(z.boolean()),
+  helpText: z.optional(z.nullable(z.string())),
   unitLabel: z.nullable(z.string()),
+  min: z.optional(z.nullable(z.int())),
+  max: z.optional(z.nullable(z.int())),
   choices: z.array(z.object({ code: z.string(), label: z.string() })),
 });
 
@@ -435,7 +560,14 @@ export const serviceFormsSchema = z.object({
       code: z.string(),
       form: z.object({
         fields: z.array(formFieldSchema),
-        options: z.array(z.object({ code: z.string(), label: z.string(), fields: z.array(formFieldSchema) })),
+        options: z.array(
+          z.object({
+            code: z.string(),
+            label: z.string(),
+            description: z.optional(z.nullable(z.string())),
+            fields: z.array(formFieldSchema),
+          }),
+        ),
         frequencies: z.array(z.object({ code: z.string(), label: z.string() })),
       }),
     }),
@@ -457,6 +589,14 @@ export type TimeSlot = z.infer<typeof timeSlotSchema>;
 export type QuoteRequest = z.infer<typeof quoteRequestSchema>;
 export type QuoteRequestList = z.infer<typeof quoteRequestListSchema>;
 export type Calculation = z.infer<typeof calculationSchema>;
+export type AnswerSummary = z.infer<typeof answerSummarySchema>;
+export type Answers = z.infer<typeof answersSchema>;
+export type OptionSelection = z.infer<typeof optionSelectionSchema>;
+export type RequestEstimate = z.infer<typeof requestEstimateSchema>;
+export type ServicePreview = z.infer<typeof servicePreviewSchema>;
+export type FieldDefinition = z.infer<typeof fieldDefinitionSchema>;
+export type OptionDefinition = z.infer<typeof optionDefinitionSchema>;
+export type PlaceType = z.infer<typeof placeTypeSchema>;
 export type GeoLocation = z.infer<typeof geoLocationSchema>;
 export type GroupOutcome = z.infer<typeof groupOutcomeSchema>;
 export type SkippedRequest = z.infer<typeof skippedRequestSchema>;

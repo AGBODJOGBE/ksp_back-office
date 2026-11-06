@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react';
 import { getServiceForms, getServiceNames } from '@/features/cleaning/api';
 import type { ServiceForm } from '@/features/cleaning/schemas';
 
-/** Lecture unique d'une table de la route publique des prestations ; `null` tant qu'elle n'est pas lue (ou en échec). */
+/**
+ * Lecture unique d'une table de la route publique des prestations ; `null` tant qu'elle n'est pas lue, table
+ * vide en cas d'échec (l'écran retombe sur les codes).
+ */
 function useLookup<T>(load: () => Promise<Map<string, T>>): Map<string, T> | null {
   const [map, setMap] = useState<Map<string, T> | null>(null);
   useEffect(() => {
@@ -13,7 +16,9 @@ function useLookup<T>(load: () => Promise<Map<string, T>>): Map<string, T> | nul
       (value) => {
         if (active) setMap(value);
       },
-      () => undefined,
+      () => {
+        if (active) setMap(new Map());
+      },
     );
     return () => {
       active = false;
@@ -28,7 +33,11 @@ export function useServiceName(): (code: string) => string {
   return (code) => names?.get(code) ?? code;
 }
 
-/** Formulaire public d'une prestation (libellés des réponses) ; `null` s'il n'est pas (encore) connu. */
-export function useServiceForm(code: string): ServiceForm | null {
-  return useLookup(getServiceForms)?.get(code) ?? null;
+/**
+ * Formulaire public d'une prestation : `undefined` tant qu'il n'est pas lu, `null` s'il est indisponible
+ * (prestation désactivée, lecture en échec).
+ */
+export function useServiceForm(code: string): ServiceForm | null | undefined {
+  const forms = useLookup(getServiceForms);
+  return forms ? (forms.get(code) ?? null) : undefined;
 }

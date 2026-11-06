@@ -6,7 +6,7 @@ import { SelectField } from '@/components/ui/select-field';
 import { beninInputToIso, formatDuration, formatSlot, formatXof, isoToBeninInput } from '@/lib/format';
 import type { QuoteInput } from '@/features/cleaning/api';
 import { quoteTexts as t } from '@/features/cleaning/quote-texts';
-import type { QuoteRequest, TimeSlot } from '@/features/cleaning/schemas';
+import type { Calculation, QuoteRequest, TimeSlot } from '@/features/cleaning/schemas';
 import { cleaningTexts, recurrenceText } from '@/features/cleaning/texts';
 
 /*
@@ -50,12 +50,50 @@ function minutesBetween(slot: TimeSlot | undefined): string {
   return minutes > 0 ? String(minutes) : '';
 }
 
-/** Point de départ : créneaux souhaités par le client, agents demandés (sinon recommandés), sa récurrence. */
+/**
+ * Calcul qui préremplit le devis envoyé sans lignes (ADR-037) : celui des mesures constatées s'il existe, sinon
+ * celui de la demande.
+ */
+export function prefillCalculation(
+  request: Pick<QuoteRequest, 'calculation' | 'measuredCalculation'>,
+): { calculation: Calculation; measured: boolean } | null {
+  if (request.measuredCalculation) return { calculation: request.measuredCalculation, measured: true };
+  return request.calculation ? { calculation: request.calculation, measured: false } : null;
+}
+
+/**
+ * Lignes modifiables reprises d'un calcul du serveur, avec la ligne d'ajustement (coefficients, minimum de
+ * commande) qui mène au prix calculé, comme le fait la gateway pour un devis sans lignes. Vide sans prix.
+ */
+export function linesFromCalculation(calculation: Calculation): Line[] {
+  if (!calculation.priced || !calculation.computedPrice) return [];
+  const lines: Line[] = calculation.lines.map((line) => ({
+    label: line.label,
+    quantity: String(line.quantity),
+    unitPrice: String(line.unitPrice.amount),
+  }));
+  const sum = calculation.lines.reduce((total, line) => total + line.amount.amount, 0);
+  const adjustment = calculation.computedPrice.amount - sum;
+  if (adjustment !== 0) {
+    lines.push({
+      label: calculation.minimumApplied ? t.prefill.minimumLine : t.prefill.adjustmentLine,
+      quantity: '1',
+      unitPrice: String(adjustment),
+    });
+  }
+  return lines;
+}
+
+/** Point de départ : créneaux souhaités par le client, agents demandés (sinon conseillés par le calcul), sa récurrence. */
 export function initialDraft(request: QuoteRequest): Draft {
   return {
     lines: [],
     duration: minutesBetween(request.preferredSlots[0]),
-    team: String(request.requestedTeamSize ?? request.recommendedTeamSize),
+    team: String(
+      request.requestedTeamSize ??
+        request.measuredCalculation?.recommendedTeamSize ??
+        request.recommendedTeamSize,
+    ),
     recurring: !!request.recurrence,
     period: request.recurrence?.period ?? 'week',
     visits: request.recurrence ? String(request.recurrence.visitsPerPeriod) : '',
@@ -297,16 +335,27 @@ export function DraftEditor({
 }
 
 /**
- * Estimation déjà calculée par le serveur sur la demande (`calculation`, sinon l'ancienne fourchette
- * `estimate`), avec la mention qu'elle n'est pas le prix définitif. Aucun calcul dans le front.
+ * Calcul du serveur qui préremplira le devis (mesures constatées, sinon demande) : prix, fourchette et lignes,
+ * avec « Modifier ces lignes » pour les reprendre dans la saisie. Aucun prix n'est calculé ici.
  */
-export function EstimateNote({ request }: { request: QuoteRequest }) {
-  const calculation = request.calculation;
+export function EstimateNote({
+  request,
+  onUseLines,
+}: {
+  request: QuoteRequest;
+  /** Copie les lignes du calcul (et l'ajustement) dans la saisie du devis. */
+  onUseLines?: (lines: Line[]) => void;
+}) {
+  const source = prefillCalculation(request);
+  const calculation = source?.calculation ?? null;
   const price = calculation?.priced ? calculation.computedPrice : null;
   const range = calculation ? calculation.estimate : request.estimate;
+  const lines = calculation ? linesFromCalculation(calculation) : [];
   return (
-    <div className="rounded-control border-line bg-surface grid gap-1 border p-3">
-      <p className="text-ink font-semibold">{t.estimate.title}</p>
+    <div className="rounded-control border-line bg-surface grid gap-2 border p-3">
+      <p className="text-ink font-semibold">
+        {source?.measured ? t.prefill.measuredTitle : t.estimate.title}
+      </p>
       {price || range ? (
         <>
           {price ? <p className="tabular-nums">{t.estimate.price(formatXof(price))}</p> : null}
@@ -315,7 +364,22 @@ export function EstimateNote({ request }: { request: QuoteRequest }) {
               {t.estimate.range(formatXof(range.low), formatXof(range.high))}
             </p>
           ) : null}
-          <p className="text-small text-ink-muted">{t.estimate.notice}</p>
+          {calculation && price && calculation.lines.length ? (
+            <ul className="text-small text-ink-muted grid gap-0.5">
+              {calculation.lines.map((line, index) => (
+                <li key={index} className="tabular-nums">
+                  {line.label} : {line.unitLabel ? `${line.quantity} ${line.unitLabel}` : line.quantity} ×{' '}
+                  {formatXof(line.unitPrice)} = {formatXof(line.amount)}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <p className="text-small text-ink-muted">{price ? t.prefill.notice : t.estimate.notice}</p>
+          {onUseLines && lines.length ? (
+            <Button variant="secondary" className="justify-self-start" onClick={() => onUseLines(lines)}>
+              {t.prefill.edit}
+            </Button>
+          ) : null}
         </>
       ) : (
         <p className="text-small text-ink-muted">{t.estimate.none}</p>
