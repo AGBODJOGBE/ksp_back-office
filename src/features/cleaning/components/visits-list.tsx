@@ -21,6 +21,8 @@ import { measureTexts } from '@/features/cleaning/measure-texts';
 import type { QuoteRequest, Visit } from '@/features/cleaning/schemas';
 import { cleaningTexts, customerLabel, requestStatuses, visitStatuses } from '@/features/cleaning/texts';
 import { visitsTexts as t } from '@/features/cleaning/visit-texts';
+// Type seul : le panneau des mesures reste chargé à la demande.
+import type { MeasurableRequest } from './measurements-panel';
 import { LoadingBlock, Note, StatusBadge, useCleaningAccess } from './parts';
 
 const common = cleaningTexts.common;
@@ -161,6 +163,24 @@ const measurable = (request: VisitRequest) =>
   request.status === 'received' || request.status === 'visit_scheduled';
 
 type Measuring = { visit: Visit; request: VisitRequest };
+
+/** Demande vue depuis la visite, pour préremplir les mesures de l'agent ; `null` sans réponses (gateway antérieure). */
+export function measurableFromVisit(request: VisitRequest): MeasurableRequest | null {
+  if (!request.answers && !request.measuredAnswers) return null;
+  return {
+    answers: request.answers ?? null,
+    selectedOptions: request.selectedOptions ?? [],
+    frequency: request.frequency ?? null,
+    calculation: request.calculation ?? null,
+    answerSummary: request.answerSummary ?? null,
+    measuredAnswers: request.measuredAnswers ?? null,
+    measuredOptions: request.measuredOptions ?? null,
+    measuredFrequency: request.measuredFrequency ?? null,
+    measuredAt: request.measuredAt ?? null,
+    measuredByName: request.measuredByName ?? null,
+    measuredSummary: request.measuredSummary ?? null,
+  };
+}
 
 function columns(
   supervise: boolean,
@@ -343,7 +363,7 @@ function MeasurePanel({
         key={request.requestId}
         requestId={request.requestId}
         serviceCode={request.serviceCode}
-        request={measured}
+        request={measured ?? measurableFromVisit(request)}
         visitId={isGroupVisit(visit) ? null : request.visitId}
         locked={false}
         idPrefix={`mesures-${request.requestId}`}

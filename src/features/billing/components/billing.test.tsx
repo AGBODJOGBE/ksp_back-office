@@ -226,8 +226,12 @@ describe('fiche d’une facture', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Enregistrer un paiement' }));
     const dialog = screen.getByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Enregistrer le paiement' }));
-    expect(await within(dialog).findByText(/déjà payée ou annulée/)).toBeInTheDocument();
+    // La fiche relue (facture payée) retire le bouton et sa fenêtre : l'explication reste sur la fiche.
     await waitFor(() => expect(calls.filter((call) => call.method === 'GET')).toHaveLength(2));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Enregistrer un paiement' })).not.toBeInTheDocument(),
+    );
+    expect(screen.getAllByText(/déjà payée ou annulée/).length).toBeGreaterThan(0);
   });
 
   it('n’offre pas de « Réessayer » pour une facture introuvable', async () => {

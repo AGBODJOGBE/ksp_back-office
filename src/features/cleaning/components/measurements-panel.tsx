@@ -38,16 +38,35 @@ import { useLivePrice } from './use-live-price';
 import { useServiceForm } from './use-service-names';
 
 const t = measureTexts.measures;
+
+/**
+ * Ce dont le formulaire des mesures a besoin d'une demande : la fiche complète (supervision) ou la demande vue
+ * depuis une visite (agent, ADR-037), qui porte les mêmes réponses et mesures.
+ */
+export type MeasurableRequest = Pick<
+  QuoteRequest,
+  | 'answers'
+  | 'selectedOptions'
+  | 'frequency'
+  | 'calculation'
+  | 'answerSummary'
+  | 'measuredAnswers'
+  | 'measuredOptions'
+  | 'measuredFrequency'
+  | 'measuredAt'
+  | 'measuredByName'
+  | 'measuredSummary'
+>;
 const formMessages = measureTexts.form;
 
 /** Réponses du client (nouveau format) ; `null` pour une demande à l'ancien format ou inconnue (agent). */
-export function clientSource(request: QuoteRequest | null): AnswerSource | null {
+export function clientSource(request: MeasurableRequest | null): AnswerSource | null {
   if (!request?.answers) return null;
   return { answers: request.answers, options: request.selectedOptions, frequency: request.frequency };
 }
 
 /** Point de départ du formulaire : mesures déjà saisies, sinon réponses du client. */
-export function measuredSource(request: QuoteRequest | null): AnswerSource | null {
+export function measuredSource(request: MeasurableRequest | null): AnswerSource | null {
   if (request?.measuredAnswers) {
     return {
       answers: request.measuredAnswers,
@@ -68,7 +87,7 @@ export function readyBody(model: FormModel, values: FormValues): MeasurementInpu
  * Comparaison « Déclaré par le client » / « Constaté » (`answerSummary`, `measuredSummary`), écarts mis en
  * évidence (fond, et mot « Écart » : le sens ne repose pas sur la couleur seule).
  */
-export function MeasuredComparison({ request }: { request: QuoteRequest }) {
+export function MeasuredComparison({ request }: { request: MeasurableRequest }) {
   const measured = request.measuredSummary;
   if (!measured) return null;
   const rows = compareSummaries(request.answerSummary ?? null, measured, {
@@ -128,7 +147,7 @@ export function MeasuredComparison({ request }: { request: QuoteRequest }) {
 interface FormProps {
   requestId: string;
   model: FormModel;
-  request: QuoteRequest | null;
+  request: MeasurableRequest | null;
   visitId: string | null;
   locked: boolean;
   idPrefix: string;
@@ -309,7 +328,8 @@ function MeasurementsForm({
  * Mesures constatées après la visite (ADR-037) : formulaire de la prestation prérempli (mesures déjà saisies,
  * sinon réponses du client), prix recalculé à chaque modification (`POST …/estimate`), enregistrement seul
  * (`PUT …/measurements`) ou avec le compte rendu de la visite (`measurements` de la clôture). L'agent de la
- * visite n'a pas accès à la demande : `request` est alors `null` et le formulaire part vide.
+ * visite n'ouvre pas la fiche : `request` est la demande vue depuis sa visite (réponses du client, sans
+ * montants) ; à défaut (gateway antérieure), `null` et le formulaire part vide.
  */
 export function MeasurementsPanel({
   requestId,
@@ -322,7 +342,7 @@ export function MeasurementsPanel({
 }: {
   requestId: string;
   serviceCode: string;
-  request: QuoteRequest | null;
+  request: MeasurableRequest | null;
   visitId: string | null;
   locked: boolean;
   idPrefix: string;
