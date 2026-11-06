@@ -165,7 +165,7 @@ features/cleaning/
     ├── cleaning-tabs.tsx  onglets du module filtrés par rôle
     ├── requests-list.tsx, request-detail.tsx, quote-form.tsx
     ├── missions-list.tsx, mission-detail.tsx, intervention-form.tsx, intervention-screen.tsx
-    ├── catalog-screen.tsx, service-form.tsx, zones-screen.tsx, team-screen.tsx
+    ├── catalog-screen.tsx, service-editor.tsx, place-types-panel.tsx, zones-screen.tsx, team-screen.tsx
     ├── register-agent.tsx rattacher un agent : recherche du compte par téléphone, puis confirmation
     └── parts.tsx          états communs (chargement, erreur, panneaux), droits de la session
 ```
@@ -177,7 +177,7 @@ features/cleaning/
 | `/nettoyage/missions`                           | Missions, filtre par état dans l'URL                                                                    | les trois rôles (l'agent ne reçoit que les siennes) |
 | `/nettoyage/missions/[id]`                      | Fiche : passages, paiement ; planifier un passage, paiement manuel, annulation                          | les trois rôles ; actions : superviseur et admin    |
 | `/nettoyage/missions/[id]/passages/[passageId]` | Passage (téléphone de l'agent) : démarrer, liste de contrôle, incident, reprise, clôture                | les trois rôles                                     |
-| `/nettoyage/catalogue`                          | Prestations et grille, réglages                                                                         | `cleaning_admin`                                    |
+| `/nettoyage/catalogue`                          | Types de lieu, prestations (questions, options, tarifs, essai de prix), réglages                        | `cleaning_admin`                                    |
 | `/nettoyage/zones`                              | Zones desservies : ouverture, désactivation, réactivation                                               | `cleaning_admin`                                    |
 | `/nettoyage/equipe`                             | Agents (rattachement, indisponibilités) et équipes                                                      | superviseur (lecture) et admin                      |
 
@@ -200,7 +200,7 @@ features/cleaning/
 | `POST /admin/cleaning/interventions/{id}/resume`               | `InterventionScreen`                                 |
 | `POST /admin/cleaning/interventions/{id}/complete`             | `InterventionScreen` (confirmation)                  |
 | `GET /admin/cleaning/catalog`                                  | `CatalogScreen`                                      |
-| `PUT /admin/cleaning/catalog/services/{code}`                  | `ServiceForm` (chargé à l'ouverture)                 |
+| `PUT /admin/cleaning/catalog/services/{code}`                  | `ServiceEditor` (chargé à l'ouverture)               |
 | `PUT /admin/cleaning/catalog/settings`                         | `CatalogScreen` (réglages)                           |
 | `GET /admin/cleaning/zones`                                    | `ZonesScreen`, filtre de commune de l'admin          |
 | `POST /admin/cleaning/zones`                                   | `ZonesScreen` (ouverture et réactivation)            |
@@ -310,9 +310,9 @@ Contrat `ksp-api.v1.yaml` (schéma `CleaningQuoteRequest`, ADR-033 à ADR-035). 
 | Adresse                                 | Écran                                                                                                                                                                                                       |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/nettoyage`                            | Filtres ajoutés `?lieu=` (`placeType`), `?prestation=` (`serviceCode`), `?groupe=` (`groupId`, rappelé avec « Retirer ») ; badge « Groupe · N » vers la vue du groupe                                       |
-| `/nettoyage/demandes/[id]`              | Trois étapes ordonnées (Demande, Visite, Devis) ; une seule action principale selon l'état (`workflow.ts`, `primaryAction`) ; bandeau du groupe ; « Corriger la position » dans l'étape Visite              |
+| `/nettoyage/demandes/[id]`              | Fiche dossier : bandeau Demande → Visite et mesures → Devis → Mission → Paiement (`dossierStep`), une action principale, étapes repliées sauf l'étape en cours ; mesures constatées et prix recalculé       |
 | `/nettoyage/demandes/groupes/[groupId]` | Vue du groupe (nouvelle) : demandes lues par `?groupId=&limit=10`, visite commune (exclusions), compte rendu commun, devis groupés, refus du groupe, demandes ignorées (`skipped`) ; pas de total de groupe |
-| `/nettoyage/visites`                    | Filtre `?groupe=`, compte rendu commun d'une visite de groupe, « Corriger la position » sur une visite planifiée                                                                                            |
+| `/nettoyage/visites`                    | Filtre `?groupe=`, « Saisir les mesures » (agent compris), compte rendu commun, « Corriger la position » sur une visite planifiée                                                                           |
 
 | Route du contrat                                                                            | Écran ou composant                                                           |
 | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -330,6 +330,26 @@ Contrat `ksp-api.v1.yaml` (schéma `CleaningQuoteRequest`, ADR-033 à ADR-035). 
 - **Position** : en texte seul (coordonnées, précision, repère), ni carte ni lien externe ; saisie à la main ou par l'API de géolocalisation du navigateur (`Permissions-Policy: geolocation=(self)`). Le résultat annonce les demandes et missions mises à jour.
 - **États** : squelette, vide, erreur avec message, référence et « Réessayer » ; 403 en note neutre, 404 « introuvable » (`ResourceView` avec `refusals`).
 - Textes par écran : `request-texts.ts` (liste), `request-detail-texts.ts`, `group-texts.ts`, `quote-texts.ts`, `location-texts.ts`, `visit-texts.ts`. Formulaires et boîtes chargés par `next/dynamic`.
+
+## Après la visite : mesures et catalogue (`features/cleaning`, étape 4)
+
+Contrat `ksp-api.v1.yaml` (ADR-033, ADR-034, ADR-037). Le front construit les formulaires depuis la définition des prestations et affiche les calculs de la gateway ; il ne calcule aucun prix.
+
+| Route du contrat                                                 | Écran ou composant                                                              |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `POST /admin/cleaning/quote-requests/{id}/estimate`              | `MeasurementsPanel`, `GroupReportForm` (prix recalculé, 600 ms après la saisie) |
+| `PUT /admin/cleaning/quote-requests/{id}/measurements`           | `MeasurementsPanel` (fiche, visites de l'agent)                                 |
+| `POST /admin/cleaning/visits/{id}/complete` (+ `measurements`)   | `MeasurementsPanel` (« Clore la visite avec ces mesures », confirmation)        |
+| `POST /admin/cleaning/quote-request-groups/{id}/visits/complete` | `GroupReportForm` (mesures par demande cochée, tout ou rien, confirmation)      |
+| `GET`, `PUT /admin/cleaning/place-types[/{code}]`                | `PlaceTypesPanel` (alertes de cohérence, prestations ordonnées)                 |
+| `POST /admin/cleaning/catalog/services/{code}/preview`           | `ServiceEditor` (essai de prix en direct avec la définition à l'écran, 800 ms)  |
+
+- **Fiche dossier** (`request-detail.tsx`) : `dossierStep` et `stepState` (`workflow.ts`) donnent l'étape en cours ; la mission liée est lue pour les étapes Mission et Paiement. « Prochaine étape » porte un seul bouton mis en avant et sa phrase d'explication ; les autres actions et le refus suivent, plus discrets.
+- **Demande** : lieu et prestation d'abord, réponses lisibles `answerSummary` (une demande à l'ancien format y porte « Type de locaux » et « Quantité »), position avec « Voir sur la carte ».
+- **Mesures** (`form-model.ts`, `service-fields.tsx`) : formulaire public de la prestation, prérempli avec les mesures déjà saisies sinon les réponses du client ; rappel « Déclaré par le client » et badge « Modifié » sous chaque champ ; contrôles locaux (obligatoire, entier, bornes) avant tout appel ; erreur de la gateway placée sous le champ (`measurements.answers.<champ>`, `options[i]` → code de l'option) ; `CLEANING_MEASUREMENTS_LOCKED` → lecture seule. Après l'enregistrement, tableau « Déclaré / Constaté » avec les écarts.
+- **Agent de terrain** : la route de la fiche lui est fermée ; il saisit les mesures depuis `/nettoyage/visites`, formulaire vide (il ne lit pas les réponses du client), puis voit l'écart renvoyé par la gateway.
+- **Devis** : prérempli depuis `measuredCalculation` (sinon `calculation`), lignes montrées ; « Modifier ces lignes » les copie dans la saisie avec la ligne d'ajustement ou de minimum.
+- **Catalogue** (`service-draft.ts`, `service-editor.tsx`) : tout en libellés métier, aucun code à écrire (codes tirés des libellés pour les nouveaux éléments, jamais affichés) ; montants en FCFA entiers, effets en pourcentage (« +30 », « -15 ») convertis en points de base ; un élément déjà enregistré se désactive au lieu d'être supprimé (les demandes passées gardent leurs réponses) ; erreurs locales et de la gateway au chemin du contrat (`fields[0].max`). Enregistrer crée une nouvelle version, annoncée à l'écran.
 
 ## Stratégie de rendu
 
