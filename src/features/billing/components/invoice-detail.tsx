@@ -86,7 +86,8 @@ function PaymentDialog({
 }: {
   invoice: Invoice;
   onDone: (invoice: Invoice, amount: number) => void;
-  onStale: () => void;
+  /** Facture changée entre-temps : la fiche est relue, et le bouton peut disparaître avec la fenêtre. */
+  onStale: (message: string) => void;
 }) {
   const balance = formatXof(invoice.balance);
   return (
@@ -111,8 +112,9 @@ function PaymentDialog({
           onDone(updated, Number(raw));
           return null;
         } catch (error) {
-          if (isStale(error)) onStale();
-          return paymentErrorText(error, balance);
+          const message = paymentErrorText(error, balance);
+          if (isStale(error)) onStale(message);
+          return message;
         }
       }}
     >
@@ -164,6 +166,9 @@ function InvoiceView({
   const access = useBillingAccess();
   const roles = useSession()?.roles ?? [];
   const [done, setDone] = useState<string | null>(null);
+  // Message d'une facture changée entre-temps, gardé sur la fiche : la relecture peut fermer la fenêtre de
+  // paiement (facture payée) avant qu'elle ait affiché l'explication.
+  const [stale, setStale] = useState<string | null>(null);
   const sourcePath = SOURCE_PATHS[invoice.source];
   const canPay = !!access?.invoices && PAYABLE.includes(invoice.status) && invoice.balance.amount > 0;
 
@@ -184,13 +189,19 @@ function InvoiceView({
 
       <Notice invoice={invoice} />
       <FormMessage tone="success">{done}</FormMessage>
+      <FormMessage tone="info">{stale}</FormMessage>
 
       {canPay ? (
         <div className="flex flex-wrap gap-3">
           <PaymentDialog
             invoice={invoice}
-            onStale={onStale}
+            onStale={(message) => {
+              setDone(null);
+              setStale(message);
+              onStale();
+            }}
             onDone={(updated, amount) => {
+              setStale(null);
               setDone(pay.done(formatXof(amount)));
               onChange(updated);
             }}
