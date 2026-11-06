@@ -67,7 +67,7 @@ describe('liste des demandes de devis', () => {
     render(<RequestsList />);
     const link = await screen.findByRole('link', { name: /Demande du 28 oct\. 2026/ });
     expect(link).toHaveAttribute('href', `/nettoyage/demandes/${ids.request}`);
-    expect(await screen.findByText('Prestation de test')).toBeInTheDocument();
+    expect(await within(screen.getByRole('table')).findByText('Prestation de test')).toBeInTheDocument();
     expect(calls.find((call) => call.path.endsWith('/quote-requests'))?.search).toBe(
       '?limit=20&status=received',
     );
@@ -140,7 +140,7 @@ describe('fiche d’une demande', () => {
       ...AGENTS,
     });
     render(<RequestDetail id={ids.request} />);
-    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Demande');
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Dossier');
     expect(screen.getByRole('button', { name: 'Planifier la visite' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Refuser la demande' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Établir le devis' })).not.toBeInTheDocument();
@@ -175,7 +175,7 @@ describe('fiche d’une demande', () => {
       { reason: 'Hors zone' },
       { reason: 'Hors zone' },
     ]);
-    expect(screen.getByText('Aucune action possible dans cet état.')).toBeInTheDocument();
+    expect(screen.getByText('Dossier clos : aucune étape en cours.')).toBeInTheDocument();
   });
 
   it('affiche les noms du client, de l’organisation et de l’agent de la visite', async () => {
@@ -212,7 +212,7 @@ describe('fiche d’une demande', () => {
       ...AGENTS,
     });
     render(<RequestDetail id={ids.request} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Saisir le compte rendu' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Compte rendu sans mesures' }));
     const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText(/Constats de la visite/), { target: { value: 'ok' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Enregistrer le compte rendu' }));
@@ -234,7 +234,7 @@ describe('fiche d’une demande', () => {
     });
     render(<RequestDetail id={ids.request} />);
     expect(await screen.findByText('Awa B.')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Saisir le compte rendu' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Compte rendu sans mesures' }));
     const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText(/Constats de la visite/), {
       target: { value: '4 pièces' },
@@ -262,8 +262,12 @@ describe('fiche d’une demande', () => {
     });
     render(<RequestDetail id={ids.request} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Établir le devis' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Envoyer le devis au client' }));
-    expect(await screen.findByText('Le prix de cette prestation n’est pas encore fixé.')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Vérifier avant l’envoi' }));
+    const dialog = screen.getByRole('dialog', { name: 'Envoyer — le prix est figé à l’envoi' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Envoyer le devis' }));
+    expect(
+      await within(dialog).findByText('Le prix de cette prestation n’est pas encore fixé.'),
+    ).toBeInTheDocument();
     expect(calls.find((call) => call.path.endsWith('/quote'))?.body).toEqual({
       proposedSlots: [{ start: '2026-11-05T08:00:00.000Z', end: '2026-11-05T11:00:00.000Z' }],
       durationMinutes: 180,

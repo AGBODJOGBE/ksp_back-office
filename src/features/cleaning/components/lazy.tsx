@@ -16,6 +16,7 @@ export const RequestsList = dynamic(() => import('./requests-list').then((m) => 
 export const RequestDetail = dynamic(() => import('./request-detail').then((m) => m.RequestDetail), {
   loading,
 });
+export const GroupDetail = dynamic(() => import('./group-detail').then((m) => m.GroupDetail), { loading });
 export const VisitsList = dynamic(() => import('./visits-list').then((m) => m.VisitsList), { loading });
 export const MissionsList = dynamic(() => import('./missions-list').then((m) => m.MissionsList), { loading });
 export const MissionDetail = dynamic(() => import('./mission-detail').then((m) => m.MissionDetail), {

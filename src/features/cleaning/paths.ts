@@ -2,6 +2,7 @@
 export const cleaningPaths = {
   requests: '/nettoyage',
   request: (id: string) => `/nettoyage/demandes/${encodeURIComponent(id)}`,
+  group: (groupId: string) => `/nettoyage/demandes/groupes/${encodeURIComponent(groupId)}`,
   visits: '/nettoyage/visites',
   missions: '/nettoyage/missions',
   mission: (id: string) => `/nettoyage/missions/${encodeURIComponent(id)}`,
