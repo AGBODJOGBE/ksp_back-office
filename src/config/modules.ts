@@ -93,7 +93,7 @@ export const MODULES: readonly BackofficeModule[] = [
     label: 'Administration',
     description:
       "Comptes et rôles du back-office (attribution, retrait, suspension, double authentification), paramètres généraux, journal d'audit.",
-    // Rôles du contrat (administration des comptes, ADR-038) : super_admin, et l'administrateur de chaque
+    // Rôles du contrat (administration des comptes, ADR-043) : super_admin, et l'administrateur de chaque
     // métier pour les rôles de son métier.
     roles: ['recovery_admin', 'cleaning_admin'],
     phase: 1,

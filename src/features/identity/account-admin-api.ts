@@ -12,7 +12,7 @@ import {
 } from './account-admin-schemas';
 
 /**
- * Administration des comptes et des rôles (ADR-038) : `super_admin` partout, administrateur d'un
+ * Administration des comptes et des rôles (ADR-043) : `super_admin` partout, administrateur d'un
  * métier pour les rôles de son métier. identity décide de tout (périmètre, dernier super
  * administrateur, état du compte) et renvoie la fiche à jour après chaque action. La recherche voyage
  * dans le corps, jamais dans l'adresse (journalisée).

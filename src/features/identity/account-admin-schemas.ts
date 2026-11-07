@@ -2,7 +2,7 @@ import * as z from 'zod/mini';
 
 /*
  * Administration des comptes et des rôles lue par le back-office (contrat `ksp-api.v1.yaml`, routes
- * `/api/v1/admin/identity/accounts*` et `/roles`, ADR-038), champ par champ. Les énumérations restent
+ * `/api/v1/admin/identity/accounts*` et `/roles`, ADR-043), champ par champ. Les énumérations restent
  * des chaînes : un nouvel état ou un nouveau rôle s'affiche avec un libellé neutre. Schémas lus dans
  * le navigateur : `zod/mini`.
  */

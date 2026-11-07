@@ -1,6 +1,6 @@
 import type { BadgeTone } from '@/components/ui/badge';
 
-/** Administration des comptes et des rôles (module « Administration », ADR-038) : adresses et textes. */
+/** Administration des comptes et des rôles (module « Administration », ADR-043) : adresses et textes. */
 
 export const accountPaths = {
   list: '/administration/comptes',
