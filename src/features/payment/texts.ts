@@ -8,6 +8,8 @@ export const paymentPaths = {
   forSubject: (id: string) => `/finance/paiements?objet=${encodeURIComponent(id)}`,
   /** Écarts de montant pas encore traités (`underReview=true`). */
   toReview: '/finance/paiements?a-examiner=1',
+  /** Reversements par Mobile Money (ADR-041). */
+  payouts: '/finance/reversements',
 } as const;
 
 type StatusLabel = { label: string; tone: BadgeTone };

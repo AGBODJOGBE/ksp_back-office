@@ -8,13 +8,9 @@ const labels = (roles: string[]) =>
 
 describe('onglets de la Finance', () => {
   it('suivent les rôles du contrat', () => {
-    expect(labels(['super_admin'])).toEqual(['Factures', 'Paiements en ligne', 'Portefeuilles', 'Réglages']);
-    expect(labels(['finance_officer'])).toEqual([
-      'Factures',
-      'Paiements en ligne',
-      'Portefeuilles',
-      'Réglages',
-    ]);
+    const finance = ['Factures', 'Paiements en ligne', 'Portefeuilles', 'Reversements', 'Réglages'];
+    expect(labels(['super_admin'])).toEqual(finance);
+    expect(labels(['finance_officer'])).toEqual(finance);
     expect(labels(['cleaning_admin'])).toEqual(['Factures', 'Paiements en ligne', 'Réglages']);
     expect(labels(['cleaning_supervisor'])).toEqual(['Factures']);
     expect(labels(['support_agent'])).toEqual([]);

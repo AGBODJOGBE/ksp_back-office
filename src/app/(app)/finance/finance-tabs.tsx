@@ -19,6 +19,7 @@ export function financeTabs(
     { href: billingPaths.invoices, label: 'Factures', show: billing.invoices },
     { href: paymentPaths.list, label: 'Paiements en ligne', show: payment.list },
     { href: walletPaths.overview, label: 'Portefeuilles', show: wallet.wallets },
+    { href: paymentPaths.payouts, label: 'Reversements', show: payment.payouts },
     { href: billingPaths.settings, label: 'Réglages', show: billing.settings },
   ];
   return tabs.filter((tab) => tab.show).map(({ show: _show, ...tab }) => tab);
