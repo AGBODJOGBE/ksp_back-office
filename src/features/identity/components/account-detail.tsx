@@ -290,9 +290,18 @@ function AccountView({
   onStale: () => void;
 }) {
   const [done, setDone] = useState<string | null>(null);
+  // Fiche changée entre-temps : l'explication reste sur la fiche, car la relecture peut retirer le
+  // bouton et sa fenêtre (rôle déjà retiré) avant qu'elle ait affiché le message.
+  const [stale, setStale] = useState<string | null>(null);
   const onDone: Done = (updated, message) => {
+    setStale(null);
     setDone(message);
     onChange(updated);
+  };
+  const onStaleKept = () => {
+    setDone(null);
+    setStale(accountTexts.errors.stale);
+    onStale();
   };
   const { account, mfa } = detail;
   const name = personName(account) ?? common.unnamed;
@@ -322,18 +331,21 @@ function AccountView({
         </FormMessage>
       ) : null}
       <FormMessage tone="success">{done}</FormMessage>
+      <FormMessage tone="info">{stale}</FormMessage>
 
       <Panel
         title={t.rolesTitle}
         id="compte-roles"
         action={
-          detail.actions.grantRole ? <GrantRole detail={detail} onDone={onDone} onStale={onStale} /> : null
+          detail.actions.grantRole ? (
+            <GrantRole detail={detail} onDone={onDone} onStale={onStaleKept} />
+          ) : null
         }
       >
         {active.length ? (
           <ResponsiveTable
             caption={t.rolesCaption}
-            columns={activeColumns(detail, onDone, onStale)}
+            columns={activeColumns(detail, onDone, onStaleKept)}
             rows={active}
             rowKey={(role) => role.id}
           />
@@ -371,7 +383,7 @@ function AccountView({
           id="compte-double-authentification"
           action={
             detail.actions.resetMfa ? (
-              <AccountChange detail={detail} action="resetMfa" onDone={onDone} onStale={onStale} />
+              <AccountChange detail={detail} action="resetMfa" onDone={onDone} onStale={onStaleKept} />
             ) : null
           }
         >
@@ -390,7 +402,13 @@ function AccountView({
         {accountActions.length ? (
           <div className="flex flex-wrap gap-3">
             {accountActions.map((action) => (
-              <AccountChange key={action} detail={detail} action={action} onDone={onDone} onStale={onStale} />
+              <AccountChange
+                key={action}
+                detail={detail}
+                action={action}
+                onDone={onDone}
+                onStale={onStaleKept}
+              />
             ))}
           </div>
         ) : (

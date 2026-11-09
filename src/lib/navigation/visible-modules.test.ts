@@ -35,6 +35,9 @@ describe('accès aux modules du back-office', () => {
     expect(isModuleVisible('finance', ['cleaning_supervisor'])).toBe(true);
     expect(isModuleVisible('clients', ['support_agent'])).toBe(true);
     expect(isModuleVisible('clients', ['cleaning_admin'])).toBe(false);
+    // Notifications (ADR-039) : direction et support client seulement.
+    expect(isModuleVisible('notifications', ['support_agent'])).toBe(true);
+    expect(isModuleVisible('notifications', ['cleaning_admin'])).toBe(false);
   });
 
   it('un agent de terrain du Nettoyage voit son module', () => {
@@ -47,7 +50,8 @@ describe('accès aux modules du back-office', () => {
     expect(waiting).not.toContain('tableau-de-bord');
     expect(waiting).not.toContain('finance');
     expect(waiting).not.toContain('clients');
-    expect(waiting).toEqual(['recouvrement', 'notifications']);
+    expect(waiting).not.toContain('notifications');
+    expect(waiting).toEqual(['recouvrement']);
     expect(waitingModules(1, []).map((module) => module.slug)).toContain('nettoyage');
   });
 });

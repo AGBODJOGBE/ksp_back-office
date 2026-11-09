@@ -72,19 +72,19 @@ features/<domaine>/
 
 Le nom d'une fonctionnalité est celui du service du backend, en anglais (le code est en anglais, les adresses en français). Seules `features/dashboard`, `features/identity` (connexion, session, comptes entreprise), `features/cleaning` (Nettoyage), `features/billing` (factures) et `features/payment` (paiements en ligne) existent aujourd'hui : les autres domaines n'ont encore que leur entrée dans le catalogue des modules, et **aucun dossier n'est créé avant ses écrans**. Correspondance prévue :
 
-| Module (adresse)                   | Fonctionnalité(s)                                               | Service(s) du backend     | Phase | État                            |
-| ---------------------------------- | --------------------------------------------------------------- | ------------------------- | ----- | ------------------------------- |
-| Ma journée (`/`)                   | `features/dashboard`                                            | — (sections des services) | 1     | file « À traiter » branchée     |
-| Recouvrement (`/recouvrement`)     | `features/recovery`                                             | recovery                  | 1     | page d'attente                  |
-| Nettoyage (`/nettoyage`)           | `features/cleaning`                                             | cleaning                  | 1     | écrans branchés (29 routes + 3) |
-| Finance (`/finance`)               | `features/payment`, `features/wallet`, `features/billing`       | payment, wallet, billing  | 1     | factures et paiements branchés  |
-| Clients et comptes (`/clients`)    | `features/identity`                                             | identity                  | 1     | comptes entreprise branchés     |
-| Notifications (`/notifications`)   | `features/notification`                                         | notification              | 1     | page d'attente                  |
-| Administration (`/administration`) | `features/identity` (agents, rôles), `features/audit` (journal) | identity, audit           | 1     | comptes et rôles branchés       |
-| Immobilier (`/immobilier`)         | `features/realestate`                                           | realestate                | 2     | masqué (phase suivante)         |
-| Impression (`/impression`)         | `features/print`                                                | print                     | 3     | masqué                          |
-| Livraison (`/livraison`)           | `features/delivery`                                             | delivery                  | 3     | masqué                          |
-| Marketplace (`/marketplace`)       | `features/catalog`, `features/order`                            | catalog, order            | 4     | masqué                          |
+| Module (adresse)                   | Fonctionnalité(s)                                               | Service(s) du backend     | Phase | État                                       |
+| ---------------------------------- | --------------------------------------------------------------- | ------------------------- | ----- | ------------------------------------------ |
+| Ma journée (`/`)                   | `features/dashboard`                                            | — (sections des services) | 1     | file « À traiter » branchée                |
+| Recouvrement (`/recouvrement`)     | `features/recovery`                                             | recovery                  | 1     | page d'attente                             |
+| Nettoyage (`/nettoyage`)           | `features/cleaning`                                             | cleaning                  | 1     | écrans branchés (29 routes + 3)            |
+| Finance (`/finance`)               | `features/payment`, `features/wallet`, `features/billing`       | payment, wallet, billing  | 1     | factures et paiements branchés             |
+| Clients et comptes (`/clients`)    | `features/identity`                                             | identity                  | 1     | comptes entreprise branchés                |
+| Notifications (`/notifications`)   | `features/notification`                                         | notification              | 1     | historique des envois et modèles (ADR-039) |
+| Administration (`/administration`) | `features/identity` (agents, rôles), `features/audit` (journal) | identity, audit           | 1     | comptes et rôles branchés                  |
+| Immobilier (`/immobilier`)         | `features/realestate`                                           | realestate                | 2     | masqué (phase suivante)                    |
+| Impression (`/impression`)         | `features/print`                                                | print                     | 3     | masqué                                     |
+| Livraison (`/livraison`)           | `features/delivery`                                             | delivery                  | 3     | masqué                                     |
+| Marketplace (`/marketplace`)       | `features/catalog`, `features/order`                            | catalog, order            | 4     | masqué                                     |
 
 **Finance** (validé le 19 octobre 2026, aligné sur les services `payment`, `wallet` et `billing` du backend) : un seul module dans le menu, `/finance`, et une fonctionnalité par service : `payment` (paiements reçus, rapprochement), `wallet` (portefeuilles, demandes de versement validées par une autre personne), `billing` (factures et avoirs). Le module assemble les trois ; chaque écran a sa sous-adresse (`/finance/paiements`, `/finance/portefeuilles`, `/finance/factures`) et `/finance` ouvre les factures. Pas de fonctionnalité `finance` : elle mélangerait trois contrats de la gateway et ses fichiers grossiraient sans frontière.
 
@@ -474,6 +474,8 @@ Mesure du 5 novembre 2026, de la demande au devis (`pnpm build && pnpm size`) :
 | `/connexion`                             | 212,8 Ko      | 212,6 Ko |
 
 Fiche d'une demande, vue du groupe, formulaires de devis et boîte de position sont des morceaux chargés à la demande (environ 9, 5,5, 5 et 4,7 Ko compressés), hors « First Load JS ». Les fiches (`[id]`, `[groupId]`) n'apparaissent pas dans `pnpm size`.
+
+Mesure du 9 novembre 2026, après le module Notifications (ADR-039) : `/notifications/envois` et `/notifications/modeles` 212,5 Ko (écrans chargés à la demande ; budget « espace connecté » : 215 Ko) ; `/` 213,0 Ko.
 
 ## Ajouter une fonctionnalité
 

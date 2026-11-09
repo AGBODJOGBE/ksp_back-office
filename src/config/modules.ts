@@ -83,8 +83,10 @@ export const MODULES: readonly BackofficeModule[] = [
   {
     slug: 'notifications',
     label: 'Notifications',
-    description: 'Modèles de messages (SMS, WhatsApp, e-mail), historique des envois et des échecs.',
-    roles: ['recovery_admin', 'cleaning_admin'],
+    description:
+      'Historique des envois (canaux essayés, causes d’échec, destinataire masqué) et modèles de messages, en lecture seule.',
+    // Rôles du contrat (ADR-039) : direction et support client.
+    roles: ['support_agent', SUPER_ADMIN],
     phase: 1,
     group: 'pilotage',
   },
@@ -141,7 +143,13 @@ export const MODULES: readonly BackofficeModule[] = [
  * Modules qui ont leurs propres écrans (une route statique par module, `src/app/(app)/<slug>`) : ils
  * sortent des pages d'attente générées par `[module]`, pour qu'une adresse n'ait jamais deux pages.
  */
-export const MODULES_WITH_SCREENS: readonly string[] = ['nettoyage', 'finance', 'clients', 'administration'];
+export const MODULES_WITH_SCREENS: readonly string[] = [
+  'nettoyage',
+  'finance',
+  'clients',
+  'notifications',
+  'administration',
+];
 
 /** Phase en cours de l'écosystème : les modules des phases suivantes restent masqués. */
 export const CURRENT_PHASE = 1;
