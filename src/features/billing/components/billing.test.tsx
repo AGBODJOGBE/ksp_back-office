@@ -161,6 +161,10 @@ describe('fiche d’une facture', () => {
     expect(await screen.findByText('Portefeuille prépayé')).toBeInTheDocument();
     expect(screen.getByText('Le client, depuis son portefeuille')).toBeInTheDocument();
     expect(screen.queryByText('Équipe KSP')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Portefeuille du client' })).toHaveAttribute(
+      'href',
+      `/finance/portefeuilles/entreprise/${ids.organization}`,
+    );
   });
 
   it('montre la mission et l’entreprise au super administrateur', async () => {

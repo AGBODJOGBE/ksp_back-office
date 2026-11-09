@@ -19,8 +19,8 @@ export const PAYMENT_STATUSES = [
   'cancelled',
 ] as const;
 
-/** Types d'objet payé (`PaymentSubjectType`). */
-export const SUBJECT_TYPES = ['cleaning_mission', 'billing_invoice'] as const;
+/** Types d'objet payé (`PaymentSubjectType`, et `wallet_top_up` : recharge d'un portefeuille, ADR-046). */
+export const SUBJECT_TYPES = ['cleaning_mission', 'billing_invoice', 'wallet_top_up'] as const;
 
 /** Filtres de la liste, tous facultatifs et cumulables (gateway). */
 export interface PaymentFilters {

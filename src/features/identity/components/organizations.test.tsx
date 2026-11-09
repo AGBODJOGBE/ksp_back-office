@@ -109,6 +109,10 @@ describe('fiche d’un compte entreprise', () => {
       'href',
       `/finance/factures?entreprise=${ids.organization}`,
     );
+    expect(screen.getByRole('link', { name: 'Portefeuille prépayé' })).toHaveAttribute(
+      'href',
+      `/finance/portefeuilles/entreprise/${ids.organization}`,
+    );
   });
 
   it('valide une demande après confirmation', async () => {
@@ -210,5 +214,6 @@ describe('fiche d’un compte entreprise', () => {
     expect(screen.queryByRole('button', { name: 'Valider' })).not.toBeInTheDocument();
     // support_agent n'a pas le module Finance : pas de lien vers les factures.
     expect(screen.queryByRole('link', { name: 'Factures de l’entreprise' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Portefeuille prépayé' })).not.toBeInTheDocument();
   });
 });

@@ -17,6 +17,7 @@ import { isModuleVisible } from '@/lib/navigation/visible-modules';
 import { useResource } from '@/lib/use-resource';
 import { organizationPaths } from '@/features/identity/organizations';
 import { paymentAccess, paymentPaths } from '@/features/payment';
+import { walletAccess, walletPaths } from '@/features/wallet';
 import { getInvoice, MANUAL_METHODS, type ManualMethod, recordInvoicePayment } from '@/features/billing/api';
 import { isNotFound, isStale, paymentErrorText } from '@/features/billing/errors';
 import type { Invoice, InvoicePayment } from '@/features/billing/schemas';
@@ -262,6 +263,19 @@ function InvoiceView({
               className="text-accent-ink justify-self-start font-semibold underline"
             >
               {t.seeOrganization}
+            </Link>
+          ) : null}
+          {walletAccess(roles).wallets ? (
+            // Portefeuille qui règle la facture : celui de l'entreprise, sinon celui du client (ADR-046).
+            <Link
+              href={
+                invoice.organizationId
+                  ? walletPaths.holder('organization', invoice.organizationId)
+                  : walletPaths.holder('user', invoice.customerId)
+              }
+              className="text-accent-ink justify-self-start font-semibold underline"
+            >
+              {t.wallet}
             </Link>
           ) : null}
         </Panel>

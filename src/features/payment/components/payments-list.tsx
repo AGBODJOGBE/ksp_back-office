@@ -15,6 +15,7 @@ import { formatDateTime, formatXof } from '@/lib/format';
 import { isModuleVisible } from '@/lib/navigation/visible-modules';
 import { usePagedList } from '@/lib/use-paged-list';
 import { organizationPaths } from '@/features/identity/organizations';
+import { type HolderType, walletAccess, walletPaths } from '@/features/wallet';
 import { paymentAccess } from '@/features/payment/access';
 import { listPayments, PAYMENT_STATUSES, type PaymentFilters, SUBJECT_TYPES } from '@/features/payment/api';
 import type { Payment } from '@/features/payment/schemas';
@@ -53,18 +54,38 @@ interface RowActions {
   onStale: () => void;
 }
 
+/** Portefeuille du payeur : celui de l'entreprise pour un paiement fait en son nom, sinon le sien. */
+const payerWallet = (payment: Payment): { type: HolderType; id: string } =>
+  payment.organizationId
+    ? { type: 'organization', id: payment.organizationId }
+    : { type: 'user', id: payment.customerId };
+
+/**
+ * Fiche de l'objet payé, si l'agent peut l'ouvrir. Recharge : le portefeuille rechargé, dont
+ * l'identifiant est le titulaire (organisation active, sinon le payeur, ADR-046).
+ */
+function subjectHref(payment: Payment, visible: (module: string) => boolean, wallets: boolean) {
+  const { type, id } = payment.subject;
+  if (type === 'wallet_top_up') {
+    return wallets ? walletPaths.holder(payment.organizationId ? 'organization' : 'user', id) : null;
+  }
+  const target = SUBJECT_PATHS[type];
+  return target && visible(target.module) ? target.path(id) : null;
+}
+
 function columns(roles: readonly string[], actions: RowActions): TableColumn<Payment>[] {
   const visible = (module: string) => isModuleVisible(module, roles);
+  const wallets = walletAccess(roles).wallets;
   return [
     {
       key: 'subject',
       header: t.columns.subject,
       primary: true,
       cell: (payment) => {
-        const target = SUBJECT_PATHS[payment.subject.type];
         const label = subjectLabel(payment.subject);
-        return target && visible(target.module) ? (
-          <Link href={target.path(payment.subject.id)} className="stretched-link hover:underline">
+        const href = subjectHref(payment, visible, wallets);
+        return href ? (
+          <Link href={href} className="stretched-link hover:underline">
             {label}
           </Link>
         ) : (
@@ -116,22 +137,34 @@ function columns(roles: readonly string[], actions: RowActions): TableColumn<Pay
     {
       key: 'payer',
       header: t.columns.payer,
-      cell: (payment) =>
-        payment.organizationId ? (
-          visible('clients') ? (
-            // Lien au-dessus de la ligne cliquable : il garde son propre clic.
-            <Link
-              href={organizationPaths.organization(payment.organizationId)}
-              className="text-accent-ink relative z-10 font-semibold underline"
-            >
-              {t.seeOrganization}
-            </Link>
-          ) : (
-            t.business
-          )
-        ) : (
-          t.individual
-        ),
+      cell: (payment) => {
+        const kind = payment.organizationId ? t.business : t.individual;
+        const wallet = payerWallet(payment);
+        // Liens au-dessus de la ligne cliquable : ils gardent leur propre clic.
+        return (
+          <span className="grid justify-items-end gap-1 md:justify-items-start">
+            {payment.organizationId && visible('clients') ? (
+              <Link
+                href={organizationPaths.organization(payment.organizationId)}
+                className="text-accent-ink relative z-10 font-semibold underline"
+              >
+                {t.seeOrganization}
+              </Link>
+            ) : (
+              kind
+            )}
+            {wallets ? (
+              <Link
+                href={walletPaths.holder(wallet.type, wallet.id)}
+                aria-label={t.seeWalletOf(subjectLabel(payment.subject))}
+                className="text-accent-ink text-small relative z-10 font-semibold underline"
+              >
+                {t.seeWallet}
+              </Link>
+            ) : null}
+          </span>
+        );
+      },
     },
     {
       key: 'provider',
@@ -269,7 +302,8 @@ export function PaymentsList() {
   const actions: RowActions = {
     canResolve: paymentAccess(roles).list,
     onResolved: (payment) => {
-      setDone(t.resolve.done(subjectLabel(payment.subject)));
+      const done = t.resolve.done(subjectLabel(payment.subject));
+      setDone(payment.subject.type === 'wallet_top_up' ? `${done} ${t.resolve.topUpNext}` : done);
       setVersion((value) => value + 1);
     },
     onStale: () => setVersion((value) => value + 1),

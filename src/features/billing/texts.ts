@@ -89,6 +89,7 @@ export const billingTexts = {
     ifu: 'IFU',
     rccm: 'RCCM',
     seeOrganization: 'Voir le compte entreprise',
+    wallet: 'Portefeuille du client',
     linesTitle: 'Détail',
     linesCaption: 'Lignes de la facture',
     line: 'Libellé',

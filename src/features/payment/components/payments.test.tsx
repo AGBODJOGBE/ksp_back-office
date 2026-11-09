@@ -126,8 +126,29 @@ describe('paiements en ligne', () => {
     render(<PaymentsList />);
     const table = await screen.findByRole('table');
     expect(await within(table).findByText('Mission du Nettoyage, acompte')).toBeInTheDocument();
-    expect(within(table).queryByRole('link')).not.toBeInTheDocument();
+    // Seul lien : le portefeuille du payeur (Finance → Portefeuilles).
+    expect(within(table).getAllByRole('link')).toHaveLength(1);
+    expect(
+      within(table).getByRole('link', { name: 'Portefeuille du payeur : Mission du Nettoyage, acompte' }),
+    ).toHaveAttribute('href', `/finance/portefeuilles/particulier/${payment().customerId}`);
     expect(within(table).getByText('Particulier')).toBeInTheDocument();
+  });
+
+  it('lie une recharge en écart au portefeuille rechargé', async () => {
+    session.set(sessionBody(['finance_officer']));
+    const topUp = payment({
+      status: 'amount_mismatch',
+      underReview: true,
+      subject: { type: 'wallet_top_up', id: ids.organization, part: null, reference: null },
+      organizationId: ids.organization,
+    });
+    stubGateway({ [`GET ${PAYMENTS}`]: { status: 200, body: { data: [topUp], nextCursor: null } } });
+    render(<PaymentsList />);
+    expect(await screen.findByRole('link', { name: 'Recharge du portefeuille' })).toHaveAttribute(
+      'href',
+      `/finance/portefeuilles/entreprise/${ids.organization}`,
+    );
+    expect(screen.getByRole('option', { name: 'Recharge du portefeuille' })).toBeInTheDocument();
   });
 });
 
