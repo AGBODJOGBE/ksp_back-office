@@ -336,6 +336,37 @@ describe('fiche d’une mission', () => {
     expect(screen.queryByRole('button', { name: 'Enregistrer un paiement' })).not.toBeInTheDocument();
   });
 
+  it('signale un paiement par portefeuille et son remboursement', async () => {
+    const record = {
+      amount: { amount: 10000, currency: 'XOF' },
+      method: 'wallet',
+      reference: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d7c01',
+      recordedBy: ids.agent,
+      recordedByName: 'Afi Cliente',
+      recordedAt: '2026-10-28T12:00:00Z',
+    };
+    stubGateway({
+      [PUBLIC_SERVICES]: SERVICES,
+      [`GET ${MISSION}`]: {
+        status: 200,
+        body: mission({
+          status: 'cancelled',
+          payment: {
+            ...mission().payment,
+            payments: [
+              { ...record, id: 'p1', refundedAt: '2026-10-29T08:00:00Z' },
+              { ...record, id: 'p2', refundedAt: null },
+            ],
+          },
+        }),
+      },
+    });
+    render(<MissionDetail id={ids.mission} />);
+    expect(await screen.findAllByText(/^Portefeuille prépayé · enregistré par Afi Cliente/)).toHaveLength(2);
+    expect(screen.getAllByText('Remboursé')).toHaveLength(1);
+    expect(screen.getByText(/Remboursé dans le portefeuille du client le 29 oct\. 2026/)).toBeInTheDocument();
+  });
+
   it('tire une nouvelle clé à chaque ouverture du formulaire', async () => {
     const { calls } = stubGateway({
       [PUBLIC_SERVICES]: SERVICES,

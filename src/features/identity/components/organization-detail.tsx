@@ -15,6 +15,7 @@ import { ApiError, apiErrorText, useSession } from '@/lib/api';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { isModuleVisible } from '@/lib/navigation/visible-modules';
 import { useResource } from '@/lib/use-resource';
+import { walletAccess, walletPaths } from '@/features/wallet';
 import type {
   AdminOrganization,
   AdminOrganizationDetail,
@@ -227,14 +228,24 @@ function OrganizationView({
           title={t.identityTitle}
           id="entreprise-identite"
           action={
-            isModuleVisible('finance', roles) ? (
-              <Link
-                href={invoicesOf(organization.id)}
-                className="text-accent-ink text-small inline-flex min-h-11 items-center font-semibold underline"
-              >
-                {t.invoices}
-              </Link>
-            ) : null
+            <span className="flex flex-wrap gap-x-4">
+              {isModuleVisible('finance', roles) ? (
+                <Link
+                  href={invoicesOf(organization.id)}
+                  className="text-accent-ink text-small inline-flex min-h-11 items-center font-semibold underline"
+                >
+                  {t.invoices}
+                </Link>
+              ) : null}
+              {walletAccess(roles).wallets ? (
+                <Link
+                  href={walletPaths.holder('organization', organization.id)}
+                  className="text-accent-ink text-small inline-flex min-h-11 items-center font-semibold underline"
+                >
+                  {t.wallet}
+                </Link>
+              ) : null}
+            </span>
           }
         >
           <DescriptionList

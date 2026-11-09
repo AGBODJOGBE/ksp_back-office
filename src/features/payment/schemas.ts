@@ -52,5 +52,31 @@ export const paymentListSchema = z.object({
   nextCursor: z.nullable(z.string()),
 });
 
+/** `Payout` : reversement par Mobile Money demandé par un service (wallet, ADR-041), vu par la finance. */
+export const payoutSchema = z.object({
+  id: z.string(),
+  status: z.string(),
+  issuer: z.string(),
+  reference: z.string(),
+  amount: moneySchema,
+  /** Numéro complet : en mode manuel, la finance fait elle-même le virement. */
+  beneficiary: z.object({ phone: z.string(), operator: z.string(), name: z.string() }),
+  provider: z.string(),
+  providerReference: z.nullable(z.string()),
+  failureReason: z.nullable(z.string()),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  completedAt: z.nullable(z.string()),
+  failedAt: z.nullable(z.string()),
+  settledBy: z.nullable(z.string()),
+});
+
+export const payoutListSchema = z.object({
+  data: z.array(payoutSchema),
+  nextCursor: z.nullable(z.string()),
+});
+
 export type Payment = z.infer<typeof paymentSchema>;
+export type Payout = z.infer<typeof payoutSchema>;
+export type PayoutList = z.infer<typeof payoutListSchema>;
 export type PaymentList = z.infer<typeof paymentListSchema>;

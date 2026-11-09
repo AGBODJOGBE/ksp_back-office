@@ -277,6 +277,11 @@ const paymentStateSchema = z.object({
       recordedBy: z.string(),
       recordedByName: displayName,
       recordedAt: z.string(),
+      /**
+       * Paiement par portefeuille remboursé dans le portefeuille (mission annulée, ADR-046) : il ne compte
+       * plus dans `paid`. Facultatif pour lire une gateway antérieure au portefeuille.
+       */
+      refundedAt: z.optional(z.nullable(z.string())),
     }),
   ),
 });

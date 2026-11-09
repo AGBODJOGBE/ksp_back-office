@@ -98,6 +98,7 @@ export const organizationTexts = {
     noPhone: 'Non renseigné',
     call: (name: string) => `Appeler ${name}`,
     invoices: 'Factures de l’entreprise',
+    wallet: 'Portefeuille prépayé',
     decisionsTitle: 'Décision',
     decisionsReserved:
       'Les décisions (validation, refus, suspension) sont réservées au super administrateur.',

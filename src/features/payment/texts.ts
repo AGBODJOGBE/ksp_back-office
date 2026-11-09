@@ -8,6 +8,8 @@ export const paymentPaths = {
   forSubject: (id: string) => `/finance/paiements?objet=${encodeURIComponent(id)}`,
   /** Écarts de montant pas encore traités (`underReview=true`). */
   toReview: '/finance/paiements?a-examiner=1',
+  /** Reversements par Mobile Money (ADR-041). */
+  payouts: '/finance/reversements',
 } as const;
 
 type StatusLabel = { label: string; tone: BadgeTone };
@@ -26,7 +28,11 @@ export function paymentStatus(status: string): StatusLabel {
   return paymentStatuses[status] ?? { label: status, tone: 'neutral' };
 }
 
-const subjectTypes: Record<string, string> = { cleaning_mission: 'Mission', billing_invoice: 'Facture' };
+const subjectTypes: Record<string, string> = {
+  cleaning_mission: 'Mission',
+  billing_invoice: 'Facture',
+  wallet_top_up: 'Recharge du portefeuille',
+};
 export const subjectType = (code: string) => subjectTypes[code] ?? code;
 
 const parts: Record<string, string> = { deposit: 'acompte', balance: 'reste dû' };
@@ -45,6 +51,7 @@ export function subjectLabel(subject: { type: string; part: string | null; refer
   if (subject.type === 'billing_invoice') {
     return subject.reference ? `Facture ${subject.reference}` : 'Facture';
   }
+  if (subject.type === 'wallet_top_up') return 'Recharge du portefeuille';
   if (subject.type === 'cleaning_mission') {
     const part = subject.part ? parts[subject.part] : null;
     return part ? `Mission du Nettoyage, ${part}` : 'Mission du Nettoyage';
@@ -54,7 +61,7 @@ export function subjectLabel(subject: { type: string; part: string | null; refer
 
 export const paymentTexts = {
   title: 'Paiements en ligne',
-  lead: 'Paiements Mobile Money des clients, par mission ou par facture. Un paiement « à examiner » a été approuvé pour un autre montant : rien n’a été enregistré, la finance tranche.',
+  lead: 'Paiements Mobile Money des clients : missions, factures et recharges de portefeuille. Un paiement « à examiner » a été approuvé pour un autre montant : rien n’a été enregistré, la finance tranche.',
   caption: 'Paiements en ligne',
   loading: 'Chargement…',
   retry: 'Réessayer',
@@ -85,6 +92,8 @@ export const paymentTexts = {
   individual: 'Particulier',
   business: 'Entreprise',
   seeOrganization: 'Voir l’entreprise',
+  seeWallet: 'Portefeuille du payeur',
+  seeWalletOf: (subject: string) => `Portefeuille du payeur : ${subject}`,
   noReference: 'sans référence',
   reference: (value: string) => `Réf. ${value}`,
   failure: (reason: string) => `Motif : ${reason}`,
@@ -115,5 +124,8 @@ export const paymentTexts = {
     cancel: 'Annuler',
     done: (subject: string) =>
       `Écart traité pour ${subject}. Le paiement n’est plus à examiner et ne bloque plus les nouveaux paiements de cet objet.`,
+    /** Recharge du portefeuille : rien n'est crédité tant que la finance ne crédite pas le montant reçu. */
+    topUpNext:
+      'Pour une recharge, créditez maintenant le montant réellement reçu depuis le portefeuille du client.',
   },
 } as const;

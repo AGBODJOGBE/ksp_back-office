@@ -145,6 +145,28 @@ describe('fiche d’une facture', () => {
     expect(screen.queryByRole('link', { name: 'Voir le compte entreprise' })).not.toBeInTheDocument();
   });
 
+  it('signale un règlement payé depuis le portefeuille du client', async () => {
+    const payments = [
+      {
+        id: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d7102',
+        amount: xof(120000),
+        method: 'wallet',
+        reference: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d7c01',
+        recordedBy: ids.customer,
+        recordedAt: '2026-12-03T10:00:00Z',
+      },
+    ];
+    stubGateway({ [`GET ${INVOICE}`]: { status: 200, body: invoice({ payments }) } });
+    render(<InvoiceDetail id={ids.invoice} />);
+    expect(await screen.findByText('Portefeuille prépayé')).toBeInTheDocument();
+    expect(screen.getByText('Le client, depuis son portefeuille')).toBeInTheDocument();
+    expect(screen.queryByText('Équipe KSP')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Portefeuille du client' })).toHaveAttribute(
+      'href',
+      `/finance/portefeuilles/entreprise/${ids.organization}`,
+    );
+  });
+
   it('montre la mission et l’entreprise au super administrateur', async () => {
     session.set(sessionBody(['super_admin']));
     stubGateway({ [`GET ${INVOICE}`]: { status: 200, body: invoice() } });
