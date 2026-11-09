@@ -20,17 +20,18 @@ const NO_PARENT = {
 /**
  * Une fonctionnalité ne s'importe que par son API publique : `@/features/<domaine>`, ou ses points d'entrée
  * secondaires `/server` (serveur uniquement), `/session` (cadre des pages connectées, sans le parcours de connexion)
- * `/organizations` (comptes entreprise d'identity, sans le parcours de connexion) et `/queue` (sections de la
+ * `/organizations` (comptes entreprise d'identity, sans le parcours de connexion), `/accounts` (administration des
+ * comptes et des rôles, même raison) et `/queue` (sections de la
  * file « À traiter », lues seulement par le tableau de bord : les pages des modules ne les chargent pas).
  */
 const featureInternals = (/** @type {string} */ self = '') => ({
-  regex: `^@/features/${self ? `(?!${self}/)` : ''}[^/]+/(?!(server|session|organizations|queue)$).+`,
+  regex: `^@/features/${self ? `(?!${self}/)` : ''}[^/]+/(?!(server|session|organizations|accounts|queue)$).+`,
   message: 'Importer une fonctionnalité par son API publique : @/features/<domaine>.',
 });
 
 /** Dans une fonctionnalité, ses propres fichiers s'importent directement, jamais par son index (cycles). */
 const selfIndex = (/** @type {string} */ self) => ({
-  regex: `^@/features/${self}(/(server|session|organizations|queue))?$`,
+  regex: `^@/features/${self}(/(server|session|organizations|accounts|queue))?$`,
   message: 'Dans sa propre fonctionnalité, importer le fichier voulu (@/features/<domaine>/…), pas l’index.',
 });
 

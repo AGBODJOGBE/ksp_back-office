@@ -93,7 +93,10 @@ export const MODULES: readonly BackofficeModule[] = [
   {
     slug: 'administration',
     label: 'Administration',
-    description: "Agents, rôles, paramètres généraux, journal d'audit.",
+    description:
+      "Comptes et rôles du back-office (attribution, retrait, suspension, double authentification), paramètres généraux, journal d'audit.",
+    // Rôles du contrat (administration des comptes, ADR-043) : super_admin, et l'administrateur de chaque
+    // métier pour les rôles de son métier.
     roles: ['recovery_admin', 'cleaning_admin'],
     phase: 1,
     group: 'pilotage',
@@ -140,7 +143,13 @@ export const MODULES: readonly BackofficeModule[] = [
  * Modules qui ont leurs propres écrans (une route statique par module, `src/app/(app)/<slug>`) : ils
  * sortent des pages d'attente générées par `[module]`, pour qu'une adresse n'ait jamais deux pages.
  */
-export const MODULES_WITH_SCREENS: readonly string[] = ['nettoyage', 'finance', 'clients', 'notifications'];
+export const MODULES_WITH_SCREENS: readonly string[] = [
+  'nettoyage',
+  'finance',
+  'clients',
+  'notifications',
+  'administration',
+];
 
 /** Phase en cours de l'écosystème : les modules des phases suivantes restent masqués. */
 export const CURRENT_PHASE = 1;

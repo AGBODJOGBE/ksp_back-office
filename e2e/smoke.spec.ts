@@ -180,6 +180,72 @@ test('Nettoyage : la demande reçue s’ouvre avec ses actions, onglets selon le
   await expect(tabs.getByRole('link', { name: 'Demandes' })).toHaveAttribute('aria-current', 'page');
 });
 
+const ACCOUNT = {
+  userId: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d0002',
+  status: 'active',
+  firstName: 'Awa',
+  lastName: 'Dossou',
+  phone: null,
+  phoneMasked: '+229********45',
+  createdAt: '2026-10-19T12:00:00Z',
+  suspendedAt: null,
+  suspensionReason: null,
+  roles: ['cleaning_agent'],
+};
+
+test('Administration : l’équipe s’affiche, la fiche ouvre les rôles du périmètre', async ({ page }) => {
+  await gateway(page, { signedIn: true, role: 'cleaning_admin' });
+  await page.route('**/api/v1/admin/identity/**', async (route) => {
+    const headers = {
+      'Access-Control-Allow-Origin': new URL(page.url() || 'http://localhost:3040').origin,
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Headers': 'Accept, Content-Type, Authorization, Idempotency-Key',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE',
+      'Content-Type': 'application/json',
+    };
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    const path = new URL(route.request().url()).pathname;
+    const body = path.endsWith('/accounts/search')
+      ? { data: [ACCOUNT], nextCursor: null }
+      : path.endsWith('/roles')
+        ? { data: [] }
+        : {
+            account: ACCOUNT,
+            mfa: { configured: false, configuredAt: null, recoveryCodesRemaining: 0 },
+            roles: [
+              {
+                id: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d0b01',
+                roleCode: 'cleaning_agent',
+                roleDescription: 'Agent de terrain du nettoyage',
+                service: 'cleaning',
+                scopeType: 'domain',
+                scopeId: 'cleaning',
+                grantedAt: '2026-10-20T07:00:00Z',
+                grantedBy: null,
+                grantedByName: null,
+                grantReason: null,
+                revokedAt: null,
+                revokedBy: null,
+                revokedByName: null,
+                revokeReason: null,
+                revocable: true,
+              },
+            ],
+            history: [],
+            actions: { grantRole: true, suspend: false, reactivate: false, resetMfa: false },
+          };
+    return route.fulfill({ status: 200, headers, body: JSON.stringify(body) });
+  });
+  await page.goto('/administration');
+  await expect(page).toHaveURL(/\/administration\/comptes$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Comptes et rôles' })).toBeVisible();
+  await page.getByRole('link', { name: 'Awa Dossou' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Awa Dossou' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Retirer le rôle Agent du Nettoyage' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Attribuer un rôle' })).toBeVisible();
+  await expect(page.getByText(/Pas encore configurée/)).toBeVisible();
+});
+
 const DELIVERY = {
   id: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d6101',
   templateCode: 'cleaning.quote_requested.customer',
