@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { session } from '@/lib/api';
 import { errorBody, stubGateway } from '@/lib/api/gateway.test-utils';
 import { sessionBody } from '@/lib/api/session.test-utils';
@@ -215,7 +215,8 @@ describe('fiche d’un compte', () => {
     const dialog = openDialog();
     fireEvent.change(within(dialog).getByLabelText(/Motif/), { target: { value: 'Départ' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Retirer le rôle' }));
-    expect(await within(dialog).findByText(/a changé entre-temps/)).toBeInTheDocument();
+    // La fiche relue retire le bouton et sa fenêtre : l'explication reste sur la fiche.
+    await waitFor(() => expect(screen.getAllByText(/a changé entre-temps/).length).toBeGreaterThan(0));
     expect(calls.find((call) => call.method === 'POST')?.body).toEqual({
       assignmentId: ASSIGNMENT,
       reason: 'Départ',
