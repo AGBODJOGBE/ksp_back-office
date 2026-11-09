@@ -73,7 +73,8 @@ const paymentColumns: TableColumn<InvoicePayment>[] = [
   {
     key: 'by',
     header: t.columns.by,
-    cell: (payment) => (payment.recordedBy === 'system' ? t.bySystem : t.byStaff),
+    cell: (payment) =>
+      payment.method === 'wallet' ? t.byWallet : payment.recordedBy === 'system' ? t.bySystem : t.byStaff,
   },
 ];
 

@@ -57,6 +57,9 @@ export const missionTexts = {
   payments: 'Paiements enregistrés',
   noPayment: 'Aucun paiement enregistré.',
   paymentLine: (method: string, by: string, date: string) => `${method} · enregistré par ${by} le ${date}`,
+  refunded: 'Remboursé',
+  refundedLine: (date: string) =>
+    `Remboursé dans le portefeuille du client le ${date} : ce montant ne compte plus dans « Déjà réglé ».`,
   businessPayment:
     'Mission d’entreprise : elle se règle par sa facture mensuelle (module Finance), pas par un paiement manuel.',
   schedule: {

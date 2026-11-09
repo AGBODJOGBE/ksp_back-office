@@ -27,6 +27,8 @@ const methods: Record<string, string> = {
   mobile_money_offline: 'Mobile Money (hors ligne)',
   /** Paiement en ligne confirmé par le prestataire (`recordedBy` = `system`, ADR-031). */
   mobile_money_online: 'Mobile Money en ligne',
+  /** Payée par le client depuis son portefeuille prépayé (`recordedBy` = le membre qui a payé, ADR-046). */
+  wallet: 'Portefeuille prépayé',
 };
 
 export const invoiceMethod = (code: string) => methods[code] ?? code;
@@ -120,6 +122,7 @@ export const billingTexts = {
     },
     bySystem: 'Paiement en ligne (automatique)',
     byStaff: 'Équipe KSP',
+    byWallet: 'Le client, depuis son portefeuille',
     noReference: 'Aucune',
   },
   pay: {

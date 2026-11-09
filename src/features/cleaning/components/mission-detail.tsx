@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useCallback, useRef, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmAction } from '@/components/ui/confirm-action';
 import { DescriptionList } from '@/components/ui/description-list';
@@ -281,9 +282,12 @@ function MissionView({ mission, onChange }: { mission: Mission; onChange: (missi
               <ul className="grid gap-2">
                 {payment.payments.map((record) => (
                   <li key={record.id} className="border-line border-t pt-2">
-                    <p className="text-ink font-medium tabular-nums">
-                      {formatXof(record.amount)}
-                      {record.reference ? ` · ${record.reference}` : ''}
+                    <p className="text-ink flex flex-wrap items-center gap-2 font-medium tabular-nums">
+                      <span className={record.refundedAt ? 'line-through' : undefined}>
+                        {formatXof(record.amount)}
+                        {record.reference ? ` · ${record.reference}` : ''}
+                      </span>
+                      {record.refundedAt ? <Badge tone="neutral">{t.refunded}</Badge> : null}
                     </p>
                     <p className="text-small text-ink-muted">
                       {t.paymentLine(
@@ -292,6 +296,11 @@ function MissionView({ mission, onChange }: { mission: Mission; onChange: (missi
                         formatDateTime(record.recordedAt),
                       )}
                     </p>
+                    {record.refundedAt ? (
+                      <p className="text-small text-ink-muted">
+                        {t.refundedLine(formatDateTime(record.refundedAt))}
+                      </p>
+                    ) : null}
                   </li>
                 ))}
               </ul>

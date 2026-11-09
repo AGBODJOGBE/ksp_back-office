@@ -66,6 +66,8 @@ export const paymentMethod = names({
   cash: 'Espèces',
   mobile_money_offline: 'Mobile Money (hors ligne)',
   mobile_money_online: 'Mobile Money (en ligne)',
+  /** Payé par le client depuis son portefeuille prépayé (ADR-046). */
+  wallet: 'Portefeuille prépayé',
 });
 export const paymentOption = names({ deposit: 'Acompte', full: 'Totalité' });
 export const paymentTiming = names({ before: 'avant la prestation', after: 'après la prestation' });
