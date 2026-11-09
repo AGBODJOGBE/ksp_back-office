@@ -474,6 +474,8 @@ Mesure du 5 novembre 2026, de la demande au devis (`pnpm build && pnpm size`) :
 
 Fiche d'une demande, vue du groupe, formulaires de devis et boîte de position sont des morceaux chargés à la demande (environ 9, 5,5, 5 et 4,7 Ko compressés), hors « First Load JS ». Les fiches (`[id]`, `[groupId]`) n'apparaissent pas dans `pnpm size`.
 
+Mesure du 9 novembre 2026, après le module Notifications (ADR-039) : `/notifications/envois` et `/notifications/modeles` 212,5 Ko (écrans chargés à la demande ; budget « espace connecté » : 215 Ko) ; `/` 213,0 Ko.
+
 ## Ajouter une fonctionnalité
 
 1. Nommer le domaine comme le service du backend : `src/features/<domaine>/`.
