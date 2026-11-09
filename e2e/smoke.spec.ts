@@ -179,3 +179,74 @@ test('Nettoyage : la demande reçue s’ouvre avec ses actions, onglets selon le
   await expect(page.getByRole('button', { name: 'Planifier la visite' })).toBeVisible();
   await expect(tabs.getByRole('link', { name: 'Demandes' })).toHaveAttribute('aria-current', 'page');
 });
+
+const DELIVERY = {
+  id: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d6101',
+  templateCode: 'cleaning.quote_requested.customer',
+  requestedChannel: 'whatsapp',
+  channelUsed: null,
+  channelsTried: ['whatsapp', 'email'],
+  targetMasked: '+229********45',
+  recipientUserId: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d9e30',
+  status: 'failed',
+  errorCode: 'NOTIFICATION_CHANNELS_EXHAUSTED',
+  failureReason: 'provider_unavailable',
+  providerMessageId: null,
+  createdAt: '2026-11-05T09:30:00Z',
+  expiresAt: null,
+  acceptedAt: null,
+  failedAt: '2026-11-05T09:30:02Z',
+  erased: false,
+};
+
+test('Notifications : historique filtré, détail d’un envoi, modèles (support client)', async ({ page }) => {
+  await gateway(page, { signedIn: true, role: 'support_agent' });
+  const queries: string[] = [];
+  await page.route('**/api/v1/admin/notification/**', async (route) => {
+    const headers = {
+      'Access-Control-Allow-Origin': new URL(page.url() || 'http://localhost:3040').origin,
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Headers': 'Accept, Content-Type, Authorization, Idempotency-Key',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE',
+      'Content-Type': 'application/json',
+    };
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    const url = new URL(route.request().url());
+    const body = url.pathname.endsWith('/templates')
+      ? {
+          data: [
+            {
+              code: 'cleaning.quote_requested.customer',
+              kind: 'short',
+              channels: ['whatsapp', 'email'],
+              secret: false,
+              optional: true,
+              variables: ['first_name', 'link'],
+              optionalVariables: ['service_name'],
+              subject: 'Demande de devis reçue',
+              text: 'Bonjour {first_name},\nNous avons bien reçu votre demande.',
+            },
+          ],
+        }
+      : url.pathname.endsWith(`/deliveries/${DELIVERY.id}`)
+        ? DELIVERY
+        : (queries.push(url.search), { data: [DELIVERY], nextCursor: null });
+    return route.fulfill({ status: 200, headers, body: JSON.stringify(body) });
+  });
+
+  await page.goto('/notifications');
+  await expect(page).toHaveURL(/\/notifications\/envois$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Historique des envois' })).toBeVisible();
+  await page.getByLabel('Statut').selectOption('failed');
+  await expect(page).toHaveURL(/etat=failed/);
+  await expect.poll(() => queries.at(-1)).toContain('status=failed');
+  await page.getByRole('link', { name: 'cleaning.quote_requested.customer' }).first().click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: /Envoi « cleaning\.quote_requested/ }),
+  ).toBeVisible();
+  await expect(page.getByText(/prestataire indisponible/)).toBeVisible();
+
+  await page.goto('/notifications/modeles');
+  await expect(page.getByRole('heading', { level: 1, name: 'Modèles de messages' })).toBeVisible();
+  await expect(page.getByText('Demande de devis reçue')).toBeVisible();
+});
