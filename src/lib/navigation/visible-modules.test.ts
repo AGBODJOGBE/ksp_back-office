@@ -40,8 +40,10 @@ describe('accès aux modules du back-office', () => {
     expect(isModuleVisible('notifications', ['cleaning_admin'])).toBe(false);
   });
 
-  it('un agent de terrain du Nettoyage voit son module', () => {
-    expect(slugs(['cleaning_agent'])).toEqual(['tableau-de-bord', 'nettoyage']);
+  it('Nettoyage v2 : ouvert au support, plus à l’agent de terrain (application de l’agent)', () => {
+    expect(slugs(['cleaning_agent'])).toEqual(['tableau-de-bord']);
+    expect(isModuleVisible('nettoyage', ['support_agent'])).toBe(true);
+    expect(isModuleVisible('nettoyage', ['cleaning_supervisor'])).toBe(true);
   });
 
   it('un module qui a ses propres écrans n’a plus de page d’attente', () => {

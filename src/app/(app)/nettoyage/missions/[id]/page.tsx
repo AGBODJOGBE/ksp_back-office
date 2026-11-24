@@ -1,7 +1,14 @@
-import { MissionDetail } from '@/features/cleaning';
+import type { Metadata } from 'next';
+import { ComingSoon, cleaningTexts } from '@/features/cleaning';
 
-/** Fiche d'une mission (rendue à la demande ; les données sont lues par le navigateur). */
-export default async function CleaningMissionPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  return <MissionDetail id={id} />;
+const t = cleaningTexts.placeholders.mission;
+
+export const metadata: Metadata = { title: t.title };
+
+/**
+ * Ancienne fiche « mission » (v1), encore citée par les factures, les paiements et les portefeuilles :
+ * page provisoire jusqu'aux écrans des programmes (sous-lot 1c), qui décideront de sa redirection.
+ */
+export default function CleaningMissionPage() {
+  return <ComingSoon title={t.title} lead={t.lead} coming={t.coming} />;
 }

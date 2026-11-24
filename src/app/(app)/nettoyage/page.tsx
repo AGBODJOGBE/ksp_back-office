@@ -1,23 +1,11 @@
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
-import { Heading } from '@/components/ui/heading';
-import { RequestsList, requestsTexts } from '@/features/cleaning';
+import { ComingSoon, cleaningTexts } from '@/features/cleaning';
 
-export const metadata: Metadata = { title: requestsTexts.title };
+const t = cleaningTexts.placeholders.requests;
 
-/** Demandes de devis : coque statique ; les filtres sont lus dans l'adresse sous Suspense. */
+export const metadata: Metadata = { title: t.title };
+
+/** Dossiers (sous-lot 1b) : page provisoire, racine du module. */
 export default function CleaningRequestsPage() {
-  return (
-    <div className="grid gap-6">
-      <div>
-        <Heading as="h1" size="h2">
-          {requestsTexts.title}
-        </Heading>
-        <p className="text-ink-muted max-w-reading mt-2">{requestsTexts.lead}</p>
-      </div>
-      <Suspense>
-        <RequestsList />
-      </Suspense>
-    </div>
-  );
+  return <ComingSoon title={t.title} lead={t.lead} coming={t.coming} />;
 }

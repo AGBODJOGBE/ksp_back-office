@@ -108,51 +108,28 @@ test('la sonde de santé répond', async ({ request }) => {
   expect(await response.json()).toMatchObject({ status: 'ok', site: 'backoffice' });
 });
 
-const REQUEST = {
-  id: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d1001',
-  status: 'received',
-  customerId: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d9e30',
-  customerKind: 'individual',
-  organizationId: null,
-  serviceCode: 'menage_test',
-  premisesType: 'apartment',
-  quantity: 4,
-  options: [],
-  // Demande à l'ancien format (ADR-033) : réponses absentes, hors groupe et sans position (ADR-034).
-  answers: null,
-  selectedOptions: [],
-  frequency: null,
-  pricingVersion: null,
-  calculation: null,
-  groupId: null,
-  groupSize: 1,
-  placeType: null,
-  placeTypeLabel: null,
-  serviceName: 'Ménage',
-  location: null,
-  landmark: null,
-  geocodingProvider: null,
-  geocodedAddress: null,
-  commune: 'Cotonou',
-  address: 'Rue 12, Akpakpa',
-  preferredSlots: [{ start: '2026-11-05T08:00:00Z', end: '2026-11-05T11:00:00Z' }],
-  comment: null,
-  recurrence: null,
-  requestedTeamSize: null,
-  daysPerWeek: null,
-  recommendedTeamSize: 2,
-  estimate: null,
-  visit: null,
-  quote: null,
-  missionId: null,
-  closingReason: null,
-  createdAt: '2026-10-28T09:00:00Z',
-  updatedAt: '2026-10-28T09:00:00Z',
+const PARAMETER = {
+  id: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8da001',
+  code: 'superficie',
+  label: 'Superficie',
+  kind: 'number',
+  unit: 'm²',
+  min: 0,
+  max: 5000,
+  choices: [],
+  required: true,
+  help: null,
+  active: true,
+  updatedAt: '2026-11-20T09:00:00Z',
+  updatedBy: null,
+  updatedByName: null,
 };
 
-test('Nettoyage : la demande reçue s’ouvre avec ses actions, onglets selon le rôle', async ({ page }) => {
+test('Nettoyage v2 : catalogue dans l’ordre de construction, onglets du parcours selon le rôle', async ({
+  page,
+}) => {
   await gateway(page, { signedIn: true, role: 'cleaning_admin' });
-  await page.route('**/api/v1/{admin/cleaning,cleaning}/**', async (route) => {
+  await page.route('**/api/v1/admin/cleaning/**', async (route) => {
     const headers = {
       'Access-Control-Allow-Origin': new URL(page.url() || 'http://localhost:3040').origin,
       'Access-Control-Allow-Credentials': 'true',
@@ -162,22 +139,26 @@ test('Nettoyage : la demande reçue s’ouvre avec ses actions, onglets selon le
     };
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
     const path = new URL(route.request().url()).pathname;
-    const body = path.endsWith('/admin/cleaning/quote-requests')
-      ? { data: [REQUEST], nextCursor: null }
-      : path.endsWith(`/quote-requests/${REQUEST.id}`)
-        ? REQUEST
-        : path.endsWith('/admin/cleaning/agents')
-          ? { data: [] }
-          : { data: [] };
+    const body = path.endsWith('/admin/cleaning/parameters')
+      ? { data: [PARAMETER], nextCursor: null, total: 1 }
+      : { data: [], nextCursor: null, total: 0 };
     return route.fulfill({ status: 200, headers, body: JSON.stringify(body) });
   });
-  await page.goto('/nettoyage');
-  await expect(page.getByRole('heading', { level: 1, name: 'Demandes de devis' })).toBeVisible();
+  await page.goto('/nettoyage/catalogue');
+  await expect(page.getByRole('heading', { level: 1, name: 'Catalogue' })).toBeVisible();
   const tabs = page.getByRole('navigation', { name: 'Sections du Nettoyage' });
-  await expect(tabs.getByRole('link', { name: 'Catalogue' })).toBeVisible();
-  await page.getByRole('link', { name: /Demande du 28 oct\. 2026/ }).click();
-  await expect(page.getByRole('button', { name: 'Planifier la visite' })).toBeVisible();
-  await expect(tabs.getByRole('link', { name: 'Demandes' })).toHaveAttribute('aria-current', 'page');
+  await expect(tabs.getByRole('link', { name: 'Catalogue' })).toHaveAttribute('aria-current', 'page');
+  await expect(tabs.getByRole('link', { name: 'Réglages' })).toBeVisible();
+  // Catégories : première étape encore vide.
+  await expect(page.getByText('À faire ensuite')).toBeVisible();
+  await page
+    .getByRole('navigation', { name: 'Étapes du catalogue' })
+    .getByRole('link', { name: /Paramètres/ })
+    .click();
+  await expect(page.getByRole('link', { name: 'Superficie' })).toBeVisible();
+  await page.goto('/nettoyage');
+  await expect(page.getByRole('heading', { level: 1, name: 'Dossiers' })).toBeVisible();
+  await expect(page.getByText('Bientôt disponible')).toBeVisible();
 });
 
 const ACCOUNT = {

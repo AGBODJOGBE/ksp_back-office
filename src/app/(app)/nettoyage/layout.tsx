@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 };
 
 /**
- * Module Nettoyage : coque statique commune (surtitre et onglets filtrés par rôle) ; chaque écran est
- * une feuille client qui lit la gateway (F-005, option A). Hors des rôles de l'agent, `ModuleGate`
- * affiche un message à la place du module (affichage seulement).
+ * Module Nettoyage (v2) : coque statique commune (surtitre et onglets du parcours, filtrés par rôle) ;
+ * chaque écran est une feuille client qui lit la gateway (F-005, option A). Hors des rôles de l'agent,
+ * `ModuleGate` affiche un message à la place du module (affichage seulement).
  */
 export default function CleaningLayout({ children }: { children: ReactNode }) {
   return (
