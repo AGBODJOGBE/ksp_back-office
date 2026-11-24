@@ -1,565 +1,341 @@
+import type * as z from 'zod/mini';
 import { api, parseResponse } from '@/lib/api';
 import {
-  type Agent,
-  agentListSchema,
-  agentSchema,
-  type Catalog,
-  catalogSchema,
-  type GroupOutcome,
-  groupOutcomeSchema,
-  type LocationCorrection,
-  locationCorrectionSchema,
+  type CleaningSettings,
+  type CleaningType,
+  cleaningTypeListSchema,
+  cleaningTypeSchema,
+  type Commune,
+  communeListSchema,
+  type Holiday,
+  holidayListSchema,
+  holidaySchema,
+  type Offer,
+  offerListSchema,
+  offerSchema,
+  type Page,
+  type Parameter,
+  type ParameterChoice,
+  type ParameterKind,
+  parameterListSchema,
+  parameterSchema,
+  type PlaceCategory,
+  placeCategoryListSchema,
+  placeCategorySchema,
   type PlaceType,
   placeTypeListSchema,
   placeTypeSchema,
-  type RequestEstimate,
-  requestEstimateSchema,
-  type ServicePreview,
-  servicePreviewSchema,
-  publicPlaceTypesSchema,
-  type ServiceForm,
-  serviceFormsSchema,
-  type Mission,
-  type MissionList,
-  missionListSchema,
-  missionSchema,
-  type QuoteRequest,
-  type QuoteRequestList,
-  quoteRequestListSchema,
-  serviceNamesSchema,
-  servedZoneListSchema,
-  quoteRequestSchema,
-  type ServiceDefinition,
-  serviceDefinitionSchema,
-  type Settings,
+  type PlanningMode,
+  type Simulation,
   settingsSchema,
-  type Team,
-  teamListSchema,
-  teamSchema,
-  type TimeSlot,
-  type VisitList,
-  visitListSchema,
+  simulationSchema,
+  type Skill,
+  skillListSchema,
+  skillSchema,
+  type Tariff,
+  tariffListSchema,
+  tariffSchema,
+  type TeamRuleBracket,
   type Zone,
   zoneListSchema,
   zoneSchema,
+  type ChecklistItem,
+  type FrequencyCoefficient,
 } from './schemas';
 
 /**
- * Appels du navigateur à la gateway pour le Nettoyage du back-office (`/api/v1/admin/cleaning/*`).
- * Option A (F-005) : jeton d'accès de la session, jamais de passage par le serveur Next. Le paiement
- * manuel et les opérations de groupe acceptent une clé d'idempotence (facultative dans le contrat) : le
- * back-office l'envoie toujours. Les autres écritures d'une demande n'en ont pas : l'écran désactive son
- * bouton pendant l'envoi et relit la fiche après une coupure réseau.
+ * Appels du Nettoyage v2 (contrat `ksp-api.v1.yaml`, routes `/api/v1/admin/cleaning/*`), sous-lot 1a :
+ * catalogue (catégories, lieux, types, paramètres, offres, tarifs), simulateur, compétences, jours
+ * fériés, zones et communes, réglages. Chaque réponse est validée par son schéma. Les créations, la
+ * publication d'un tarif et l'activation d'une zone portent la clé d'idempotence exigée par le contrat,
+ * tirée par l'écran à l'ouverture du formulaire et renvoyée telle quelle à chaque nouvel essai.
  */
-
 const ADMIN = '/api/v1/admin/cleaning';
-const REQUESTS = `${ADMIN}/quote-requests`;
-const MISSIONS = `${ADMIN}/missions`;
-const INTERVENTIONS = `${ADMIN}/interventions`;
 
-/** Taille d'une page des listes (le contrat accepte 1 à 100, 20 par défaut). */
 export const PAGE_SIZE = 20;
+/** Taille de page la plus grande du contrat (listes de choix complètes). */
+const FULL_PAGE = 100;
+/** Garde-fou des lectures complètes : au plus 10 pages (1 000 éléments). */
+const MAX_PAGES = 10;
 
-const at = (base: string, id: string, action = '') =>
-  `${base}/${encodeURIComponent(id)}${action ? `/${action}` : ''}`;
+const path = (...segments: string[]) => [ADMIN, ...segments.map(encodeURIComponent)].join('/');
 
-// ——— Noms et formulaires des prestations (route publique du portail) ———
+type Query = Record<string, string | number | undefined>;
+type PageSchema<T> = z.ZodMiniType<Page<T>>;
 
-let servicesBody: Promise<unknown> | null = null;
-
-/** Réponse de `GET /cleaning/services`, lue une fois par page ; un échec n'est pas gardé. */
-function publicServices(): Promise<unknown> {
-  servicesBody ??= api.get(`/api/v1/cleaning/services`, { auth: false });
-  servicesBody.catch(() => {
-    servicesBody = null;
-  });
-  return servicesBody;
+async function read<S extends z.ZodMiniType>(schema: S, url: string, query?: Query): Promise<z.infer<S>> {
+  return parseResponse(schema, await api.get(url, { query }));
 }
 
-/**
- * Noms des prestations proposées, lus sur la route publique `GET /cleaning/services` (les fiches ne
- * portent que le code). Un échec n'est pas gardé : l'écran affiche alors le code.
- */
-export async function getServiceNames(): Promise<Map<string, string>> {
-  const body = await publicServices();
-  return new Map(parseResponse(serviceNamesSchema, body).data.map((s) => [s.code, s.name]));
+/** Une page d'une liste : `limit` du contrat (20 par défaut), curseur opaque. */
+function listPage<T>(schema: PageSchema<T>, url: string, query: Query = {}) {
+  return (cursor?: string): Promise<Page<T>> => read(schema, url, { limit: PAGE_SIZE, ...query, cursor });
 }
 
-/**
- * Formulaires publics des prestations, par code (même lecture que les noms) : libellés des réponses d'une
- * demande. Une réponse sans formulaire lisible donne une table vide : les réponses s'affichent avec leurs codes.
- */
-export async function getServiceForms(): Promise<Map<string, ServiceForm>> {
-  const parsed = serviceFormsSchema.safeParse(await publicServices());
-  return new Map(parsed.success ? parsed.data.data.map((s) => [s.code, s.form]) : []);
-}
-
-/** Réservé aux tests et à l'écran du catalogue (après un enregistrement). */
-export function forgetServiceNames(): void {
-  servicesBody = null;
-}
-
-/** Type de lieu, pour un filtre : code (paramètre `placeType` de la liste) et libellé affiché. */
-export interface PlaceTypeOption {
-  code: string;
-  label: string;
-}
-
-/**
- * Types de lieu du filtre des demandes. L'admin lit tous les types, désactivés compris
- * (`GET /admin/cleaning/place-types`) ; le superviseur, qui n'a pas cette route, lit les types actifs du
- * catalogue public (`GET /cleaning/catalog`).
- */
-export async function listPlaceTypeOptions(administer: boolean): Promise<PlaceTypeOption[]> {
-  if (administer) {
-    return parseResponse(placeTypeListSchema, await api.get(`${ADMIN}/place-types`)).data;
+/** Toute une liste (choix d'un lieu, d'un paramètre…), page après page, sans dépasser `MAX_PAGES`. */
+async function readAll<T>(schema: PageSchema<T>, url: string, query: Query = {}): Promise<T[]> {
+  const items: T[] = [];
+  let cursor: string | undefined;
+  for (let index = 0; index < MAX_PAGES; index += 1) {
+    const result: Page<T> = await read(schema, url, { ...query, limit: FULL_PAGE, cursor });
+    items.push(...result.data);
+    if (!result.nextCursor) break;
+    cursor = result.nextCursor;
   }
-  return parseResponse(publicPlaceTypesSchema, await api.get(`/api/v1/cleaning/catalog`, { auth: false }))
-    .placeTypes;
+  return items;
 }
 
-/** Zone desservie, pour un filtre : code (paramètre `commune` des listes) et nom affiché. */
-export interface ZoneOption {
-  code: string;
-  commune: string;
+/** Nombre d'éléments d'une liste (`total`), lu sur une page d'un élément. */
+async function count<T>(schema: PageSchema<T>, url: string): Promise<number> {
+  const result: Page<T> = await read(schema, url, { limit: 1 });
+  return result.total;
 }
 
-/**
- * Zones proposées dans le filtre des demandes. L'admin lit toutes les zones, désactivées comprises (des
- * demandes anciennes peuvent y être) ; le superviseur, qui n'a pas cette route, lit les zones ouvertes
- * sur la route publique.
- */
-export async function listZoneOptions(includeInactive: boolean): Promise<ZoneOption[]> {
-  if (includeInactive) return listZones();
-  return parseResponse(servedZoneListSchema, await api.get(`/api/v1/cleaning/zones`, { auth: false })).data;
-}
-
-// ——— Demandes de devis ———
-
-/**
- * Filtres de la liste, tous facultatifs et cumulables (gateway) : état, code de zone, type de client,
- * groupe, type de lieu et prestation (ADR-034).
- */
-export interface RequestFilters {
-  status?: string;
-  commune?: string;
-  customerKind?: string;
-  groupId?: string;
-  placeType?: string;
-  serviceCode?: string;
-}
-
-export async function listRequests(
-  filters: RequestFilters,
-  cursor?: string,
-  limit: number = PAGE_SIZE,
-): Promise<QuoteRequestList> {
-  const { status, commune, customerKind, groupId, placeType, serviceCode } = filters;
-  return parseResponse(
-    quoteRequestListSchema,
-    await api.get(REQUESTS, {
-      query: { limit, cursor, status, commune, customerKind, groupId, placeType, serviceCode },
-    }),
-  );
-}
-
-/** Un groupe compte 10 demandes au plus (ADR-035) : une page de 10 les lit toutes. */
-export const GROUP_LIMIT = 10;
-
-/**
- * Demandes d'un groupe. Aucune route du back-office ne lit un groupe : la liste filtrée par `groupId`
- * (`?groupId=&limit=10`) en tient lieu.
- */
-export async function listGroupRequests(groupId: string): Promise<QuoteRequest[]> {
-  return (await listRequests({ groupId }, undefined, GROUP_LIMIT)).data;
-}
-
-export async function getRequest(id: string): Promise<QuoteRequest> {
-  return parseResponse(quoteRequestSchema, await api.get(at(REQUESTS, id)));
-}
-
-export async function rejectRequest(id: string, reason: string): Promise<QuoteRequest> {
-  return parseResponse(quoteRequestSchema, await api.post(at(REQUESTS, id, 'reject'), { reason }));
-}
-
-export async function scheduleVisit(id: string, input: { scheduledAt: string; agentId: string }) {
-  return parseResponse(quoteRequestSchema, await api.post(at(REQUESTS, id, 'visits'), input));
-}
-
-/**
- * `CleaningMeasurementInput` (ADR-037) : réponses constatées après la visite, mêmes champs que le formulaire du
- * client. `options` et `frequency` absents s'ils sont vides.
- */
-export interface MeasurementInput {
-  answers: Record<string, number | string | boolean>;
-  options?: Array<{ code: string; answers: Record<string, number | string | boolean> }>;
-  frequency?: string;
-}
-
-/**
- * Compte rendu de la visite : identifiant de la visite, pas de la demande. Avec `measurements` (ADR-037), les
- * mesures constatées sont enregistrées en même temps (tout ou rien).
- */
-export async function completeVisit(
-  visitId: string,
-  report: string,
-  measurements?: MeasurementInput,
-): Promise<QuoteRequest> {
-  return parseResponse(
-    quoteRequestSchema,
-    await api.post(at(`${ADMIN}/visits`, visitId, 'complete'), {
-      report,
-      ...(measurements ? { measurements } : {}),
-    }),
-  );
-}
-
-/** Recalcule le prix d'une demande avec d'autres réponses (ADR-037) : rien n'est enregistré. */
-export async function estimateRequest(id: string, input: MeasurementInput): Promise<RequestEstimate> {
-  return parseResponse(requestEstimateSchema, await api.post(at(REQUESTS, id, 'estimate'), input));
-}
-
-/** Enregistre (ou corrige) les mesures constatées ; les réponses du client ne changent jamais (ADR-037). */
-export async function saveMeasurements(id: string, input: MeasurementInput): Promise<QuoteRequest> {
-  return parseResponse(quoteRequestSchema, await api.put(at(REQUESTS, id, 'measurements'), input));
-}
-
-/** `SendCleaningQuoteRequest` : sans lignes, la gateway reprend la grille en vigueur. */
-export interface QuoteInput {
-  lines?: Array<{ label: string; quantity: number; unitPrice: number }>;
-  proposedSlots: TimeSlot[];
-  validityDays?: number;
-  recurrence?: { period: string; visitsPerPeriod: number; durationMonths: number };
-  teamSize?: number;
-  durationMinutes: number;
-}
-
-export async function sendQuote(id: string, input: QuoteInput): Promise<QuoteRequest> {
-  return parseResponse(quoteRequestSchema, await api.post(at(REQUESTS, id, 'quote'), input));
-}
-
-/** `CorrectCleaningRequestLocationRequest` : `landmark` absent garde le repère, `commune` sert de repli. */
-export interface LocationInput {
-  latitude: number;
-  longitude: number;
-  accuracyMeters?: number;
-  landmark?: string;
-  commune?: string;
-}
-
-/** Corrige la position d'une demande : appliquée à tout le groupe et aux missions non terminées (gateway). */
-export async function correctLocation(id: string, input: LocationInput): Promise<LocationCorrection> {
-  return parseResponse(locationCorrectionSchema, await api.put(at(REQUESTS, id, 'location'), input));
-}
-
-// ——— Opérations de groupe (ADR-035) ———
-
-/*
- * `Idempotency-Key` facultative dans le contrat : le back-office l'envoie toujours, tirée à l'ouverture
- * de la boîte et renvoyée telle quelle si l'agent renvoie.
- */
-
-const GROUPS = `${ADMIN}/quote-request-groups`;
-
-export async function scheduleGroupVisit(
-  groupId: string,
-  input: { scheduledAt: string; agentId: string; excludeRequestIds: string[] },
+async function create<S extends z.ZodMiniType>(
+  schema: S,
+  url: string,
+  body: unknown,
   idempotencyKey: string,
-): Promise<GroupOutcome> {
-  return parseResponse(
-    groupOutcomeSchema,
-    await api.post(at(GROUPS, groupId, 'visits'), input, { idempotencyKey }),
-  );
+): Promise<z.infer<S>> {
+  return parseResponse(schema, await api.post(url, body, { idempotencyKey }));
 }
 
-/**
- * Compte rendu commun. `measurements` (ADR-037) : une entrée par demande mesurée, les autres gardent les
- * réponses du client ; tout ou rien.
- */
-export async function completeGroupVisit(
-  groupId: string,
-  report: string,
-  idempotencyKey: string,
-  measurements?: Array<MeasurementInput & { requestId: string }>,
-): Promise<GroupOutcome> {
-  return parseResponse(
-    groupOutcomeSchema,
-    await api.post(
-      at(GROUPS, groupId, 'visits/complete'),
-      { report, ...(measurements?.length ? { measurements } : {}) },
-      { idempotencyKey },
-    ),
-  );
+async function patch<S extends z.ZodMiniType>(schema: S, url: string, body: unknown): Promise<z.infer<S>> {
+  return parseResponse(schema, await api.patch(url, body));
 }
 
-export async function rejectGroup(
-  groupId: string,
-  reason: string,
-  idempotencyKey: string,
-): Promise<GroupOutcome> {
-  return parseResponse(
-    groupOutcomeSchema,
-    await api.post(at(GROUPS, groupId, 'reject'), { reason }, { idempotencyKey }),
-  );
-}
-
-/** `SendCleaningGroupQuotesRequest` : un devis par demande, mêmes créneaux ; lignes vides = préremplies. */
-export interface GroupQuotesInput {
-  proposedSlots: TimeSlot[];
-  validityDays?: number;
-  quotes: Array<
-    { requestId: string } & Pick<QuoteInput, 'lines' | 'recurrence' | 'teamSize' | 'durationMinutes'>
-  >;
-}
-
-export async function sendGroupQuotes(
-  groupId: string,
-  input: GroupQuotesInput,
-  idempotencyKey: string,
-): Promise<GroupOutcome> {
-  return parseResponse(
-    groupOutcomeSchema,
-    await api.post(at(GROUPS, groupId, 'quotes'), input, { idempotencyKey }),
-  );
-}
-
-// ——— Visites techniques (ADR-035) ———
-
-/**
- * Filtres de la liste des visites (`GET /admin/cleaning/visits`), tous facultatifs : état, et visites prévues
- * à partir de `from` (incluse) ou avant `to` (exclue), en ISO 8601. Un agent ne reçoit que ses visites.
- */
-export interface VisitFilters {
-  status?: string;
-  from?: string;
-  to?: string;
-  groupId?: string;
-}
-
-export async function listVisits(filters: VisitFilters, cursor?: string): Promise<VisitList> {
-  const { status, from, to, groupId } = filters;
-  return parseResponse(
-    visitListSchema,
-    await api.get(`${ADMIN}/visits`, { query: { limit: PAGE_SIZE, cursor, status, from, to, groupId } }),
-  );
-}
-
-// ——— Missions ———
-
-export async function listMissions(status: string | undefined, cursor?: string): Promise<MissionList> {
-  return parseResponse(
-    missionListSchema,
-    await api.get(MISSIONS, { query: { limit: PAGE_SIZE, cursor, status } }),
-  );
-}
-
-export async function getMission(id: string): Promise<Mission> {
-  return parseResponse(missionSchema, await api.get(at(MISSIONS, id)));
-}
-
-export interface InterventionInput {
-  scheduledStart: string;
-  durationMinutes: number;
-  agentIds?: string[];
-  teamId?: string;
-}
-
-export async function scheduleIntervention(id: string, input: InterventionInput): Promise<Mission> {
-  return parseResponse(missionSchema, await api.post(at(MISSIONS, id, 'interventions'), input));
-}
-
-export interface PaymentInput {
+/** `CleaningAmountInput` : entier en FCFA. */
+export interface AmountInput {
   amount: number;
-  method: 'cash' | 'mobile_money_offline';
-  reference?: string;
+  currency: 'XOF';
 }
+export const xof = (amount: number): AmountInput => ({ amount, currency: 'XOF' });
 
-/**
- * Paiement manuel. `idempotencyKey` : clé tirée à l'ouverture du formulaire et gardée pendant les
- * renvois ; un second envoi avec la même clé ne crée pas de second paiement (gateway).
- */
-export async function recordPayment(
-  id: string,
-  input: PaymentInput,
-  idempotencyKey: string,
-): Promise<Mission> {
-  return parseResponse(
-    missionSchema,
-    await api.post(at(MISSIONS, id, 'payments'), input, { idempotencyKey }),
-  );
-}
+// --- Paramètres ----------------------------------------------------------------------------------
 
-export async function cancelMission(id: string, reason: string): Promise<Mission> {
-  return parseResponse(missionSchema, await api.post(at(MISSIONS, id, 'cancel'), { reason }));
-}
-
-// ——— Passages ———
-
-export type InterventionAction = 'start' | 'resume' | 'complete';
-
-export async function interventionAction(id: string, action: InterventionAction): Promise<Mission> {
-  return parseResponse(missionSchema, await api.post(at(INTERVENTIONS, id, action)));
-}
-
-export async function updateChecklist(id: string, doneCodes: string[]): Promise<Mission> {
-  return parseResponse(missionSchema, await api.put(at(INTERVENTIONS, id, 'checklist'), { doneCodes }));
-}
-
-export async function reportIncident(id: string, note: string): Promise<Mission> {
-  return parseResponse(missionSchema, await api.post(at(INTERVENTIONS, id, 'incident'), { note }));
-}
-
-// ——— Catalogue et réglages ———
-
-export async function getCatalog(): Promise<Catalog> {
-  return parseResponse(catalogSchema, await api.get(`${ADMIN}/catalog`));
-}
-
-/**
- * `CleaningFieldInput` (ADR-033) : propriétés du seul type du champ (les autres sont refusées par la gateway).
- * Montants en entiers de FCFA, coefficients en points de base (10 000 = ×1) ; `null` : non fixé.
- */
-export type FieldInput = {
-  code: string;
+export interface ParameterBody {
   label: string;
+  unit?: string;
+  min?: number;
+  max?: number;
+  choices?: ParameterChoice[];
   required: boolean;
-  helpText?: string | null;
-  active: boolean;
-} & (
-  | { type: 'number'; unitLabel: string; min: number; max: number; pricePerUnit: number | null }
-  | {
-      type: 'choice';
-      choices: Array<{
-        code: string;
-        label: string;
-        supplement: number | null;
-        coefficientBp?: number | null;
-        active: boolean;
-      }>;
-    }
-  | { type: 'boolean'; supplementIfYes?: number | null; coefficientBpIfYes?: number | null }
-);
+  help?: string;
+}
+export type CreateParameterBody = ParameterBody & { code: string; kind: ParameterKind };
+export type UpdateParameterBody = Partial<ParameterBody> & { active?: boolean };
 
-/** `SaveCleaningServiceRequest` (ADR-033) : prestation complète, une nouvelle version à chaque enregistrement. */
-export interface ServiceInput {
+export const listParameters = (cursor?: string) => listPage(parameterListSchema, path('parameters'))(cursor);
+export const allParameters = () => readAll(parameterListSchema, path('parameters'));
+export const countParameters = () => count(parameterListSchema, path('parameters'));
+export const getParameter = (id: string) => read(parameterSchema, path('parameters', id));
+export const createParameter = (body: CreateParameterBody, key: string): Promise<Parameter> =>
+  create(parameterSchema, path('parameters'), body, key);
+export const updateParameter = (id: string, body: UpdateParameterBody): Promise<Parameter> =>
+  patch(parameterSchema, path('parameters', id), body);
+
+// --- Catégories de lieu --------------------------------------------------------------------------
+
+export interface PlaceCategoryBody {
+  name: string;
+  icon?: string;
+  order?: number;
+  visitFee?: AmountInput;
+}
+export type CreatePlaceCategoryBody = PlaceCategoryBody & { code: string };
+export type UpdatePlaceCategoryBody = Partial<PlaceCategoryBody> & { active?: boolean };
+
+export const listPlaceCategories = (cursor?: string) =>
+  listPage(placeCategoryListSchema, path('place-categories'))(cursor);
+export const allPlaceCategories = () => readAll(placeCategoryListSchema, path('place-categories'));
+export const countPlaceCategories = () => count(placeCategoryListSchema, path('place-categories'));
+export const getPlaceCategory = (id: string) => read(placeCategorySchema, path('place-categories', id));
+export const createPlaceCategory = (body: CreatePlaceCategoryBody, key: string): Promise<PlaceCategory> =>
+  create(placeCategorySchema, path('place-categories'), body, key);
+export const updatePlaceCategory = (id: string, body: UpdatePlaceCategoryBody): Promise<PlaceCategory> =>
+  patch(placeCategorySchema, path('place-categories', id), body);
+
+// --- Lieux ---------------------------------------------------------------------------------------
+
+export interface PlaceTypeBody {
+  categoryId: string;
+  name: string;
+  icon?: string;
+  description?: string;
+  order?: number;
+  freeDescription?: boolean;
+  parameterIds: string[];
+  areaParameterId?: string;
+}
+export type CreatePlaceTypeBody = PlaceTypeBody & { code: string };
+export type UpdatePlaceTypeBody = Partial<PlaceTypeBody> & { active?: boolean };
+
+export const listPlaceTypes = (categoryId?: string) =>
+  listPage(placeTypeListSchema, path('place-types'), { categoryId });
+export const allPlaceTypes = () => readAll(placeTypeListSchema, path('place-types'));
+export const countPlaceTypes = () => count(placeTypeListSchema, path('place-types'));
+export const getPlaceType = (id: string) => read(placeTypeSchema, path('place-types', id));
+export const createPlaceType = (body: CreatePlaceTypeBody, key: string): Promise<PlaceType> =>
+  create(placeTypeSchema, path('place-types'), body, key);
+export const updatePlaceType = (id: string, body: UpdatePlaceTypeBody): Promise<PlaceType> =>
+  patch(placeTypeSchema, path('place-types', id), body);
+
+// --- Compétences ---------------------------------------------------------------------------------
+
+export const listSkills = (cursor?: string) => listPage(skillListSchema, path('skills'))(cursor);
+export const allSkills = () => readAll(skillListSchema, path('skills'));
+export const countSkills = () => count(skillListSchema, path('skills'));
+export const createSkill = (body: { code: string; name: string }, key: string): Promise<Skill> =>
+  create(skillSchema, path('skills'), body, key);
+export const updateSkill = (id: string, body: { name?: string; active?: boolean }): Promise<Skill> =>
+  patch(skillSchema, path('skills', id), body);
+
+// --- Types de nettoyage --------------------------------------------------------------------------
+
+export interface CleaningTypeBody {
   name: string;
   description?: string;
-  active: boolean;
-  fields: FieldInput[];
-  options?: Array<{
-    code: string;
-    label: string;
-    description?: string | null;
-    active: boolean;
-    flatPrice: number | null;
-    fields?: FieldInput[];
-  }>;
-  pricing: {
-    minimumPrice: number | null;
-    communeCoefficients?: Array<{ commune: string; coefficientBp: number }>;
-    defaultCoefficientBp?: number;
-    frequencies?: Array<{ code: string; label: string; coefficientBp: number; active: boolean }>;
-    teamSize?: { fieldCode?: string | null; unitsPerAgent: number; minAgents: number; maxAgents: number };
-    checklist?: Array<{ code: string; label: string }>;
-  };
+  icon?: string;
+  requiredSkillCode?: string;
+  referenceDurationMinutes: number;
+  checklist: ChecklistItem[];
+  isPack?: boolean;
+  packItemIds?: string[];
+}
+export type CreateCleaningTypeBody = CleaningTypeBody & { code: string };
+export type UpdateCleaningTypeBody = Partial<CleaningTypeBody> & { active?: boolean };
+
+export const listCleaningTypes = (cursor?: string) =>
+  listPage(cleaningTypeListSchema, path('cleaning-types'))(cursor);
+export const allCleaningTypes = () => readAll(cleaningTypeListSchema, path('cleaning-types'));
+export const countCleaningTypes = () => count(cleaningTypeListSchema, path('cleaning-types'));
+export const getCleaningType = (id: string) => read(cleaningTypeSchema, path('cleaning-types', id));
+export const createCleaningType = (body: CreateCleaningTypeBody, key: string): Promise<CleaningType> =>
+  create(cleaningTypeSchema, path('cleaning-types'), body, key);
+export const updateCleaningType = (id: string, body: UpdateCleaningTypeBody): Promise<CleaningType> =>
+  patch(cleaningTypeSchema, path('cleaning-types', id), body);
+
+// --- Offres et tarifs ----------------------------------------------------------------------------
+
+export interface OfferBody {
+  extraParameterIds: string[];
+  teamRule: TeamRuleBracket[];
+  order?: number;
+}
+export type CreateOfferBody = OfferBody & { placeTypeId: string; cleaningTypeId: string; active?: boolean };
+export type UpdateOfferBody = Partial<OfferBody> & { active?: boolean };
+
+export const listOffers = (filters: { placeTypeId?: string; cleaningTypeId?: string } = {}) =>
+  listPage(offerListSchema, path('offers'), filters);
+export const allOffers = (filters: { placeTypeId?: string; cleaningTypeId?: string } = {}) =>
+  readAll(offerListSchema, path('offers'), filters);
+export const countOffers = () => count(offerListSchema, path('offers'));
+export const getOffer = (id: string) => read(offerSchema, path('offers', id));
+export const createOffer = (body: CreateOfferBody, key: string): Promise<Offer> =>
+  create(offerSchema, path('offers'), body, key);
+export const updateOffer = (id: string, body: UpdateOfferBody): Promise<Offer> =>
+  patch(offerSchema, path('offers', id), body);
+
+/** `CleaningCreateTariffDraftBody` / `CleaningUpdateTariffDraftBody`. */
+export interface TariffBody {
+  baseParameterCode?: string;
+  brackets: { from: number; to: number; mode: 'flat' | 'per_unit'; amount: AmountInput }[];
+  supplements: {
+    parameterCode: string;
+    choiceCode?: string;
+    mode: 'fixed' | 'per_unit' | 'coefficient';
+    amount?: AmountInput;
+    coefficientBps?: number;
+    includedUnits?: number;
+  }[];
+  minimum: AmountInput;
+  frequencyCoefficients: FrequencyCoefficient[];
+  packDiscountBps?: number;
 }
 
-export async function saveService(code: string, input: ServiceInput): Promise<ServiceDefinition> {
-  return parseResponse(
-    serviceDefinitionSchema,
-    await api.put(`${ADMIN}/catalog/services/${encodeURIComponent(code)}`, input),
+/** Versions du tarif d'une offre, la plus récente d'abord. */
+export const listTariffs = (offerId: string) => (cursor?: string) =>
+  read(tariffListSchema, path('offers', offerId, 'tariffs'), { limit: PAGE_SIZE, cursor });
+export const createTariffDraft = (offerId: string, body: TariffBody, key: string): Promise<Tariff> =>
+  create(tariffSchema, path('offers', offerId, 'tariffs'), body, key);
+export const updateTariffDraft = async (offerId: string, version: number, body: TariffBody) =>
+  parseResponse(tariffSchema, await api.put(path('offers', offerId, 'tariffs', String(version)), body));
+export const publishTariff = async (offerId: string, version: number, key: string) =>
+  parseResponse(
+    tariffSchema,
+    await api.post(path('offers', offerId, 'tariffs', String(version), 'publish'), undefined, {
+      idempotencyKey: key,
+    }),
   );
+
+// --- Simulateur ----------------------------------------------------------------------------------
+
+export type Values = Record<string, number | string | boolean>;
+
+/** `CleaningSchedulePlan` (partie des champs proposée par le simulateur du back-office). */
+export interface SchedulePlan {
+  kind: 'one_off' | 'weekly' | 'monthly';
+  startTime: string;
+  dates?: string[];
+  weekdays?: string[];
+  everyWeeks?: number;
+  monthDays?: number[];
+  startDate?: string;
+  durationWeeks?: number;
+  durationMonths?: number;
+  excludeHolidays?: boolean;
 }
 
-/** `PreviewCleaningServiceRequest` : essai d'une grille (définition non enregistrée) sur des réponses d'exemple. */
-export interface PreviewInput extends MeasurementInput {
-  definition?: ServiceInput;
-  commune: string;
+export interface SimulationBody {
+  placeTypeId: string;
+  cleaningTypeIds: string[];
+  values: Values;
+  schedule?: SchedulePlan;
+  communeKey?: string;
+  draftTariffIds: string[];
 }
 
-export async function previewService(code: string, input: PreviewInput): Promise<ServicePreview> {
-  return parseResponse(
-    servicePreviewSchema,
-    await api.post(`${ADMIN}/catalog/services/${encodeURIComponent(code)}/preview`, input),
-  );
+/** Calcul de test : jamais enregistré, accepte les brouillons et les éléments inactifs (R-CA-08). */
+export const simulate = async (body: SimulationBody): Promise<Simulation> =>
+  parseResponse(simulationSchema, await api.post(path('simulations'), body));
+
+// --- Jours fériés --------------------------------------------------------------------------------
+
+export const listHolidays = (year: number) => listPage(holidayListSchema, path('holidays'), { year });
+export const createHoliday = (body: { date: string; name: string }, key: string): Promise<Holiday> =>
+  create(holidaySchema, path('holidays'), body, key);
+export const deleteHoliday = (id: string): Promise<void> => api.delete(path('holidays', id));
+
+// --- Zones et communes ---------------------------------------------------------------------------
+
+export interface ZoneBody {
+  name?: string;
+  coefficientBps?: number;
+  visitFeeSurcharge?: AmountInput;
+  planningMode?: PlanningMode;
 }
 
-// ——— Types de lieu (ADR-034) ———
+export const listZones = (cursor?: string) => listPage(zoneListSchema, path('zones'))(cursor);
+export const allZones = () => readAll(zoneListSchema, path('zones'));
+export const createZone = (body: ZoneBody & { communeKey: string }, key: string): Promise<Zone> =>
+  create(zoneSchema, path('zones'), body, key);
+export const updateZone = (id: string, body: ZoneBody): Promise<Zone> =>
+  patch(zoneSchema, path('zones', id), body);
+/** Activer ou désactiver ; `confirm` : désactiver malgré des dossiers en cours. */
+export const setZoneActive = (
+  id: string,
+  body: { active: boolean; confirm?: boolean },
+  key: string,
+): Promise<Zone> => create(zoneSchema, path('zones', id, 'activation'), body, key);
+export const listCommunes = async (): Promise<Commune[]> =>
+  (await read(communeListSchema, path('communes'))).data;
 
-export async function listPlaceTypes(): Promise<PlaceType[]> {
-  return parseResponse(placeTypeListSchema, await api.get(`${ADMIN}/place-types`)).data;
-}
+// --- Réglages ------------------------------------------------------------------------------------
 
-/** `SaveCleaningPlaceTypeRequest` : création ou remplacement ; pas de suppression (`active: false`). */
-export interface PlaceTypeInput {
-  label: string;
-  description?: string;
-  icon: string;
-  displayOrder: number;
-  active: boolean;
-  serviceCodes: string[];
-}
+export type SettingsBody = Partial<
+  Omit<CleaningSettings, 'updatedAt' | 'updatedBy' | 'updatedByName' | 'defaultVisitFee'>
+> & { defaultVisitFee?: AmountInput };
 
-export async function savePlaceType(code: string, input: PlaceTypeInput): Promise<PlaceType> {
-  return parseResponse(
-    placeTypeSchema,
-    await api.put(`${ADMIN}/place-types/${encodeURIComponent(code)}`, input),
-  );
-}
-
-/** `UpdateCleaningSettingsRequest` : le seuil de visite (déprécié, ignoré) n'est plus envoyé. */
-export type SettingsInput = Omit<
-  Settings,
-  'updatedBy' | 'updatedByName' | 'updatedAt' | 'visitThresholdSquareMeters'
->;
-
-export async function updateSettings(input: SettingsInput): Promise<Settings> {
-  return parseResponse(settingsSchema, await api.put(`${ADMIN}/catalog/settings`, input));
-}
-
-// ——— Zones desservies ———
-
-export async function listZones(): Promise<Zone[]> {
-  return parseResponse(zoneListSchema, await api.get(`${ADMIN}/zones`)).data;
-}
-
-/** Ajoute une zone, ou réactive la zone désactivée de même clé. */
-export async function saveZone(commune: string): Promise<Zone> {
-  return parseResponse(zoneSchema, await api.post(`${ADMIN}/zones`, { commune }));
-}
-
-export async function deactivateZone(code: string): Promise<Zone> {
-  return parseResponse(zoneSchema, await api.post(at(`${ADMIN}/zones`, code, 'deactivate')));
-}
-
-// ——— Agents et équipes ———
-
-export async function listAgents(): Promise<Agent[]> {
-  return parseResponse(agentListSchema, await api.get(`${ADMIN}/agents`)).data;
-}
-
-export async function registerAgent(input: { agentId: string; displayName: string }): Promise<Agent> {
-  return parseResponse(agentSchema, await api.post(`${ADMIN}/agents`, input));
-}
-
-export async function declareUnavailability(
-  agentId: string,
-  input: { start: string; end: string; reason?: string },
-): Promise<Agent> {
-  return parseResponse(
-    agentSchema,
-    await api.post(at(`${ADMIN}/agents`, agentId, 'unavailabilities'), input),
-  );
-}
-
-export async function listTeams(): Promise<Team[]> {
-  return parseResponse(teamListSchema, await api.get(`${ADMIN}/teams`)).data;
-}
-
-export async function createTeam(input: { name: string; memberIds: string[] }): Promise<Team> {
-  return parseResponse(teamSchema, await api.post(`${ADMIN}/teams`, input));
-}
-
-export async function updateTeam(id: string, input: { name: string; memberIds: string[] }): Promise<Team> {
-  return parseResponse(teamSchema, await api.put(at(`${ADMIN}/teams`, id), input));
-}
+export const getSettings = () => read(settingsSchema, path('settings'));
+export const updateSettings = (body: SettingsBody): Promise<CleaningSettings> =>
+  patch(settingsSchema, path('settings'), body);

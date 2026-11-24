@@ -1,132 +1,24 @@
 import type { BadgeTone } from '@/components/ui/badge';
 
-/** Textes du module Nettoyage du back-office. Les libellés d'états inconnus retombent sur le code brut. */
+/** Textes communs du Nettoyage v2. Un code inconnu retombe sur sa valeur brute. */
 
-type Labelled = Record<string, { label: string; tone: BadgeTone }>;
-
-export const requestStatuses: Labelled = {
-  received: { label: 'Reçue', tone: 'accent' },
-  visit_scheduled: { label: 'Visite planifiée', tone: 'brand' },
-  quote_sent: { label: 'Devis envoyé', tone: 'brand' },
-  accepted: { label: 'Acceptée', tone: 'success' },
-  declined: { label: 'Devis refusé par le client', tone: 'neutral' },
-  rejected: { label: 'Refusée', tone: 'danger' },
-  expired: { label: 'Expirée', tone: 'neutral' },
-  cancelled: { label: 'Annulée', tone: 'neutral' },
-};
-
-export const missionStatuses: Labelled = {
-  to_schedule: { label: 'À planifier', tone: 'accent' },
-  scheduled: { label: 'Planifiée', tone: 'brand' },
-  in_progress: { label: 'En cours', tone: 'warning' },
-  on_hold: { label: 'En attente', tone: 'danger' },
-  completed: { label: 'Terminée', tone: 'success' },
-  cancelled: { label: 'Annulée', tone: 'neutral' },
-};
-
-export const interventionStatuses: Labelled = {
-  planned: { label: 'Prévu', tone: 'brand' },
-  in_progress: { label: 'En cours', tone: 'warning' },
-  on_hold: { label: 'En attente (incident)', tone: 'danger' },
-  completed: { label: 'Terminé', tone: 'success' },
-  cancelled: { label: 'Annulé', tone: 'neutral' },
-};
-
-export const visitStatuses: Labelled = {
-  scheduled: { label: 'Planifiée', tone: 'brand' },
-  completed: { label: 'Réalisée', tone: 'success' },
-  cancelled: { label: 'Annulée', tone: 'neutral' },
-};
-
-export const paymentStatuses: Labelled = {
-  due: { label: 'À régler', tone: 'warning' },
-  deposit_received: { label: 'Acompte reçu', tone: 'brand' },
-  paid: { label: 'Réglé', tone: 'success' },
-};
-
-const names = (entries: Record<string, string>) => (code: string) => entries[code] ?? code;
-
-export const customerKind = names({ individual: 'Particulier', business: 'Entreprise' });
-export const premisesType = names({
-  apartment: 'Appartement',
-  house: 'Maison',
-  office: 'Bureaux',
-  shop: 'Commerce',
-  warehouse: 'Entrepôt',
-  other: 'Autre',
-});
-export const UNITS = {
-  square_meter: 'm²',
-  room: 'pièce',
-  septic_tank: 'fosse',
-  cubic_meter: 'm³',
-} as const;
-export const unitName = names(UNITS);
-export const paymentMethod = names({
-  cash: 'Espèces',
-  mobile_money_offline: 'Mobile Money (hors ligne)',
-  mobile_money_online: 'Mobile Money (en ligne)',
-  /** Payé par le client depuis son portefeuille prépayé (ADR-046). */
-  wallet: 'Portefeuille prépayé',
-});
-export const paymentOption = names({ deposit: 'Acompte', full: 'Totalité' });
-export const paymentTiming = names({ before: 'avant la prestation', after: 'après la prestation' });
-const plural = (count: number, one: string, many: string) => `${count} ${count > 1 ? many : one}`;
-
-/**
- * Causes actives d'une suspension (ADR-030), la plus ancienne d'abord, en clair : « Compte entreprise
- * suspendu par KSP », « 2 factures impayées ». Le nombre d'impayés est celui de la dernière décision.
- */
-export function suspensionCauses(suspension: { causes: string[]; unpaidCount: number }): string[] {
-  const count = suspension.unpaidCount;
-  return suspension.causes.map((cause) => {
-    if (cause === 'organization_suspended') return 'Compte entreprise suspendu par KSP';
-    if (cause === 'unpaid_invoices')
-      return count ? plural(count, 'facture impayée', 'factures impayées') : 'Factures impayées';
-    if (cause === 'unpaid_interventions')
-      return count ? plural(count, 'passage impayé', 'passages impayés') : 'Passages impayés';
-    return cause;
-  });
-}
-
-/** Nom affiché lu dans identity, ou libellé court quand il manque (`null` : inconnu ou identity indisponible). */
-export function nameOr(name: string | null | undefined, fallback: string): string {
-  return name?.trim() || fallback;
-}
-
-/** Client d'une demande ou d'une mission : raison sociale de l'organisation, sinon nom du compte. */
-export function customerLabel(item: {
-  customerKind?: string;
-  customerName?: string | null;
-  organizationName?: string | null;
-}): string {
-  if (item.organizationName) return item.organizationName;
-  return nameOr(
-    item.customerName,
-    item.customerKind === 'business' ? cleaningTexts.common.unnamedBusiness : cleaningTexts.common.unnamed,
-  );
-}
-
-export function recurrenceText(recurrence: {
-  period: string;
-  visitsPerPeriod: number;
-  durationMonths: number;
-}) {
-  const period =
-    recurrence.period === 'week' ? 'semaine' : recurrence.period === 'month' ? 'mois' : recurrence.period;
-  return `${recurrence.visitsPerPeriod} passage${recurrence.visitsPerPeriod > 1 ? 's' : ''} par ${period}, pendant ${recurrence.durationMonths} mois`;
-}
+const names =
+  <K extends string>(entries: Record<K, string>) =>
+  (code: K | string): string =>
+    (entries as Record<string, string>)[code] ?? code;
 
 export const cleaningTexts = {
   module: 'Nettoyage',
   tabs: {
     label: 'Sections du Nettoyage',
-    requests: 'Demandes',
-    visits: 'Visites',
-    missions: 'Missions',
     catalog: 'Catalogue',
-    zones: 'Zones',
+    requests: 'Dossiers',
+    visits: 'Visites',
+    planning: 'Planning',
+    programs: 'Programmes',
     team: 'Agents et équipes',
+    claims: 'Réclamations',
+    settings: 'Réglages',
   },
   common: {
     loading: 'Chargement…',
@@ -136,66 +28,118 @@ export const cleaningTexts = {
     sending: 'Envoi…',
     saving: 'Enregistrement…',
     save: 'Enregistrer',
+    saved: 'Modifications enregistrées.',
     loadMore: 'Afficher plus',
     loadingMore: 'Chargement de la suite…',
     reference: (id: string) => `Référence pour le support : ${id}.`,
     genericError: 'Une erreur est survenue. Réessayez dans quelques instants.',
-    reasonLabel: 'Motif',
-    reasonRequired: 'Indiquez un motif.',
     required: 'Champ obligatoire.',
-    invalidNumber: 'Saisissez un nombre entier.',
-    invalidDate: 'Choisissez une date et une heure.',
-    saved: 'Enregistré.',
-    back: 'Retour',
-    none: 'Aucun',
-    unknownAgent: 'Agent non rattaché',
-    unnamed: 'Client sans nom',
-    unnamedBusiness: 'Entreprise sans nom',
+    invalidInteger: 'Saisissez un nombre entier.',
+    invalidAmount: 'Saisissez un montant en francs CFA, sans décimales.',
+    invalidCoefficient: 'Saisissez un multiplicateur, par exemple 1,15 (4 décimales au plus).',
+    invalidPercent: 'Saisissez un pourcentage, par exemple 12,5 (2 décimales au plus).',
+    invalidCode:
+      'De 2 à 50 caractères : lettres minuscules sans accent, chiffres et « _ », en commençant par une lettre.',
+    tooLong: (max: number) => `${max} caractères au plus.`,
+    between: (min: number, max: number) => `Entre ${min} et ${max}.`,
+    fixErrors: 'Corrigez les champs signalés.',
     someone: 'un membre de l’équipe',
-    beninTime: 'Heure du Bénin.',
-    all: 'Tous',
-    allFeminine: 'Toutes',
-    details: 'Détails',
+    updated: (date: string, name: string) => `Modifié le ${date} par ${name}`,
+    none: 'Aucun',
+    yes: 'Oui',
+    no: 'Non',
     actions: 'Actions',
+    state: 'État',
+    active: 'Actif',
+    inactive: 'Désactivé',
+    activeFeminine: 'Active',
+    inactiveFeminine: 'Désactivée',
+    deactivate: 'Désactiver',
+    reactivate: 'Réactiver',
+    amountHidden: 'Montant masqué',
+    amountHiddenHint: 'Votre compte ne voit pas les montants du Nettoyage.',
+    readOnly: 'Lecture seule : la modification est réservée à l’administration du Nettoyage.',
+    forbidden: 'Votre rôle ne donne pas accès à cet écran.',
+    notFound: 'Élément introuvable : il a peut-être été retiré, ou l’adresse est incomplète.',
+    moveUp: (label: string) => `Monter ${label}`,
+    moveDown: (label: string) => `Descendre ${label}`,
+    remove: (label: string) => `Retirer ${label}`,
+    code: 'Code',
+    codeHint: 'Identifiant stable, proposé à partir du nom. Il ne change plus après la création.',
+    order: 'Ordre d’affichage',
+    orderHint: 'Les plus petits nombres s’affichent en premier.',
   },
-  /** Sections de la file « À traiter » du tableau de bord (voir `queue.ts`). */
-  queue: {
-    incidents: {
-      title: 'Incidents',
-      description: 'Missions à l’état « En attente ». Un incident signalé met le passage en attente.',
-      seeAll: 'Voir toutes les missions en attente',
-      action: 'Ouvrir le passage',
-      missionAction: 'Ouvrir la mission',
-      passage: (date: string) => `Passage du ${date}`,
-    },
-    reports: {
-      title: 'Comptes rendus à saisir',
-      description: 'Visites planifiées dont l’heure prévue est passée, sans compte rendu.',
-      seeAll: 'Voir toutes les visites à l’heure passée',
-      action: 'Saisir le compte rendu',
-      scheduled: (date: string) => `Prévue le ${date}`,
-    },
-    toVisit: {
-      title: 'Demandes à visiter',
-      description: 'Demandes reçues : la visite des lieux est obligatoire avant tout devis.',
-      seeAll: 'Voir toutes les demandes reçues',
-      action: 'Planifier la visite',
-      received: (date: string) => `Reçue le ${date}`,
-    },
+  comingSoon: {
+    badge: 'Bientôt disponible',
+    back: 'Ouvrir le catalogue',
   },
-  /** Refus de la gateway dont les détails précisent la suite (voir `errors.ts`). */
-  errors: {
-    interventionTooEarly: (date: string) =>
-      `Ce passage est prévu le ${date} : il pourra être démarré à partir de ce jour (heure du Bénin).`,
-    visitTooEarly: (date: string) =>
-      `La visite est prévue le ${date} : son compte rendu pourra être saisi à partir de cette heure.`,
-    paymentExceeds: (due: string) => `Ce montant dépasse le reste dû. Reste dû : ${due}.`,
-    paymentSettled: 'Cette mission est déjà entièrement payée : aucun paiement de plus n’est possible.',
-    organizationSuspended:
-      'Ce compte entreprise est suspendu par KSP : rien de nouveau ne peut être fait en son nom avant sa réactivation.',
+  /** Sections du parcours v2 encore provisoires (écrans des livraisons suivantes). */
+  placeholders: {
+    requests: {
+      title: 'Dossiers',
+      lead: 'Les demandes des clients : un dossier par lieu, de la demande au devis.',
+      coming:
+        'Liste des dossiers et fiche dossier : refus, réactivation, position, visite, constat retenu, devis et envoi.',
+    },
+    visits: {
+      title: 'Visites',
+      lead: 'Les visites techniques des lieux, payées par le client avant le devis.',
+      coming: 'Calendrier des visites : planifier, déplacer, annuler, clôturer pour l’agent, client absent.',
+    },
+    planning: {
+      title: 'Planning',
+      lead: 'L’affectation des agents aux séances.',
+      coming:
+        'Planning des équipes, séances à affecter, contrôle et enregistrement des affectations, planification automatique et propositions à valider.',
+    },
+    programs: {
+      title: 'Programmes',
+      lead: 'Les programmes de séances nés des devis acceptés, et le paiement de chaque séance.',
+      coming:
+        'Liste et fiche des programmes, séances et paiements ; changement d’horaire, avenant, suspension, arrêt ; report, annulation, reprise et clôture d’une séance.',
+    },
+    mission: {
+      title: 'Mission du Nettoyage',
+      lead: 'Les missions de l’ancien Nettoyage sont remplacées par les programmes de séances.',
+      coming:
+        'Le suivi d’un programme, de ses séances et de leurs paiements arrive avec les écrans des programmes.',
+    },
+    team: {
+      title: 'Agents et équipes',
+      lead: 'Les agents de terrain, leurs candidatures, leurs disponibilités et leurs équipes.',
+      coming:
+        'Agents et candidatures (invitation, vérification, validation, suspension), disponibilités, indisponibilités et équipes.',
+    },
+    claims: {
+      title: 'Réclamations',
+      lead: 'Les réclamations des clients après une séance.',
+      coming:
+        'File des réclamations : prise en charge, réponse au client, décision et validation d’un crédit.',
+    },
   },
 } as const;
 
-export function statusOf(map: Labelled, code: string): { label: string; tone: BadgeTone } {
-  return map[code] ?? { label: code, tone: 'neutral' };
+/** Raisons du masquage sur le portail (`visibilityReasons`, R-CA-12). */
+export const visibilityReason = names({
+  inactive: 'désactivé',
+  category_inactive: 'catégorie désactivée',
+  no_active_offer: 'aucune offre active',
+  type_inactive: 'type de nettoyage désactivé',
+});
+
+/** Mode de planification (R-PL-05). */
+export const planningMode = names({
+  manual: 'Manuel',
+  proposal: 'Proposition à valider',
+  automatic: 'Automatique',
+});
+
+/** État d'un élément du catalogue : actif ou désactivé (jamais supprimé, R-CA-06). */
+export function activeBadge(active: boolean, feminine = false): { label: string; tone: BadgeTone } {
+  const t = cleaningTexts.common;
+  if (active) return { label: feminine ? t.activeFeminine : t.active, tone: 'success' };
+  return { label: feminine ? t.inactiveFeminine : t.inactive, tone: 'neutral' };
 }
+
+/** Nom affiché lu dans identity, ou libellé court quand il manque. */
+export const nameOr = (name: string | null | undefined, fallback: string) => name?.trim() || fallback;

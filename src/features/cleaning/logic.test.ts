@@ -1,123 +1,133 @@
 import { ApiError } from '@/lib/api';
 import { cleaningAccess } from './access';
 import { tabsFor } from './components/cleaning-tabs';
-import { errorText } from './errors';
-import { mission, quoteRequest, visit } from './fake-gateway.test-utils';
-import { missionSchema, quoteRequestSchema } from './schemas';
-import { customerLabel, nameOr, suspensionCauses } from './texts';
+import { errorText, fieldError, placeError } from './errors';
+import {
+  codeFromLabel,
+  coefficientInput,
+  formatCoefficient,
+  formatPercentBps,
+  parseCoefficient,
+  parseInteger,
+  parsePercentBps,
+  uniqueCode,
+} from './inputs';
 
-const labels = (roles: string[]) => tabsFor(cleaningAccess(roles)).map((tab) => tab.label);
+describe('droits d’affichage du Nettoyage v2 (rôles par défaut du contrat)', () => {
+  it('admin et super_admin : catalogue, zones et réglages modifiables', () => {
+    for (const role of ['cleaning_admin', 'super_admin']) {
+      const access = cleaningAccess([role]);
+      expect(access['cleaning.catalog.manage']).toBe(true);
+      expect(access['cleaning.zone.manage']).toBe(true);
+      expect(access['cleaning.settings.manage']).toBe(true);
+    }
+  });
 
-describe('droits d’affichage du Nettoyage (le backend reste seul juge)', () => {
-  it('l’admin voit toutes les sections', () => {
+  it('superviseur : lecture du catalogue, planning, pas de modification du catalogue ni des réglages', () => {
+    const access = cleaningAccess(['cleaning_supervisor']);
+    expect(access['cleaning.catalog.read']).toBe(true);
+    expect(access['cleaning.catalog.manage']).toBe(false);
+    expect(access['cleaning.settings.manage']).toBe(false);
+    expect(access['cleaning.planning.manage']).toBe(true);
+  });
+
+  it('support : lecture et réclamations ; agent de terrain : rien au back-office', () => {
+    const support = cleaningAccess(['support_agent']);
+    expect(support['cleaning.catalog.read']).toBe(true);
+    expect(support['cleaning.claim.manage']).toBe(true);
+    expect(support['cleaning.planning.manage']).toBe(false);
+    expect(Object.values(cleaningAccess(['cleaning_agent'])).some(Boolean)).toBe(false);
+  });
+
+  it('onglets du parcours v2, dans l’ordre, filtrés par permission', () => {
+    const labels = (roles: string[]) => tabsFor(cleaningAccess(roles)).map((tab) => tab.label);
     expect(labels(['cleaning_admin'])).toEqual([
-      'Demandes',
-      'Visites',
-      'Missions',
       'Catalogue',
-      'Zones',
+      'Dossiers',
+      'Visites',
+      'Planning',
+      'Programmes',
       'Agents et équipes',
+      'Réclamations',
+      'Réglages',
     ]);
-  });
-
-  it('le superviseur ne voit ni le catalogue ni les zones', () => {
-    expect(labels(['cleaning_supervisor'])).toEqual(['Demandes', 'Visites', 'Missions', 'Agents et équipes']);
-  });
-
-  it('l’agent de terrain ne voit que ses visites et ses missions', () => {
-    expect(labels(['cleaning_agent'])).toEqual(['Visites', 'Missions']);
-  });
-
-  it('super_admin a la même portée que cleaning_admin (contrat)', () => {
-    expect(labels(['super_admin'])).toEqual(labels(['cleaning_admin']));
-    expect(cleaningAccess(['super_admin'])).toEqual({ supervise: true, administer: true, fieldWork: true });
+    expect(labels(['support_agent'])).toEqual([
+      'Catalogue',
+      'Dossiers',
+      'Visites',
+      'Programmes',
+      'Réclamations',
+      'Réglages',
+    ]);
+    expect(labels(['finance_officer'])).toEqual([]);
   });
 });
 
-describe('schémas des réponses de la gateway', () => {
-  it('lit une demande avec visite et une mission conformes au contrat', () => {
-    expect(quoteRequestSchema.safeParse(quoteRequest({ visit: visit() })).success).toBe(true);
-    expect(missionSchema.safeParse(mission()).success).toBe(true);
+describe('saisies du catalogue (sans calcul)', () => {
+  it('entiers et montants : espaces tolérés, décimales refusées', () => {
+    expect(parseInteger('12 500')).toBe(12500);
+    expect(parseInteger('12,5')).toBeNull();
+    expect(parseInteger('-3')).toBeNull();
+    expect(parseInteger('')).toBeNull();
   });
 
-  it('refuse un montant qui n’est pas en XOF entiers', () => {
-    const bad = quoteRequest({
-      estimate: { low: { amount: 90.5, currency: 'XOF' }, high: { amount: 1, currency: 'XOF' } },
+  it('coefficients : multiplicateur saisi ↔ points de base exacts', () => {
+    expect(parseCoefficient('1,15')).toBe(11500);
+    expect(parseCoefficient('0.9')).toBe(9000);
+    expect(parseCoefficient('1')).toBe(10000);
+    expect(parseCoefficient('1,00005')).toBeNull();
+    expect(parseCoefficient('abc')).toBeNull();
+    expect(coefficientInput(11500)).toBe('1,15');
+    expect(coefficientInput(10000)).toBe('1');
+    expect(formatCoefficient(9000)).toBe('× 0,9');
+  });
+
+  it('pourcentages en points de base : 12,5 % ↔ 1250', () => {
+    expect(parsePercentBps('12,5')).toBe(1250);
+    expect(parsePercentBps('90')).toBe(9000);
+    expect(formatPercentBps(1250)).toBe('12,5 %');
+  });
+
+  it('codes tirés des libellés, au format du contrat, uniques', () => {
+    expect(codeFromLabel('Après travaux')).toBe('apres_travaux');
+    expect(codeFromLabel('  Salle de fête !')).toBe('salle_de_fete');
+    expect(codeFromLabel('2 chambres')).toBe('chambres');
+    expect(codeFromLabel('a')).toBe('');
+    expect(uniqueCode('sol', ['sol', 'sol_2'])).toBe('sol_3');
+  });
+});
+
+describe('erreurs du Nettoyage', () => {
+  const invalid = (field: string) =>
+    new ApiError(400, 'CLEANING_VALIDATION_FAILED', 'Cette valeur est hors des bornes autorisées.', {
+      field,
+      reason: 'out_of_range',
     });
-    expect(quoteRequestSchema.safeParse(bad).success).toBe(false);
+
+  it('un champ refusé par la gateway se place sous le champ connu', () => {
+    expect(fieldError(invalid('brackets[2].to'))).toEqual({
+      field: 'brackets[2].to',
+      message: 'Cette valeur est hors des bornes autorisées.',
+    });
+    expect(placeError(invalid('brackets[2].to'), ['brackets']).field).toBe('brackets[2].to');
+    expect(placeError(invalid('inconnu'), ['brackets'])).toEqual({
+      field: null,
+      message: 'Cette valeur est hors des bornes autorisées.',
+    });
   });
 
-  it('garde un état inconnu (affiché avec un libellé neutre)', () => {
-    expect(quoteRequestSchema.safeParse(quoteRequest({ status: 'nouvel_etat' })).success).toBe(true);
-  });
-
-  it('lit les noms affichés (ADR-029), présents, nuls ou absents', () => {
-    const named = quoteRequestSchema.parse(
-      quoteRequest({ customerName: 'Awa Bio', organizationName: null, visit: visit({ agentName: null }) }),
-    );
-    expect(named.customerName).toBe('Awa Bio');
-    expect(quoteRequestSchema.parse(quoteRequest()).customerName).toBeUndefined();
-  });
-
-  it('exige les causes de la suspension (ADR-030)', () => {
-    const since = '2026-10-28T10:00:00Z';
-    const both = { cause: 'organization_suspended', causes: ['organization_suspended', 'unpaid_invoices'] };
-    expect(missionSchema.safeParse(mission({ suspension: { ...both, since, unpaidCount: 2 } })).success).toBe(
-      true,
-    );
-    expect(
-      missionSchema.safeParse(mission({ suspension: { cause: 'unpaid_invoices', since, unpaidCount: 2 } }))
-        .success,
-    ).toBe(false);
-  });
-});
-
-describe('textes calculés de l’affichage', () => {
-  it('liste toutes les causes de suspension en clair', () => {
-    expect(
-      suspensionCauses({ causes: ['organization_suspended', 'unpaid_invoices'], unpaidCount: 2 }),
-    ).toEqual(['Compte entreprise suspendu par KSP', '2 factures impayées']);
-    expect(suspensionCauses({ causes: ['unpaid_interventions'], unpaidCount: 1 })).toEqual([
-      '1 passage impayé',
-    ]);
-    expect(suspensionCauses({ causes: ['organization_suspended'], unpaidCount: 0 })).toEqual([
-      'Compte entreprise suspendu par KSP',
-    ]);
-  });
-
-  it('retombe sur un libellé court quand le nom manque', () => {
-    expect(nameOr(null, 'un membre de l’équipe')).toBe('un membre de l’équipe');
-    expect(customerLabel({ customerKind: 'business', customerName: 'Awa', organizationName: 'SARL' })).toBe(
-      'SARL',
-    );
-    expect(customerLabel({ customerKind: 'business', customerName: null, organizationName: null })).toBe(
-      'Entreprise sans nom',
-    );
-    expect(customerLabel({ customerKind: 'individual', customerName: undefined })).toBe('Client sans nom');
-  });
-});
-
-describe('refus de la gateway précisés par leurs détails', () => {
-  const refusal = (status: number, code: string, details: Record<string, unknown>) =>
-    new ApiError(status, code, 'Message de la gateway.', details);
-
-  it('rappelle le reste dû d’un paiement trop élevé', () => {
-    const due = { remainingDue: { amount: 11220, currency: 'XOF' }, reason: 'exceeds_balance' };
-    expect(errorText(refusal(400, 'CLEANING_PAYMENT_INVALID', due)).replace(/\s/g, ' ')).toBe(
-      'Ce montant dépasse le reste dû. Reste dû : 11 220 F CFA.',
-    );
-    expect(errorText(refusal(400, 'CLEANING_PAYMENT_INVALID', { reason: 'other' }))).toBe(
-      'Message de la gateway.',
+  it('tarif incomplet : raison traduite avec le rang de la tranche', () => {
+    const error = new ApiError(422, 'CLEANING_TARIFF_INCOMPLETE', 'Ce tarif est incomplet ou incohérent.', {
+      reason: 'brackets_gap',
+      index: 1,
+    });
+    expect(errorText(error)).toBe(
+      'Il manque des valeurs avant la tranche n° 2 : elle doit commencer juste après la précédente.',
     );
   });
 
-  it('annonce le jour à partir duquel le passage ou la visite est possible', () => {
-    expect(errorText(refusal(422, 'CLEANING_INTERVENTION_TOO_EARLY', { scheduledDate: '2026-11-05' }))).toBe(
-      'Ce passage est prévu le jeu. 5 nov. 2026 : il pourra être démarré à partir de ce jour (heure du Bénin).',
-    );
-    expect(
-      errorText(refusal(422, 'CLEANING_VISIT_TOO_EARLY', { scheduledAt: '2026-10-30T09:00:00Z' })),
-    ).toContain('La visite est prévue le 30 oct. 2026');
-    expect(errorText(refusal(422, 'CLEANING_ORGANIZATION_SUSPENDED', {}))).toContain('suspendu par KSP');
+  it('erreur du serveur : message et référence pour le support', () => {
+    const error = new ApiError(503, 'CLEANING_GEO_UNAVAILABLE', 'Référentiel indisponible.', {}, 'c-1');
+    expect(errorText(error)).toBe('Référentiel indisponible. Référence pour le support : c-1.');
   });
 });
