@@ -19,28 +19,20 @@ import {
   type WorkQueueSection,
 } from '@/lib/work-queue';
 import { billingQueueSections } from '@/features/billing/queue';
-import { cleaningQueueSections } from '@/features/cleaning/queue';
 import { organizationQueueSections } from '@/features/identity/queue';
 import { paymentQueueSections } from '@/features/payment/queue';
 import { dashboardTexts as t } from '@/features/dashboard/texts';
 
 /**
- * Ordre de priorité de la file, validé le 5 novembre 2026 : écarts de paiement, incidents, comptes rendus
- * à saisir, demandes à visiter, comptes entreprise à valider, factures impayées.
+ * Ordre de priorité de la file, validé le 5 novembre 2026 : écarts de paiement, (incidents, comptes rendus
+ * à saisir, demandes à visiter : sections du Nettoyage retirées avec la v1, à rebrancher sur les routes v2
+ * au sous-lot 1c), comptes entreprise à valider, factures impayées.
  */
-export const QUEUE_ORDER = [
-  'payment-mismatches',
-  'cleaning-incidents',
-  'cleaning-visit-reports',
-  'cleaning-requests-to-visit',
-  'organizations-to-validate',
-  'invoices-overdue',
-] as const;
+export const QUEUE_ORDER = ['payment-mismatches', 'organizations-to-validate', 'invoices-overdue'] as const;
 
 /** Sections fournies par les fonctionnalités (chacune lit sa route de la gateway). */
 export const QUEUE_SECTIONS: readonly WorkQueueSection[] = [
   ...paymentQueueSections,
-  ...cleaningQueueSections,
   ...organizationQueueSections,
   ...billingQueueSections,
 ];
