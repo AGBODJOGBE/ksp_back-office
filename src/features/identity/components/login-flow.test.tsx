@@ -107,7 +107,7 @@ describe('connexion au back-office : première connexion', () => {
       expect(await screen.findByText('Le code est incorrect. Il vous reste 4 essais.')).toBeInTheDocument();
       const field = screen.getByRole('textbox', { name: /Code de l’application/ });
       expect(field).toHaveValue('');
-      expect(field).toHaveFocus();
+      await waitFor(() => expect(field).toHaveFocus());
 
       await submitAppCode('287082', 'Activer la double authentification');
       expect(await screen.findByRole('heading', { name: 'Vos codes de récupération' })).toBeInTheDocument();
@@ -125,7 +125,9 @@ describe('connexion au back-office : première connexion', () => {
       expect(
         await screen.findByText('Cochez la case pour confirmer que vos codes sont en lieu sûr.'),
       ).toBeInTheDocument();
-      expect(screen.getByRole('checkbox', { name: 'J’ai mis mes codes en lieu sûr' })).toHaveFocus();
+      await waitFor(() =>
+        expect(screen.getByRole('checkbox', { name: 'J’ai mis mes codes en lieu sûr' })).toHaveFocus(),
+      );
       expect(replace).not.toHaveBeenCalled();
 
       fireEvent.click(screen.getByRole('checkbox', { name: 'J’ai mis mes codes en lieu sûr' }));
@@ -184,7 +186,7 @@ describe('connexion au back-office : compte déjà configuré', () => {
     await submitOtp();
 
     expect(await screen.findByRole('heading', { name: 'Double authentification' })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: /Code de l’application/ })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole('textbox', { name: /Code de l’application/ })).toHaveFocus());
     await submitAppCode('081804');
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/finance'));
@@ -209,7 +211,7 @@ describe('connexion au back-office : compte déjà configuré', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Utiliser un code de récupération' }));
     const field = screen.getByRole('textbox', { name: /Code de récupération/ });
-    expect(field).toHaveFocus();
+    await waitFor(() => expect(field).toHaveFocus());
     fireEvent.change(field, { target: { value: 'h4tz8 0rwnc' } });
     expect(field).toHaveValue('H4TZ80RWNC');
     fireEvent.click(screen.getByRole('button', { name: 'Valider' }));
