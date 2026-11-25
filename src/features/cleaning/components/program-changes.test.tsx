@@ -22,6 +22,9 @@ import {
 import { quote, requestIds } from '@/features/cleaning/requests-fixtures.test-utils';
 import { ProgramDetail } from './program-detail';
 
+/** Écrans lourds sous jsdom : 15 s par test (comme les fiches agent), la suite complète charge la machine. */
+vi.setConfig({ testTimeout: 15_000 });
+
 const PROGRAM = `${ADMIN}/programs/${programIds.program}`;
 const SLOW = 15_000;
 const windows = '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8de003';

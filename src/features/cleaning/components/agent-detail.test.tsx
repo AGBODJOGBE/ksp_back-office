@@ -11,6 +11,9 @@ import {
 import { ADMIN, errorBody, ok, page, skill, stubGateway } from '@/features/cleaning/fake-gateway.test-utils';
 import { AgentDetail } from './agent-detail';
 
+/** Écrans lourds sous jsdom : 15 s par test (comme les fiches agent), la suite complète charge la machine. */
+vi.setConfig({ testTimeout: 15_000 });
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
   usePathname: () => '/nettoyage/equipe/agents/x',

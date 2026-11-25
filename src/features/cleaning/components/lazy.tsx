@@ -79,3 +79,5 @@ export const ProgramDetail = dynamic(() => import('./program-detail').then((m) =
 export const SessionDetail = dynamic(() => import('./session-detail').then((m) => m.SessionDetail), {
   loading,
 });
+export const ClaimsQueue = dynamic(() => import('./claims-queue').then((m) => m.ClaimsQueue), { loading });
+export const ClaimDetail = dynamic(() => import('./claim-detail').then((m) => m.ClaimDetail), { loading });

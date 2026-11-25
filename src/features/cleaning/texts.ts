@@ -69,11 +69,6 @@ export const cleaningTexts = {
     order: 'Ordre d’affichage',
     orderHint: 'Les plus petits nombres s’affichent en premier.',
   },
-  comingSoon: {
-    badge: 'Bientôt disponible',
-    back: 'Ouvrir le catalogue',
-  },
-  /** Sections du parcours v2 encore provisoires (écrans des livraisons suivantes). */
   /** Ancienne fiche « mission » (v1) encore citée par les factures, les paiements et les portefeuilles. */
   legacyMission: {
     title: 'Mission de l’ancien Nettoyage',
@@ -81,14 +76,6 @@ export const cleaningTexts = {
     reference: (id: string) => `Référence de l’ancienne mission : ${id}`,
     hint: 'Pour un client actuel, cherchez son programme dans la liste des programmes.',
     back: 'Ouvrir les programmes',
-  },
-  placeholders: {
-    claims: {
-      title: 'Réclamations',
-      lead: 'Les réclamations des clients après une séance.',
-      coming:
-        'File des réclamations : prise en charge, réponse au client, décision et validation d’un crédit.',
-    },
   },
 } as const;
 

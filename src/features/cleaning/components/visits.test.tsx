@@ -5,6 +5,9 @@ import { ADMIN, errorBody, ids, ok, page, stubGateway } from '@/features/cleanin
 import { cleaningRequest, requestIds, visit } from '@/features/cleaning/requests-fixtures.test-utils';
 import { VisitsCalendar } from './visits-calendar';
 
+/** Écrans lourds sous jsdom : 15 s par test (comme les fiches agent), la suite complète charge la machine. */
+vi.setConfig({ testTimeout: 15_000 });
+
 let search = '';
 const replace = vi.fn();
 vi.mock('next/navigation', () => ({

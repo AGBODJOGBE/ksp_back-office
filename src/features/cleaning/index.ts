@@ -3,11 +3,10 @@
  * d'affichage), catalogue, tarifs, simulateur et réglages (sous-lot 1a) ; file et fiche des dossiers
  * et calendrier des visites (sous-lot 1b) ; agents, candidatures, disponibilités, équipes,
  * planning, affectations, planification automatique, programmes et séances (sous-lot 1c).
- * Réclamations : page provisoire.
+ * Réclamations : file et fiche (sous-lot 1c-4).
  */
 export { type CleaningAccess, type CleaningPermission, cleaningAccess } from './access';
 export { CleaningTabs } from './components/cleaning-tabs';
-export { ComingSoon } from './components/coming-soon';
 export { LegacyMission } from './components/legacy-mission';
 export { CatalogSteps, SettingsNav, TeamNav } from './components/section-nav';
 // Écrans chargés à la demande (voir components/lazy.tsx).
@@ -19,6 +18,8 @@ export {
   CategoriesList,
   CategoryDetail,
   CleaningTypeDetail,
+  ClaimDetail,
+  ClaimsQueue,
   CleaningTypesList,
   HolidaysScreen,
   NewCategory,
@@ -50,6 +51,7 @@ export {
 export { inviteTexts } from './agent-actions-texts';
 export { agentsTexts } from './agents-texts';
 export { catalogTexts } from './catalog-texts';
+export { claimsTexts } from './claims-texts';
 export { cleaningPaths } from './paths';
 export { planningTexts } from './planning-texts';
 export { programsTexts } from './programs-texts';

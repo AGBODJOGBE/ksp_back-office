@@ -156,9 +156,14 @@ test('Nettoyage v2 : catalogue dans l’ordre de construction, onglets du parcou
     .getByRole('link', { name: /Paramètres/ })
     .click();
   await expect(page.getByRole('link', { name: 'Superficie' })).toBeVisible();
+  // Plus aucune page provisoire : la file des dossiers et celle des réclamations sont lues.
   await page.goto('/nettoyage');
   await expect(page.getByRole('heading', { level: 1, name: 'Dossiers' })).toBeVisible();
-  await expect(page.getByText('Bientôt disponible')).toBeVisible();
+  await expect(page.getByText('Aucun dossier pour l’instant.')).toBeVisible();
+  await expect(page.getByText('Bientôt disponible')).toHaveCount(0);
+  await tabs.getByRole('link', { name: 'Réclamations' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Réclamations' })).toBeVisible();
+  await expect(page.getByText('Aucune réclamation pour l’instant.')).toBeVisible();
 });
 
 const ACCOUNT = {

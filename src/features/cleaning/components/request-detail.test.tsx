@@ -18,6 +18,9 @@ import {
 import { cleaningRequest, requestIds, visit } from '@/features/cleaning/requests-fixtures.test-utils';
 import { RequestDetail } from './request-detail';
 
+/** Écrans lourds sous jsdom : 15 s par test (comme les fiches agent), la suite complète charge la machine. */
+vi.setConfig({ testTimeout: 15_000 });
+
 const REQUEST = `${ADMIN}/requests/${requestIds.request}`;
 const AGENTS = `${ADMIN}/agents`;
 

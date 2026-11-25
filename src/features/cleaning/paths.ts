@@ -36,6 +36,8 @@ export const cleaningPaths = {
   teamDetail: (value: string) => `${TEAM}/equipes/${id(value)}`,
   newTeam: `${TEAM}/equipes/nouvelle`,
   claims: '/nettoyage/reclamations',
+  /** Fiche d'une réclamation (sous-lot 1c-4). */
+  claim: (value: string) => `/nettoyage/reclamations/${id(value)}`,
   catalog: {
     home: CATALOG,
     parameters: `${CATALOG}/parametres`,

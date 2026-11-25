@@ -5,6 +5,9 @@ import { ADMIN, errorBody, ok, stubGateway } from '@/features/cleaning/fake-gate
 import { cleaningSession, programIds } from '@/features/cleaning/programs-fixtures.test-utils';
 import { SessionDetail } from './session-detail';
 
+/** Écrans lourds sous jsdom : 15 s par test (comme les fiches agent), la suite complète charge la machine. */
+vi.setConfig({ testTimeout: 15_000 });
+
 const SESSION = `${ADMIN}/sessions/${programIds.session}`;
 const SLOW = 15_000;
 
