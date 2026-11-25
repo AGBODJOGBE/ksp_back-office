@@ -75,12 +75,6 @@ export const cleaningTexts = {
   },
   /** Sections du parcours v2 encore provisoires (écrans des livraisons suivantes). */
   placeholders: {
-    planning: {
-      title: 'Planning',
-      lead: 'L’affectation des agents aux séances.',
-      coming:
-        'Planning des équipes, séances à affecter, contrôle et enregistrement des affectations, planification automatique et propositions à valider.',
-    },
     programs: {
       title: 'Programmes',
       lead: 'Les programmes de séances nés des devis acceptés, et le paiement de chaque séance.',

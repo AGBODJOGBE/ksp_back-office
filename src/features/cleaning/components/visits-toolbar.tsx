@@ -34,8 +34,18 @@ export function periodLabel(values: Pick<CalendarValues, 'view' | 'day'>): strin
   return t.week(formatDate(noon(days[0] as string)), formatDate(noon(days[6] as string)));
 }
 
-/** Vue (jour, semaine), précédent / aujourd'hui / suivant, saut à une date. */
-export function CalendarNav({ values, onChange }: { values: CalendarValues; onChange: Change }) {
+type Period = Pick<CalendarValues, 'view' | 'day'>;
+
+/** Vue (jour, semaine), précédent / aujourd'hui / suivant, saut à une date (visites, planning). */
+export function CalendarNav({
+  values,
+  onChange,
+  dateId = 'visites-date',
+}: {
+  values: Period;
+  onChange: (changes: Partial<Period>) => void;
+  dateId?: string;
+}) {
   const today = beninDay(new Date());
   return (
     <div className="grid gap-3">
@@ -72,7 +82,7 @@ export function CalendarNav({ values, onChange }: { values: CalendarValues; onCh
           </Button>
         </div>
         <TextField
-          id="visites-date"
+          id={dateId}
           type="date"
           label={t.goTo}
           value={values.day}

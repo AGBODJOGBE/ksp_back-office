@@ -28,7 +28,7 @@ const t = visitsTexts;
 const CAP = 1000;
 
 /** Jours fériés des années de la période (droit de lecture du catalogue) ; rien si la lecture échoue. */
-function useHolidays(days: readonly string[], canRead: boolean): ReadonlyMap<string, string> {
+export function useHolidays(days: readonly string[], canRead: boolean): ReadonlyMap<string, string> {
   const years = [...new Set(days.map((day) => Number(day.slice(0, 4))))].join(',');
   const holidays = useResource(
     useCallback(async () => {

@@ -1,11 +1,25 @@
 import type { Metadata } from 'next';
-import { ComingSoon, cleaningTexts } from '@/features/cleaning';
+import { Suspense } from 'react';
+import { Heading } from '@/components/ui/heading';
+import { PlanningScreen, planningTexts } from '@/features/cleaning';
 
-const t = cleaningTexts.placeholders.planning;
+const t = planningTexts;
 
 export const metadata: Metadata = { title: t.title };
 
-/** Planning (sous-lot 1c) : page provisoire. */
+/** Planning : vue, jour et filtres lus dans l'adresse sous Suspense. */
 export default function CleaningPlanningPage() {
-  return <ComingSoon title={t.title} lead={t.lead} coming={t.coming} />;
+  return (
+    <div className="grid gap-6">
+      <div>
+        <Heading as="h1" size="h2">
+          {t.title}
+        </Heading>
+        <p className="text-ink-muted max-w-reading mt-2">{t.lead}</p>
+      </div>
+      <Suspense>
+        <PlanningScreen />
+      </Suspense>
+    </div>
+  );
 }
