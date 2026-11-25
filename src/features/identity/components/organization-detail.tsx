@@ -12,6 +12,7 @@ import { ResourceView } from '@/components/ui/resource-view';
 import { ResponsiveTable, type TableColumn } from '@/components/ui/responsive-table';
 import { TextAreaField } from '@/components/ui/select-field';
 import { ApiError, apiErrorText, useSession } from '@/lib/api';
+import { NO_GRANTS } from '@/lib/grants';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { isModuleVisible } from '@/lib/navigation/visible-modules';
 import { useResource } from '@/lib/use-resource';
@@ -178,7 +179,8 @@ function OrganizationView({
   onChange: (detail: AdminOrganizationDetail) => void;
   onStale: () => void;
 }) {
-  const roles = useSession()?.roles ?? [];
+  const grants = useSession() ?? NO_GRANTS;
+  const { roles } = grants;
   const access = organizationAccess(roles);
   const [done, setDone] = useState<string | null>(null);
   const { organization, members } = detail;
@@ -229,7 +231,7 @@ function OrganizationView({
           id="entreprise-identite"
           action={
             <span className="flex flex-wrap gap-x-4">
-              {isModuleVisible('finance', roles) ? (
+              {isModuleVisible('finance', grants) ? (
                 <Link
                   href={invoicesOf(organization.id)}
                   className="text-accent-ink text-small inline-flex min-h-11 items-center font-semibold underline"

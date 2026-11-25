@@ -17,7 +17,7 @@ export function ModuleGate({ slug, label, children }: { slug: string; label: str
   const t = getDictionary();
   const current = useSession();
   if (!current) return null;
-  if (isModuleVisible(slug, current.roles)) return <>{children}</>;
+  if (isModuleVisible(slug, current)) return <>{children}</>;
   return (
     <div className="max-w-reading">
       <Heading as="h1" size="h2">

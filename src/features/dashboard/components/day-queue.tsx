@@ -214,9 +214,13 @@ export function DayQueue({
 }) {
   const current = useSession();
   const rolesKey = current?.roles.join(' ') ?? '';
-  // Rôles stables tant que la session ne change pas : chaque section ne relit qu'à un vrai changement.
+  const permissionsKey = current?.permissions?.join(' ') ?? null;
+  // Droits stables tant que la session ne change pas : chaque section ne relit qu'à un vrai changement.
   const roles = useMemo(() => (rolesKey ? rolesKey.split(' ') : []), [rolesKey]);
-  const visible = useMemo(() => sectionsFor(roles, sections, order), [roles, sections, order]);
+  const visible = useMemo(() => {
+    const permissions = permissionsKey === null ? null : permissionsKey.split(' ').filter(Boolean);
+    return sectionsFor({ roles, permissions }, sections, order);
+  }, [roles, permissionsKey, sections, order]);
   const [statuses, setStatuses] = useState<Record<string, SectionStatus>>({});
   const onStatus = useCallback(
     (id: string, status: SectionStatus) =>

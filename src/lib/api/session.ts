@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { rolesFromAccessToken } from './claims';
+import { grantsFromAccessToken } from './claims';
 import { ApiError } from './errors';
 import type { SessionPayload } from './session-schema';
 
@@ -23,10 +23,15 @@ import type { SessionPayload } from './session-schema';
 
 export type { SessionPayload, SessionUser } from './session-schema';
 
-/** Session en mémoire : réponse de la gateway, plus les rôles lus dans le jeton d'accès (affichage). */
+/** Session en mémoire : réponse de la gateway, plus les droits lus dans le jeton d'accès (affichage). */
 export type Session = SessionPayload & {
   /** Rôles du jeton d'accès : filtrent le menu, ne protègent rien (la gateway reste seule juge). */
   roles: readonly string[];
+  /**
+   * Permissions du jeton (claims `perms` et `zone_perms`, ADR-057) ; `null` pour un jeton qui n'en
+   * porte pas : l'affichage retombe alors sur les rôles. Ne protègent rien non plus.
+   */
+  permissions: readonly string[] | null;
 };
 
 /** Issue d'une tentative de reprise de session. */
@@ -87,7 +92,7 @@ export function createSessionStore(options: {
   }
 
   function set(payload: SessionPayload | null): void {
-    store(payload ? { ...payload, roles: rolesFromAccessToken(payload.accessToken) } : null, null);
+    store(payload ? { ...payload, ...grantsFromAccessToken(payload.accessToken) } : null, null);
   }
 
   /** Un seul renouvellement à la fois, même si plusieurs requêtes reçoivent 401 en même temps. */

@@ -13,6 +13,7 @@ import { ResourceView } from '@/components/ui/resource-view';
 import { ResponsiveTable, type TableColumn } from '@/components/ui/responsive-table';
 import { SelectField } from '@/components/ui/select-field';
 import { ApiError, apiErrorText, useSession } from '@/lib/api';
+import { type Grants, NO_GRANTS } from '@/lib/grants';
 import { formatDateTime, formatXof } from '@/lib/format';
 import { isModuleVisible } from '@/lib/navigation/visible-modules';
 import { usePagedList } from '@/lib/use-paged-list';
@@ -44,7 +45,7 @@ const COLLECTIONS_PARAM = 'creancier';
 
 const isNotFound = (error: unknown) => error instanceof ApiError && error.status === 404;
 
-function columns(roles: readonly string[]): TableColumn<StatementLine>[] {
+function columns(grants: Grants): TableColumn<StatementLine>[] {
   return [
     {
       key: 'operation',
@@ -57,7 +58,7 @@ function columns(roles: readonly string[]): TableColumn<StatementLine>[] {
             <span className="text-ink font-semibold">{statementKind(line.kind)}</span>
             <span className="text-small text-ink-muted">{line.description}</span>
             {line.object ? (
-              target && isModuleVisible(target.module, roles) ? (
+              target && isModuleVisible(target.module, grants) ? (
                 <Link
                   href={target.path(line.object.objectId)}
                   className="text-accent-ink text-small font-semibold underline"
@@ -99,12 +100,12 @@ function StatementList({ type, id, account }: { type: HolderType; id: string; ac
     [type, id, account],
   );
   const list = usePagedList(load, apiErrorText);
-  const roles = useSession()?.roles ?? [];
+  const grants = useSession() ?? NO_GRANTS;
   return (
     <PagedListState list={list} empty={<p className="text-small text-ink-muted">{s.empty}</p>} labels={t}>
       <ResponsiveTable
         caption={s.caption}
-        columns={columns(roles)}
+        columns={columns(grants)}
         rows={list.items}
         rowKey={(line) => line.transactionId}
       />
@@ -133,7 +134,8 @@ function HolderView({
   const params = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
-  const roles = useSession()?.roles ?? [];
+  const grants = useSession() ?? NO_GRANTS;
+  const { roles } = grants;
   const access = walletAccess(roles);
   const [done, setDone] = useState<string | null>(null);
   // Relecture du relevé après un crédit.
@@ -160,7 +162,7 @@ function HolderView({
           {title}
         </Heading>
         <p className="text-small text-ink-muted break-all">{h.identifier(id)}</p>
-        {type === 'organization' && isModuleVisible('clients', roles) ? (
+        {type === 'organization' && isModuleVisible('clients', grants) ? (
           <Link
             href={organizationPaths.organization(id)}
             className="text-accent-ink inline-flex min-h-11 items-center justify-self-start font-semibold underline"

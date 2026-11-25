@@ -1,3 +1,4 @@
+import { fromRoles } from '@/lib/grants';
 import { countLabel, QUEUE_ROWS, sectionsFor, toQueuePage, type WorkQueueSection } from './work-queue';
 
 const section = (id: string, roles: string[]): WorkQueueSection => ({
@@ -19,18 +20,36 @@ describe('file « À traiter »', () => {
   const order = ['ecarts', 'incidents', 'factures'];
 
   it('garde les sections des rôles de la session, dans l’ordre de priorité', () => {
-    expect(sectionsFor(['super_admin'], sections, order).map((s) => s.id)).toEqual([
+    expect(sectionsFor(fromRoles(['super_admin']), sections, order).map((s) => s.id)).toEqual([
       'ecarts',
       'incidents',
       'factures',
       'hors-ordre',
     ]);
-    expect(sectionsFor(['finance_officer'], sections, order).map((s) => s.id)).toEqual([
+    expect(sectionsFor(fromRoles(['finance_officer']), sections, order).map((s) => s.id)).toEqual([
       'ecarts',
       'factures',
     ]);
-    expect(sectionsFor(['cleaning_agent'], sections, order).map((s) => s.id)).toEqual(['incidents']);
-    expect(sectionsFor(['recovery_agent'], sections, order)).toEqual([]);
+    expect(sectionsFor(fromRoles(['cleaning_agent']), sections, order).map((s) => s.id)).toEqual([
+      'incidents',
+    ]);
+    expect(sectionsFor(fromRoles(['recovery_agent']), sections, order)).toEqual([]);
+  });
+
+  it('une section à permission suit le jeton qui en porte (rôle dynamique), sinon ses rôles par défaut', () => {
+    const planning = { ...section('planning', ['cleaning_admin']), permission: 'cleaning.planning.manage' };
+    const all = [...sections, planning];
+    const ids = (roles: string[], permissions: string[] | null) =>
+      sectionsFor({ roles, permissions }, all, order).map((s) => s.id);
+    expect(ids(['cleaning_planner'], ['cleaning.planning.manage'])).toEqual(['planning']);
+    expect(ids(['cleaning_admin'], [])).toEqual([]);
+    expect(ids(['cleaning_admin'], null)).toEqual(['planning']);
+    // Les sections sans permission décident encore par rôle.
+    expect(ids(['finance_officer'], ['cleaning.planning.manage'])).toEqual([
+      'ecarts',
+      'factures',
+      'planning',
+    ]);
   });
 
   it('compte une page de la gateway : « N », ou « N+ » quand il existe une page suivante', () => {

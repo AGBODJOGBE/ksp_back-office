@@ -1,8 +1,11 @@
 /**
  * Modules du back-office (spécification des fronts, partie 5).
  * Un module n'apparaît que pour les agents qui ont l'un de ses rôles, et seulement à partir de sa phase.
- * Les rôles sont ceux des catalogues déclarés par chaque service auprès d'identity.
+ * Les rôles sont ceux des catalogues déclarés par chaque service auprès d'identity ; les permissions,
+ * celles des routes du contrat (`./permissions`, ADR-057).
  */
+
+import { CLEANING_BACKOFFICE_PERMISSIONS } from './permissions';
 
 /** Groupes du menu, dans leur ordre d'affichage. Un groupe sans module visible n'est pas affiché. */
 export const MODULE_GROUPS = [
@@ -19,8 +22,17 @@ export interface BackofficeModule {
   slug: string;
   label: string;
   description: string;
-  /** Rôles qui donnent accès au module ; '*' = tout agent connecté. */
+  /**
+   * Rôles qui donnent accès au module ; '*' = tout agent connecté. Pour un module qui a des
+   * `permissions`, ces rôles ne servent qu'en repli (jeton sans permissions, émis avant ADR-057).
+   */
   roles: readonly string[];
+  /**
+   * Permissions du contrat (`x-ksp-permission`, ADR-057) qui ouvrent le module : une seule suffit. Le
+   * jeton qui porte des permissions décide seul, si bien qu'un rôle créé au back-office ouvre le
+   * module sans changer le code. Absent : le module décide par rôle (`x-ksp-roles`).
+   */
+  permissions?: readonly string[];
   phase: 1 | 2 | 3 | 4;
   /** Groupe du menu (`MODULE_GROUPS`). */
   group: ModuleGroup;
@@ -57,6 +69,7 @@ export const MODULES: readonly BackofficeModule[] = [
     // l'agent, /api/v1/cleaning/agent/*) ; support_agent lit le catalogue, les dossiers, les programmes et
     // traite les réclamations. Détail par section : features/cleaning/access.ts.
     roles: ['cleaning_supervisor', 'cleaning_admin', 'support_agent', SUPER_ADMIN],
+    permissions: CLEANING_BACKOFFICE_PERMISSIONS,
     phase: 1,
     group: 'operations',
   },

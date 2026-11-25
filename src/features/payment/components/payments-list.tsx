@@ -11,6 +11,7 @@ import { PagedListState } from '@/components/ui/paged-list-state';
 import { ResponsiveTable, type TableColumn } from '@/components/ui/responsive-table';
 import { SelectField } from '@/components/ui/select-field';
 import { apiErrorText, useSession } from '@/lib/api';
+import { type Grants, NO_GRANTS } from '@/lib/grants';
 import { formatDateTime, formatXof } from '@/lib/format';
 import { isModuleVisible } from '@/lib/navigation/visible-modules';
 import { usePagedList } from '@/lib/use-paged-list';
@@ -73,9 +74,9 @@ function subjectHref(payment: Payment, visible: (module: string) => boolean, wal
   return target && visible(target.module) ? target.path(id) : null;
 }
 
-function columns(roles: readonly string[], actions: RowActions): TableColumn<Payment>[] {
-  const visible = (module: string) => isModuleVisible(module, roles);
-  const wallets = walletAccess(roles).wallets;
+function columns(grants: Grants, actions: RowActions): TableColumn<Payment>[] {
+  const visible = (module: string) => isModuleVisible(module, grants);
+  const wallets = walletAccess(grants.roles).wallets;
   return [
     {
       key: 'subject',
@@ -252,7 +253,7 @@ function Payments({
     [status, type, subjectId, underReview],
   );
   const list = usePagedList(load, apiErrorText);
-  const roles = useSession()?.roles ?? [];
+  const grants = useSession() ?? NO_GRANTS;
   return (
     <PagedListState
       list={list}
@@ -261,7 +262,7 @@ function Payments({
     >
       <ResponsiveTable
         caption={t.caption}
-        columns={columns(roles, actions)}
+        columns={columns(grants, actions)}
         rows={list.items}
         rowKey={(p) => p.id}
       />
