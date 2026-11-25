@@ -23,6 +23,8 @@ import { getInvoice, MANUAL_METHODS, type ManualMethod, recordInvoicePayment } f
 import { isNotFound, isStale, paymentErrorText } from '@/features/billing/errors';
 import type { Invoice, InvoicePayment } from '@/features/billing/schemas';
 import { billingPaths, billingTexts, invoiceMethod, invoiceSource } from '@/features/billing/texts';
+import { creditNoteTexts } from '@/features/billing/credit-note-texts';
+import { CreditNotesPanel } from './credit-notes-panel';
 import { formatPeriod, InvoiceStatusBadge, useBillingAccess } from './parts';
 
 const t = billingTexts.invoice;
@@ -318,6 +320,24 @@ function InvoiceView({
           <p className="text-small text-ink-muted">{t.noPayments}</p>
         )}
       </Panel>
+
+      <CreditNotesPanel
+        invoice={invoice}
+        onIssued={({ creditNote, invoice: updated, created }) => {
+          setStale(null);
+          setDone(
+            created
+              ? creditNoteTexts.issue.done(creditNote.number, formatXof(creditNote.total))
+              : creditNoteTexts.issue.already(creditNote.number),
+          );
+          onChange(updated);
+        }}
+        onStale={(message) => {
+          setDone(null);
+          setStale(message);
+          onStale();
+        }}
+      />
     </div>
   );
 }

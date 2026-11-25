@@ -13,7 +13,8 @@ import {
   type HolderType,
   listMismatchedTopUps,
 } from '@/features/wallet/api';
-import type { MismatchedTopUp, WalletCredit } from '@/features/wallet/schemas';
+import type { CreditOutcome } from '@/features/wallet/requests-schemas';
+import type { MismatchedTopUp } from '@/features/wallet/schemas';
 import { walletTexts } from '@/features/wallet/texts';
 
 const t = walletTexts.credit;
@@ -164,7 +165,8 @@ export function CreditDialog({
   type: HolderType;
   holderId: string;
   holderLabel: string;
-  onCredited: (credit: WalletCredit) => void;
+  /** Crédit écrit, ou demande en attente d'un second membre de la finance (au-delà du seuil). */
+  onCredited: (credit: CreditOutcome) => void;
 }) {
   const id = useId();
   const ref = useRef<HTMLDialogElement>(null);

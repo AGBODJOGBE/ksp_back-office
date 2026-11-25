@@ -12,7 +12,7 @@ const moneySchema = z.object({ amount: z.int(), currency: z.literal('XOF') });
 
 const holderSchema = z.object({ type: z.string(), id: z.string() });
 
-/** `PrepaidWallet` : portefeuille prépayé (ADR-046), dépensable, jamais négatif, jamais reversé. */
+/** `PrepaidWallet` : portefeuille prépayé (ADR-046), dépensable, jamais négatif ; retrait possible (ADR-055). */
 export const prepaidWalletSchema = z.object({
   holder: holderSchema,
   balance: moneySchema,

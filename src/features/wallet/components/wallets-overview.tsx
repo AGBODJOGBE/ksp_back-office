@@ -21,6 +21,7 @@ import { walletAccess } from '@/features/wallet/access';
 import { getOverview } from '@/features/wallet/api';
 import type { WalletOverview } from '@/features/wallet/schemas';
 import { internalAccount, walletPaths, walletTexts } from '@/features/wallet/texts';
+import { PendingSummary } from './pending-summary';
 
 const t = walletTexts;
 const o = walletTexts.overview;
@@ -178,6 +179,7 @@ export function WalletsOverview() {
   const access = walletAccess(roles);
   return (
     <div className="grid gap-6">
+      {access.wallets ? <PendingSummary /> : null}
       <Panel title={o.title} id="portefeuilles-ensemble">
         <ResourceView resource={resource} lines={4} labels={t} describe={apiErrorText}>
           {(overview) => <Overview overview={overview} />}

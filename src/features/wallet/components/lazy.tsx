@@ -12,3 +12,14 @@ export const WalletsOverview = dynamic(() => import('./wallets-overview').then((
   loading,
 });
 export const HolderWallet = dynamic(() => import('./holder-wallet').then((m) => m.HolderWallet), { loading });
+export const WithdrawalsList = dynamic(() => import('./withdrawals-list').then((m) => m.WithdrawalsList), {
+  loading,
+});
+export const CreditRequestsList = dynamic(
+  () => import('./credit-requests-list').then((m) => m.CreditRequestsList),
+  { loading },
+);
+export const WalletPayoutsList = dynamic(
+  () => import('./wallet-payouts-list').then((m) => m.WalletPayoutsList),
+  { loading },
+);

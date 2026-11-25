@@ -2,6 +2,10 @@ import { api, parseResponse } from '@/lib/api';
 import {
   type BillingSettings,
   billingSettingsSchema,
+  type CreditNoteIssued,
+  creditNoteIssuedSchema,
+  type CreditNoteList,
+  creditNoteListSchema,
   type Invoice,
   type InvoiceList,
   invoiceListSchema,
@@ -10,7 +14,7 @@ import {
 
 /**
  * Appels du navigateur à la gateway pour la facturation du back-office (`/api/v1/admin/billing/*`,
- * 5 routes). Option A (F-005) : jeton d'accès de la session. Le contrat ne prévoit pas de clé
+ * 7 routes, dont les avoirs). Option A (F-005) : jeton d'accès de la session. Le contrat ne prévoit pas de clé
  * d'idempotence sur le paiement manuel : le bouton est désactivé pendant l'envoi (**à valider**).
  */
 
@@ -53,6 +57,46 @@ export async function recordInvoicePayment(
   input: { amount: number; method: ManualMethod; reference?: string },
 ): Promise<Invoice> {
   return parseResponse(invoiceSchema, await api.post(at(id, 'payments'), input));
+}
+
+/** Filtres de la liste des avoirs, facultatifs et cumulables. */
+export interface CreditNoteFilters {
+  invoiceId?: string;
+  customerId?: string;
+  organizationId?: string;
+}
+
+/** Avoirs émis, les plus récents d'abord (R-PE-07). */
+export async function listCreditNotes(filters: CreditNoteFilters, cursor?: string): Promise<CreditNoteList> {
+  return parseResponse(
+    creditNoteListSchema,
+    await api.get(`${ADMIN}/credit-notes`, { query: { limit: PAGE_SIZE, cursor, ...filters } }),
+  );
+}
+
+/** Ligne d'un avoir : libellé et montant en FCFA (quantité 1 par défaut, laissée au contrat). */
+export interface CreditNoteLineInput {
+  label: string;
+  amount: number;
+}
+
+/**
+ * Émission d'un avoir sur une facture. Clé d'idempotence (contrat) : tirée à l'ouverture du formulaire
+ * et renvoyée telle quelle à chaque nouvel essai (`created: false` si l'avoir existait déjà).
+ */
+export async function issueCreditNote(
+  invoiceId: string,
+  input: { lines: CreditNoteLineInput[]; reason: string },
+  idempotencyKey: string,
+): Promise<CreditNoteIssued> {
+  const lines = input.lines.map((line) => ({
+    label: line.label,
+    amount: { amount: line.amount, currency: 'XOF' },
+  }));
+  return parseResponse(
+    creditNoteIssuedSchema,
+    await api.post(at(invoiceId, 'credit-notes'), { lines, reason: input.reason }, { idempotencyKey }),
+  );
 }
 
 export async function getBillingSettings(): Promise<BillingSettings> {

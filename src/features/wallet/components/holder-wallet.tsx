@@ -27,6 +27,7 @@ import {
   type StatementAccount,
 } from '@/features/wallet/api';
 import type { PrepaidWallet, StatementLine, Wallet } from '@/features/wallet/schemas';
+import { creditRequestTexts } from '@/features/wallet/requests-texts';
 import { objectLabel, statementKind, walletPaths, walletTexts } from '@/features/wallet/texts';
 import { CreditDialog } from './credit-dialog';
 
@@ -138,6 +139,8 @@ function HolderView({
   const { roles } = grants;
   const access = walletAccess(roles);
   const [done, setDone] = useState<string | null>(null);
+  // Crédit au-delà du seuil : lien vers les demandes à valider.
+  const [awaiting, setAwaiting] = useState(false);
   // Relecture du relevé après un crédit.
   const [version, setVersion] = useState(0);
   const collections = hasCollections(wallet);
@@ -173,6 +176,14 @@ function HolderView({
       </div>
 
       <FormMessage tone="success">{done}</FormMessage>
+      {awaiting && access.wallets ? (
+        <Link
+          href={`${walletPaths.creditRequests}?etat=pending_approval`}
+          className="text-accent-ink inline-flex min-h-11 items-center justify-self-start font-semibold underline"
+        >
+          {creditRequestTexts.seeRequests}
+        </Link>
+      ) : null}
 
       <div className={collections ? 'grid gap-6 lg:grid-cols-2' : 'grid gap-6'}>
         <Panel
@@ -185,6 +196,17 @@ function HolderView({
                 holderId={id}
                 holderLabel={`${title} · ${id}`}
                 onCredited={(credit) => {
+                  if ('pendingRequest' in credit) {
+                    const pending = formatXof(credit.pendingRequest.amount);
+                    setDone(
+                      credit.created
+                        ? creditRequestTexts.pendingFromDialog(pending)
+                        : creditRequestTexts.pendingAlready,
+                    );
+                    setAwaiting(true);
+                    return;
+                  }
+                  setAwaiting(false);
                   const amount = formatXof(credit.amount);
                   const balance = formatXof(credit.wallet.balance);
                   setDone(credit.created ? t.credit.done(amount, balance) : t.credit.already(balance));
@@ -196,6 +218,14 @@ function HolderView({
           }
         >
           <p className="text-small text-ink-muted">{h.prepaidHint}</p>
+          {access.wallets ? (
+            <Link
+              href={walletPaths.holderWithdrawals(type, id)}
+              className="text-accent-ink text-small font-semibold underline"
+            >
+              {h.seeWithdrawals}
+            </Link>
+          ) : null}
           <DescriptionList
             items={[
               {
@@ -217,6 +247,14 @@ function HolderView({
         {collections ? (
           <Panel title={h.collectionsTitle} id="portefeuille-creancier">
             <p className="text-small text-ink-muted">{h.collectionsHint}</p>
+            {access.wallets ? (
+              <Link
+                href={walletPaths.holderPayouts(type, id)}
+                className="text-accent-ink text-small font-semibold underline"
+              >
+                {h.seePayouts}
+              </Link>
+            ) : null}
             <DescriptionList
               items={[
                 {

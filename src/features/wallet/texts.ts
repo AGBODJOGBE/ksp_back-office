@@ -11,9 +11,18 @@ export function holderTypeOf(slug: string): HolderType | null {
   return entry ? (entry[0] as HolderType) : null;
 }
 
+/** Filtre d'une liste sur un titulaire (`?type=particulier&titulaire=<id>`). */
+const byHolder = (path: string, type: HolderType, id: string) =>
+  `${path}?type=${SLUGS[type]}&titulaire=${encodeURIComponent(id)}`;
+
 export const walletPaths = {
   overview: '/finance/portefeuilles',
   holder: (type: HolderType, id: string) => `/finance/portefeuilles/${SLUGS[type]}/${encodeURIComponent(id)}`,
+  withdrawals: '/finance/portefeuilles/retraits',
+  creditRequests: '/finance/portefeuilles/demandes-de-credit',
+  payouts: '/finance/portefeuilles/reversements',
+  holderWithdrawals: (type: HolderType, id: string) => byHolder('/finance/portefeuilles/retraits', type, id),
+  holderPayouts: (type: HolderType, id: string) => byHolder('/finance/portefeuilles/reversements', type, id),
 } as const;
 
 const kinds: Record<string, string> = {
@@ -107,7 +116,9 @@ export const walletTexts = {
     notFound: 'Ce portefeuille est introuvable.',
     prepaidTitle: 'Portefeuille prépayé',
     prepaidHint:
-      'Rechargé par le client, il paie ses missions et ses factures. Il n’est jamais négatif et n’est jamais reversé.',
+      'Rechargé par le client, il paie ses missions et ses factures. Il n’est jamais négatif ; le client peut en demander le retrait vers Mobile Money, traité puis validé par deux personnes de la finance.',
+    seeWithdrawals: 'Retraits de ce titulaire',
+    seePayouts: 'Reversements de ce titulaire',
     balance: 'Solde',
     lastEntry: 'Dernière opération',
     noEntry: 'Aucune opération pour le moment',

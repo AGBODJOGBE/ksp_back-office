@@ -15,6 +15,9 @@ export const InvoicesList = dynamic(() => import('./invoices-list').then((m) => 
 export const InvoiceDetail = dynamic(() => import('./invoice-detail').then((m) => m.InvoiceDetail), {
   loading,
 });
+export const CreditNotesList = dynamic(() => import('./credit-notes-list').then((m) => m.CreditNotesList), {
+  loading,
+});
 export const BillingSettingsScreen = dynamic(
   () => import('./billing-settings').then((m) => m.BillingSettingsScreen),
   { loading },

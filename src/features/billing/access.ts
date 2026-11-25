@@ -18,6 +18,8 @@ export interface BillingAccess {
   settings: boolean;
   /** Seuils d'impayés : réglages du Nettoyage (ADR-025), ouverts à son admin. */
   cleaningSettings: boolean;
+  /** Avoirs : liste et émission (`/admin/billing/credit-notes`, `…/invoices/{id}/credit-notes`), la finance seule. */
+  creditNotes: boolean;
 }
 
 export function billingAccess(roles: readonly string[]): BillingAccess {
@@ -28,5 +30,6 @@ export function billingAccess(roles: readonly string[]): BillingAccess {
     invoices: settings || has(BILLING_ROLES.cleaningSupervisor),
     settings,
     cleaningSettings: has(BILLING_ROLES.cleaningAdmin) || has(BILLING_ROLES.superAdmin),
+    creditNotes: has(BILLING_ROLES.finance) || has(BILLING_ROLES.superAdmin),
   };
 }
