@@ -39,7 +39,7 @@ export const timeSlotSchema = z.object({ start: z.string(), end: z.string() });
 export const typeRefSchema = z.object({ id: z.string(), code: z.string(), name: z.string() });
 
 /** `CleaningPlaceLocation` : position et repère (données personnelles). */
-const placeLocationSchema = z.object({
+export const placeLocationSchema = z.object({
   latitude: z.number(),
   longitude: z.number(),
   landmark: z.string(),
@@ -105,7 +105,7 @@ export const visitFeeSchema = z.object({
 });
 
 /** `CleaningAssignedAgent`. */
-const assignedAgentSchema = z.object({
+export const assignedAgentSchema = z.object({
   agentId: z.string(),
   firstName: z.string(),
   lastName: z.string(),

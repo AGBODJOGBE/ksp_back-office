@@ -28,6 +28,9 @@ function knownError(error: ApiError): string | null {
     const rank = typeof details.index === 'number' ? `n° ${details.index + 1}` : '';
     return describe ? describe(rank) : null;
   }
+  if (error.code === 'CLEANING_INVALID_TRANSITION' && details.reason === 'target_in_past') {
+    return 'Cette intervention a déjà commencé : elle ne peut plus être affectée.';
+  }
   return null;
 }
 

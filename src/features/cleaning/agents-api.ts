@@ -172,6 +172,8 @@ export const listTeams = (filters: { active?: boolean } = {}) =>
   listPage(teamListSchema, path('teams'), {
     active: filters.active === undefined ? undefined : String(filters.active),
   });
+/** Équipes actives, toutes pages lues : choix d'une équipe à affecter (planning). */
+export const activeTeams = (): Promise<Team[]> => readAll(teamListSchema, path('teams'), { active: 'true' });
 export const getTeam = (id: string): Promise<Team> => read(teamSchema, path('teams', id));
 
 /** `CleaningCreateTeamBody` : le chef d'équipe est membre de l'équipe. */
