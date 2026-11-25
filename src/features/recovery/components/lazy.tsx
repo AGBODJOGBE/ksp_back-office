@@ -30,3 +30,8 @@ export const CommissionInvoiceDetail = dynamic(
   () => import('./commission-invoice-detail').then((m) => m.CommissionInvoiceDetail),
   { loading },
 );
+export const CasesList = dynamic(() => import('./cases-list').then((m) => m.CasesList), { loading });
+export const CaseDetail = dynamic(() => import('./case-detail').then((m) => m.CaseDetail), { loading });
+export const OfflinePayments = dynamic(() => import('./offline-payments').then((m) => m.OfflinePayments), {
+  loading,
+});

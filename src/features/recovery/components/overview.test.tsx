@@ -5,7 +5,6 @@ import { errorBody, stubGateway } from '@/lib/api/gateway.test-utils';
 import { sessionBody } from '@/lib/api/session.test-utils';
 import { ADMIN, ME, overview } from '@/features/recovery/fixtures.test-utils';
 import { Overview } from './overview';
-import { PendingScreen } from './pending-screen';
 import { RecoveryTabs } from './recovery-tabs';
 
 let pathname = '/recouvrement';
@@ -132,17 +131,5 @@ describe('tableau de bord', () => {
     });
     render(<Overview />);
     expect(await screen.findByText('Votre rôle ne donne pas accès à cet écran.')).toBeInTheDocument();
-  });
-});
-
-describe('écrans provisoires du sous-lot 4b', () => {
-  it('un message, aucune donnée, retour au tableau de bord', () => {
-    render(<PendingScreen title="Dossiers" text="La file des dossiers arrive." />);
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Dossiers');
-    expect(screen.getByText('Arrive avec le sous-lot 4b')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Revenir au tableau de bord' })).toHaveAttribute(
-      'href',
-      '/recouvrement',
-    );
   });
 });

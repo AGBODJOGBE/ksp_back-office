@@ -1,9 +1,23 @@
 import type { Metadata } from 'next';
-import { PendingScreen, recoveryTexts } from '@/features/recovery';
+import { Suspense } from 'react';
+import { Heading } from '@/components/ui/heading';
+import { caseListTexts, CasesList } from '@/features/recovery';
 
-export const metadata: Metadata = { title: recoveryTexts.tabs.cases };
+export const metadata: Metadata = { title: caseListTexts.title };
 
-/** Dossiers : écran provisoire, remplacé par la file des dossiers (sous-lot 4b). */
+/** File des dossiers ; filtres lus dans l'adresse sous Suspense. */
 export default function RecoveryCasesPage() {
-  return <PendingScreen title={recoveryTexts.tabs.cases} text={recoveryTexts.pending.cases} />;
+  return (
+    <div className="grid gap-6">
+      <div>
+        <Heading as="h1" size="h2">
+          {caseListTexts.title}
+        </Heading>
+        <p className="text-ink-muted max-w-reading mt-2">{caseListTexts.lead}</p>
+      </div>
+      <Suspense>
+        <CasesList />
+      </Suspense>
+    </div>
+  );
 }

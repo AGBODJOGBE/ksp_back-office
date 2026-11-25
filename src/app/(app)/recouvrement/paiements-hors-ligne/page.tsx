@@ -1,11 +1,23 @@
 import type { Metadata } from 'next';
-import { PendingScreen, recoveryTexts } from '@/features/recovery';
+import { Suspense } from 'react';
+import { Heading } from '@/components/ui/heading';
+import { OfflinePayments, offlineTexts } from '@/features/recovery';
 
-export const metadata: Metadata = { title: recoveryTexts.tabs.offlinePayments };
+export const metadata: Metadata = { title: offlineTexts.title };
 
-/** Paiements hors ligne : écran provisoire, remplacé par la file à valider (sous-lot 4b). */
+/** Paiements hors ligne à valider ; état lu dans l'adresse sous Suspense. */
 export default function RecoveryOfflinePaymentsPage() {
   return (
-    <PendingScreen title={recoveryTexts.tabs.offlinePayments} text={recoveryTexts.pending.offlinePayments} />
+    <div className="grid gap-6">
+      <div>
+        <Heading as="h1" size="h2">
+          {offlineTexts.title}
+        </Heading>
+        <p className="text-ink-muted max-w-reading mt-2">{offlineTexts.lead}</p>
+      </div>
+      <Suspense>
+        <OfflinePayments />
+      </Suspense>
+    </div>
   );
 }
