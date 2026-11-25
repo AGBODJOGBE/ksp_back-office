@@ -439,7 +439,7 @@ function OfferForm({
         value={draft.extraParameterIds}
         onChange={readOnly ? () => undefined : (extraParameterIds) => change({ extraParameterIds })}
         error={form.errors.extraParameterIds}
-        empty={catalogTexts.places.noParameters}
+        empty={t.noExtra}
       />
       <TeamRuleEditor
         rows={draft.teamRule}

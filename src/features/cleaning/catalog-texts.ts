@@ -196,6 +196,8 @@ export const catalogTexts = {
     extra: 'Paramètres propres à l’offre',
     extraHint:
       'Demandés en plus des paramètres du lieu quand ce type est choisi (surface du jardin, nombre de vitres…).',
+    noExtra:
+      'Tous les paramètres du catalogue sont déjà demandés par le lieu : créez-en un dans « Paramètres » pour l’ajouter ici.',
     team: 'Équipe et durée par superficie',
     teamHint:
       'Tranches de superficie qui se suivent, la première à 0, la dernière sans limite. Sans tranche : 1 agent et la durée de référence du type.',

@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { ButtonLink } from '@/components/ui/button';
 import { ResourceView } from '@/components/ui/resource-view';
 import { ResponsiveTable, type TableColumn } from '@/components/ui/responsive-table';
-import { apiErrorText } from '@/lib/api';
+import { SUPER_ADMIN } from '@/config/modules';
+import { apiErrorText, useSession } from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
 import { listAssignableRoles } from '@/features/identity/account-admin-api';
 import type { AssignableRole } from '@/features/identity/account-admin-schemas';
@@ -55,13 +56,17 @@ const columns: TableColumn<AssignableRole>[] = [
 /** Rôles du back-office (`super_admin`) : actifs d'abord, lien vers la fiche, création. */
 export function RolesList() {
   const resource = useResource(listAssignableRoles);
+  // La liste est lisible par d'autres rôles (adresse directe) ; seule la création est réservée.
+  const canCreate = useSession()?.roles.includes(SUPER_ADMIN) ?? false;
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap justify-end gap-3">
-        <ButtonLink href={rolePaths.create} variant="action">
-          {t.create}
-        </ButtonLink>
-      </div>
+      {canCreate ? (
+        <div className="flex flex-wrap justify-end gap-3">
+          <ButtonLink href={rolePaths.create} variant="action">
+            {t.create}
+          </ButtonLink>
+        </div>
+      ) : null}
       <ResourceView resource={resource} lines={5} labels={common} describe={apiErrorText}>
         {(roles) =>
           roles.length ? (

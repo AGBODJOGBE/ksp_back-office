@@ -39,7 +39,9 @@ export function SectionNav({
 }) {
   const pathname = usePathname();
   return (
-    <nav aria-label={label} className="-mx-gutter overflow-x-auto">
+    // `relative` : les libellés `sr-only` (position absolue) restent dans le conteneur qui défile,
+    // sinon ils élargissent la page à 375 px.
+    <nav aria-label={label} className="-mx-gutter relative overflow-x-auto">
       <ul className="px-gutter flex min-w-max gap-2 pb-1">
         {items.map((item) => {
           const under = (href: string) => pathname === href || pathname.startsWith(`${href}/`);

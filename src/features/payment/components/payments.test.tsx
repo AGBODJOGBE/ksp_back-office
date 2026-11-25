@@ -134,6 +134,18 @@ describe('paiements en ligne', () => {
     expect(within(table).getByText('Particulier')).toBeInTheDocument();
   });
 
+  it('affiche un paiement fait sans compte (débiteur du recouvrement), sans lien de portefeuille', async () => {
+    session.set(sessionBody(['finance_officer']));
+    stubGateway({
+      [`GET ${PAYMENTS}`]: { status: 200, body: { data: [payment({ customerId: null })], nextCursor: null } },
+    });
+    render(<PaymentsList />);
+    const table = await screen.findByRole('table');
+    expect(await within(table).findByText('Mission du Nettoyage, acompte')).toBeInTheDocument();
+    expect(within(table).queryAllByRole('link')).toHaveLength(0);
+    expect(screen.queryByText(/Réponse inattendue/)).not.toBeInTheDocument();
+  });
+
   it('lie une recharge en écart au portefeuille rechargé', async () => {
     session.set(sessionBody(['finance_officer']));
     const topUp = payment({

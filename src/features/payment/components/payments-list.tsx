@@ -55,11 +55,14 @@ interface RowActions {
   onStale: () => void;
 }
 
-/** Portefeuille du payeur : celui de l'entreprise pour un paiement fait en son nom, sinon le sien. */
-const payerWallet = (payment: Payment): { type: HolderType; id: string } =>
-  payment.organizationId
-    ? { type: 'organization', id: payment.organizationId }
-    : { type: 'user', id: payment.customerId };
+/**
+ * Portefeuille du payeur : celui de l'entreprise pour un paiement fait en son nom, sinon le sien ;
+ * aucun pour un paiement fait sans compte (débiteur du recouvrement).
+ */
+const payerWallet = (payment: Payment): { type: HolderType; id: string } | null => {
+  if (payment.organizationId) return { type: 'organization', id: payment.organizationId };
+  return payment.customerId ? { type: 'user', id: payment.customerId } : null;
+};
 
 /**
  * Fiche de l'objet payé, si l'agent peut l'ouvrir. Recharge : le portefeuille rechargé, dont
@@ -154,7 +157,7 @@ function columns(grants: Grants, actions: RowActions): TableColumn<Payment>[] {
             ) : (
               kind
             )}
-            {wallets ? (
+            {wallets && wallet ? (
               <Link
                 href={walletPaths.holder(wallet.type, wallet.id)}
                 aria-label={t.seeWalletOf(subjectLabel(payment.subject))}

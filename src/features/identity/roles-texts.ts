@@ -18,6 +18,7 @@ const modules: Record<string, string> = {
   program: 'Programmes et séances',
   claim: 'Réclamations',
   settings: 'Réglages',
+  amounts: 'Montants',
   visit: 'Visites (application de l’agent)',
   session: 'Séances (application de l’agent)',
 };
