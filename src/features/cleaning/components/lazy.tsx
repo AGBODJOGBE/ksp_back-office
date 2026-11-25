@@ -58,3 +58,6 @@ export const RequestsQueue = dynamic(() => import('./requests-queue').then((m) =
 export const RequestDetail = dynamic(() => import('./request-detail').then((m) => m.RequestDetail), {
   loading,
 });
+export const VisitsCalendar = dynamic(() => import('./visits-calendar').then((m) => m.VisitsCalendar), {
+  loading,
+});

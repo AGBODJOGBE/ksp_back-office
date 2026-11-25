@@ -32,10 +32,10 @@ async function loadChoices() {
   };
 }
 
-type Option = { value: string; label: string };
+export type Option = { value: string; label: string };
 
 /** Liste de choix ; une valeur de l'adresse absente des choix reste affichée telle quelle. */
-function Choice({
+export function Choice({
   id,
   label,
   value,

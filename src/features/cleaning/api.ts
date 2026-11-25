@@ -306,6 +306,9 @@ export const simulate = async (body: SimulationBody): Promise<Simulation> =>
 // --- Jours fériés --------------------------------------------------------------------------------
 
 export const listHolidays = (year: number) => listPage(holidayListSchema, path('holidays'), { year });
+/** Tous les jours fériés d'une année (calendrier des visites). */
+export const allHolidays = (year: number): Promise<Holiday[]> =>
+  readAll(holidayListSchema, path('holidays'), { year });
 export const createHoliday = (body: { date: string; name: string }, key: string): Promise<Holiday> =>
   create(holidaySchema, path('holidays'), body, key);
 export const deleteHoliday = (id: string): Promise<void> => api.delete(path('holidays', id));

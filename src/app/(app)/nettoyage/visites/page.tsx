@@ -1,11 +1,25 @@
 import type { Metadata } from 'next';
-import { ComingSoon, cleaningTexts } from '@/features/cleaning';
+import { Suspense } from 'react';
+import { Heading } from '@/components/ui/heading';
+import { VisitsCalendar, visitsTexts } from '@/features/cleaning';
 
-const t = cleaningTexts.placeholders.visits;
+const t = visitsTexts;
 
 export const metadata: Metadata = { title: t.title };
 
-/** Visites (sous-lot 1b) : page provisoire. */
+/** Calendrier des visites : vue, jour et filtres lus dans l'adresse sous Suspense. */
 export default function CleaningVisitsPage() {
-  return <ComingSoon title={t.title} lead={t.lead} coming={t.coming} />;
+  return (
+    <div className="grid gap-6">
+      <div>
+        <Heading as="h1" size="h2">
+          {t.title}
+        </Heading>
+        <p className="text-ink-muted max-w-reading mt-2">{t.lead}</p>
+      </div>
+      <Suspense>
+        <VisitsCalendar />
+      </Suspense>
+    </div>
+  );
 }

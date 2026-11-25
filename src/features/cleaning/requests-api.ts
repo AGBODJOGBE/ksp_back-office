@@ -146,6 +146,9 @@ export interface UpdateVisitBody {
 
 export const listVisits = (filters: VisitFilters = {}) =>
   listPage(visitListSchema, path('visits'), { ...filters });
+/** Toutes les visites d'une période (calendrier), page après page, 1 000 au plus. */
+export const allVisits = (filters: VisitFilters): Promise<Visit[]> =>
+  readAll(visitListSchema, path('visits'), { ...filters });
 export const scheduleVisit = (body: ScheduleVisitBody, key: string): Promise<Visit> =>
   send('post', visitSchema, path('visits'), body, key);
 export const updateVisit = (id: string, body: UpdateVisitBody, key: string): Promise<Visit> =>

@@ -75,11 +75,6 @@ export const cleaningTexts = {
   },
   /** Sections du parcours v2 encore provisoires (écrans des livraisons suivantes). */
   placeholders: {
-    visits: {
-      title: 'Visites',
-      lead: 'Les visites techniques des lieux, payées par le client avant le devis.',
-      coming: 'Calendrier des visites : planifier, déplacer, annuler, clôturer pour l’agent, client absent.',
-    },
     planning: {
       title: 'Planning',
       lead: 'L’affectation des agents aux séances.',
