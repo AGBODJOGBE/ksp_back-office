@@ -22,15 +22,20 @@ import { billingQueueSections } from '@/features/billing/queue';
 import { cleaningQueueSections } from '@/features/cleaning/queue';
 import { organizationQueueSections } from '@/features/identity/queue';
 import { paymentQueueSections } from '@/features/payment/queue';
+import { walletQueueSections } from '@/features/wallet/queue';
 import { dashboardTexts as t } from '@/features/dashboard/texts';
 
 /**
- * Ordre de priorité de la file, validé le 5 novembre 2026 : écarts de paiement, puis le Nettoyage v2
+ * Ordre de priorité de la file, validé le 5 novembre 2026 : écarts de paiement, puis l'argent des clients
+ * en attente (retraits à valider, à traiter, demandes de crédit ; ajout « à valider »), puis le Nettoyage v2
  * (réclamations, interventions à affecter, visites à planifier, devis à préparer, candidatures d'agents ;
  * ordre interne à valider), comptes entreprise à valider, factures impayées.
  */
 export const QUEUE_ORDER = [
   'payment-mismatches',
+  'wallet-withdrawals-to-approve',
+  'wallet-withdrawals-to-process',
+  'wallet-credit-requests',
   'cleaning-claims',
   'cleaning-unassigned',
   'cleaning-visits-to-schedule',
@@ -43,6 +48,7 @@ export const QUEUE_ORDER = [
 /** Sections fournies par les fonctionnalités (chacune lit sa route de la gateway). */
 export const QUEUE_SECTIONS: readonly WorkQueueSection[] = [
   ...paymentQueueSections,
+  ...walletQueueSections,
   ...cleaningQueueSections,
   ...organizationQueueSections,
   ...billingQueueSections,

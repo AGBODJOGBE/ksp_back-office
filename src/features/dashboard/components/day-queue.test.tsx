@@ -17,6 +17,8 @@ const ROUTES = {
   unassigned: '/api/v1/admin/cleaning/planning/unassigned',
   agents: '/api/v1/admin/cleaning/agents',
   claims: '/api/v1/admin/cleaning/claims',
+  withdrawals: '/api/v1/admin/wallet/withdrawals',
+  creditRequests: '/api/v1/admin/wallet/credit-requests',
 };
 
 const id = (suffix: string) => `0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d${suffix}`;
@@ -122,7 +124,32 @@ const openClaim = {
   organizationName: null,
 };
 
-type Response = ReturnType<typeof page> | ReturnType<typeof cleaningPage>;
+/** Retrait TEST traité par une autre personne, à valider (`Withdrawal`). */
+const awaitingWithdrawal = {
+  id: id('5002'),
+  holder: { type: 'user', id: CUSTOMER },
+  amount: xof(25000),
+  status: 'awaiting_approval',
+  beneficiaryOperator: 'mtn',
+  beneficiaryPhoneMasked: '+229 •• •• 45',
+  requestedBy: CUSTOMER,
+  requestedAt: '2026-11-20T09:00:00Z',
+  processedBy: id('9e99'),
+  processedAt: '2026-11-20T10:00:00Z',
+  processingNote: 'Numéro confirmé.',
+  approvedBy: null,
+  approvedAt: null,
+  rejectedAt: null,
+  rejectionReason: null,
+  paymentPayoutId: null,
+  completedAt: null,
+  failedAt: null,
+};
+
+/** Demandes de crédit : la liste est dans `items` (`ManualCreditRequestList`). */
+const noCreditRequests = { status: 200, body: { items: [], nextCursor: null } };
+
+type Response = ReturnType<typeof page> | ReturnType<typeof cleaningPage> | typeof noCreditRequests;
 type Handler = Response | Response[] | ((body: unknown, url: URL) => Response);
 
 /** Gateway : une page par route ; `overrides` remplace la réponse d'une route. */
@@ -137,6 +164,9 @@ function gateway(overrides: Partial<Record<keyof typeof ROUTES, Handler>> = {}) 
     // Nouvelles : une réclamation ; en cours : aucune.
     claims: (_body: unknown, url: URL) =>
       url.searchParams.get('status') === 'open' ? cleaningPage([openClaim]) : cleaningEmpty,
+    withdrawals: (_body: unknown, url: URL) =>
+      url.searchParams.get('status') === 'awaiting_approval' ? page([awaitingWithdrawal]) : empty,
+    creditRequests: noCreditRequests,
     ...overrides,
   };
   return stubGateway(
@@ -163,6 +193,9 @@ describe('file « À traiter » de Ma journée', () => {
     // Sections du Nettoyage v2 entre les écarts de paiement et les comptes entreprise.
     expect(sectionTitles()).toEqual([
       'Écarts de paiement',
+      'Retraits à valider',
+      'Retraits à traiter',
+      'Demandes de crédit à valider',
       'Réclamations à traiter',
       'Interventions à affecter',
       'Visites à planifier',
@@ -191,7 +224,21 @@ describe('file « À traiter » de Ma journée', () => {
       `${ROUTES.requests}?limit=20&status=visit_done`,
       `${ROUTES.requests}?limit=20&status=visit_to_schedule`,
     ]);
-    expect(calls).toHaveLength(10);
+    expect(calls).toHaveLength(13);
+    const wallet = calls
+      .filter((call) => call.path.startsWith('/api/v1/admin/wallet'))
+      .map((call) => decodeURIComponent(call.path + call.search))
+      .sort();
+    expect(wallet).toEqual([
+      `${ROUTES.creditRequests}?limit=20&status=pending_approval`,
+      `${ROUTES.withdrawals}?limit=20&status=awaiting_approval`,
+      `${ROUTES.withdrawals}?limit=20&status=requested`,
+    ]);
+    expect(
+      within(sectionNamed('Retraits à valider')).getByRole('button', {
+        name: /^Valider et transmettre le retrait de 25\s000/,
+      }),
+    ).toBeInTheDocument();
     const claims = sectionNamed('Réclamations à traiter');
     expect(
       within(claims).getByRole('link', { name: 'Prendre en charge : Réclamation — Dégât' }),
@@ -235,13 +282,25 @@ describe('file « À traiter » de Ma journée', () => {
     expect(within(organizations).getAllByRole('link', { name: /^Valider ou refuser : / })).toHaveLength(5);
   });
 
-  it('finance : écarts de paiement et factures impayées seulement', async () => {
+  it('finance : écarts de paiement, retraits, demandes de crédit et factures impayées', async () => {
     session.set(sessionBody(['finance_officer']));
     const { calls } = gateway();
     render(<DayQueue />);
     await screen.findByRole('link', { name: 'Enregistrer un paiement : Facture FAC-2026-000012' });
-    expect(sectionTitles()).toEqual(['Écarts de paiement', 'Factures impayées']);
-    expect(calls.map((call) => call.path).sort()).toEqual([ROUTES.invoices, ROUTES.payments]);
+    expect(sectionTitles()).toEqual([
+      'Écarts de paiement',
+      'Retraits à valider',
+      'Retraits à traiter',
+      'Demandes de crédit à valider',
+      'Factures impayées',
+    ]);
+    expect(calls.map((call) => call.path).sort()).toEqual([
+      ROUTES.invoices,
+      ROUTES.payments,
+      ROUTES.creditRequests,
+      ROUTES.withdrawals,
+      ROUTES.withdrawals,
+    ]);
   });
 
   it('agent de terrain du Nettoyage : aucune section (routes du personnel seulement)', () => {
@@ -271,10 +330,16 @@ describe('file « À traiter » de Ma journée', () => {
 
   it('tout est vide : sections repliées et « Tout est à jour »', async () => {
     session.set(sessionBody(['super_admin']));
-    gateway({ payments: empty, organizations: empty, invoices: empty, claims: cleaningEmpty });
+    gateway({
+      payments: empty,
+      organizations: empty,
+      invoices: empty,
+      claims: cleaningEmpty,
+      withdrawals: empty,
+    });
     render(<DayQueue />);
     expect(await screen.findByText('Tout est à jour : rien à traiter pour le moment.')).toBeInTheDocument();
-    expect(screen.getAllByText('Rien à traiter')).toHaveLength(8);
+    expect(screen.getAllByText('Rien à traiter')).toHaveLength(11);
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Heading } from '@/components/ui/heading';
 import { walletTexts, WalletsOverview } from '@/features/wallet';
+import { WalletNav } from './wallet-nav';
 
 export const metadata: Metadata = { title: walletTexts.title };
 
@@ -8,6 +9,7 @@ export const metadata: Metadata = { title: walletTexts.title };
 export default function WalletsPage() {
   return (
     <div className="grid gap-6">
+      <WalletNav />
       <div>
         <Heading as="h1" size="h2">
           {walletTexts.title}

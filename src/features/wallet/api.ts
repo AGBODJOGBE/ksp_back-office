@@ -1,13 +1,12 @@
 import { api, parseResponse } from '@/lib/api';
+import { type CreditOutcome, creditOutcomeSchema } from './requests-schemas';
 import {
-  creditSchema,
   type MismatchedTopUp,
   mismatchedTopUpListSchema,
   overviewSchema,
   type Statement,
   statementSchema,
   type Wallet,
-  type WalletCredit,
   type WalletOverview,
   walletSchema,
 } from './schemas';
@@ -57,15 +56,17 @@ export type CreditRequest =
 /**
  * Crédit manuel du portefeuille prépayé. Clé d'idempotence obligatoire : tirée à l'ouverture du
  * formulaire et renvoyée telle quelle à chaque nouvel essai (`created: false` si le crédit existait).
+ * Au-delà du seuil de double validation (ADR-048), rien n'est crédité : la réponse porte la demande
+ * en attente (`pendingRequest`), validée ensuite par un autre membre de la finance.
  */
 export async function creditWallet(
   type: HolderType,
   id: string,
   { amount, ...request }: CreditRequest,
   idempotencyKey: string,
-): Promise<WalletCredit> {
+): Promise<CreditOutcome> {
   return parseResponse(
-    creditSchema,
+    creditOutcomeSchema,
     await api.post(
       `${holderPath(type, id)}/credits`,
       { ...request, amount: { amount, currency: 'XOF' } },

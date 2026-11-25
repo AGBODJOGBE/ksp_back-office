@@ -333,3 +333,53 @@ describe('créditer un portefeuille', () => {
     expect(within(dialog).getByText(/n’a pas pu être lue/)).toBeInTheDocument();
   });
 });
+
+describe('crédit au-delà du seuil de double validation (ADR-048)', () => {
+  it('affiche la demande en attente, sans changer le solde, et mène aux demandes à valider', async () => {
+    const { calls } = stubGateway({
+      [`GET ${HOLDER}`]: { status: 200, body: wallet() },
+      [`GET ${HOLDER}/statement`]: { status: 200, body: { data: [line()], nextCursor: null } },
+      [`POST ${HOLDER}/credits`]: {
+        status: 200,
+        body: {
+          pendingRequest: {
+            id: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d6001',
+            holder: { type: 'user', id: ids.user },
+            kind: 'refund',
+            amount: xof(80000),
+            reason: 'Geste commercial validé par la direction',
+            paymentId: null,
+            status: 'pending_approval',
+            requestedBy: '0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d9e11',
+            requestedAt: '2026-11-09T10:00:00Z',
+            approvedBy: null,
+            approvedAt: null,
+            transactionId: null,
+          },
+          wallet: prepaid(15000),
+          created: true,
+        },
+      },
+    });
+    render(<HolderWallet type="user" id={ids.user} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Créditer ou rembourser' }));
+    const dialog = screen.getByRole('dialog', { name: 'Créditer le portefeuille prépayé' });
+    fireEvent.change(within(dialog).getByLabelText('Montant à créditer (FCFA)'), {
+      target: { value: '80000' },
+    });
+    fireEvent.change(within(dialog).getByLabelText('Motif'), {
+      target: { value: 'Geste commercial validé par la direction' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Vérifier' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Créditer 80\s000/ }));
+    expect(
+      await screen.findByText(/au-delà du seuil de double validation : rien n’est crédité/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Voir les demandes de crédit' })).toHaveAttribute(
+      'href',
+      '/finance/portefeuilles/demandes-de-credit?etat=pending_approval',
+    );
+    // Rien n'est crédité : le relevé n'est pas relu.
+    expect(calls.filter((call) => call.path.endsWith('/statement'))).toHaveLength(1);
+  });
+});
