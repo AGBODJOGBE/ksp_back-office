@@ -287,3 +287,79 @@ describe('fiche d’un compte', () => {
     expect(screen.queryByRole('button', { name: 'Réessayer' })).toBeNull();
   });
 });
+
+describe('réinitialisation de la double authentification', () => {
+  const reset = `POST ${ACCOUNT}/mfa/reset`;
+  const fill = (
+    dialog: HTMLElement,
+    { check = true, reason = 'Téléphone perdu, identité vérifiée.' } = {},
+  ) => {
+    if (check) fireEvent.click(within(dialog).getByLabelText(/J’ai vérifié l’identité/));
+    if (reason) fireEvent.change(within(dialog).getByLabelText(/Motif/), { target: { value: reason } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Réinitialiser' }));
+  };
+
+  it('confirmation forte : identité vérifiée et motif exigés, puis fiche renvoyée', async () => {
+    const { calls } = stubGateway({
+      [`GET ${ACCOUNT}`]: { status: 200, body: detail() },
+      [reset]: {
+        status: 200,
+        body: detail({ mfa: { configured: false, configuredAt: null, recoveryCodesRemaining: 0 } }),
+      },
+    });
+    render(<AccountDetailView id={ID} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Réinitialiser la double authentification' }));
+    const dialog = openDialog();
+    expect(within(dialog).getByRole('heading', { name: /de Awa Dossou \?/ })).toBeInTheDocument();
+    expect(within(dialog).getByText(/sessions du back-office sont fermées/)).toBeInTheDocument();
+    fill(dialog, { check: false });
+    expect(
+      await within(dialog).findByText('Confirmez avoir vérifié l’identité de la personne.'),
+    ).toBeInTheDocument();
+    fill(dialog, { reason: ' ' });
+    expect(await within(dialog).findByText('Indiquez un motif.')).toBeInTheDocument();
+    expect(calls.some((call) => call.method === 'POST')).toBe(false);
+    fill(dialog, { check: false });
+    expect(await screen.findByText('Double authentification réinitialisée.')).toBeInTheDocument();
+    expect(calls.find((call) => call.method === 'POST')?.body).toEqual({
+      reason: 'Téléphone perdu, identité vérifiée.',
+    });
+    expect(screen.getByText(/Pas encore configurée/)).toBeInTheDocument();
+  });
+
+  it('déjà réinitialisée (second envoi) : la fiche est relue et l’explication reste affichée', async () => {
+    stubGateway({
+      [`GET ${ACCOUNT}`]: [
+        { status: 200, body: detail() },
+        {
+          status: 200,
+          body: detail({
+            mfa: { configured: false, configuredAt: null, recoveryCodesRemaining: 0 },
+            actions: { grantRole: true, suspend: true, reactivate: false, resetMfa: false },
+          }),
+        },
+      ],
+      [reset]: {
+        status: 422,
+        body: errorBody('IDENTITY_MFA_NOT_ENROLLED', 'Aucune double authentification.'),
+      },
+    });
+    render(<AccountDetailView id={ID} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Réinitialiser la double authentification' }));
+    fill(openDialog());
+    await waitFor(() => expect(screen.getAllByText(/déjà réinitialisée/).length).toBeGreaterThan(0));
+    expect(await screen.findByText(/Pas encore configurée/)).toBeInTheDocument();
+  });
+
+  it('son propre compte : refus expliqué, la boîte reste ouverte', async () => {
+    stubGateway({
+      [`GET ${ACCOUNT}`]: { status: 200, body: detail() },
+      [reset]: { status: 422, body: errorBody('IDENTITY_SELF_ACTION_FORBIDDEN', 'Action interdite.') },
+    });
+    render(<AccountDetailView id={ID} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Réinitialiser la double authentification' }));
+    const dialog = openDialog();
+    fill(dialog);
+    expect(await within(dialog).findByText(/propre double authentification/)).toBeInTheDocument();
+  });
+});

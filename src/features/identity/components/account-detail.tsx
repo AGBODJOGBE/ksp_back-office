@@ -30,6 +30,7 @@ import {
   roleLabel,
   scopeLabel,
 } from '@/features/identity/account-admin-texts';
+import { ResetMfa } from './account-mfa-reset';
 import { AccountStatusBadge } from './accounts-search';
 
 const t = accountTexts.detail;
@@ -103,8 +104,10 @@ function GrantRole({
   const held = new Set(detail.roles.filter((role) => !role.revokedAt).map((role) => role.roleCode));
   const choices =
     catalog.state.status === 'ready'
-      ? catalog.state.data.filter((role) => role.grantable && !held.has(role.code))
+      ? // Un rôle désactivé (ADR-057) n'est jamais attribuable.
+        catalog.state.data.filter((role) => role.grantable && role.active !== false && !held.has(role.code))
       : [];
+  const nameOf = (role: (typeof choices)[number]) => role.name || roleLabel(role.code, role.description);
   const texts = actions.grant;
   return (
     <ConfirmAction
@@ -124,7 +127,8 @@ function GrantRole({
         const reason = reasonOf(data);
         if (!roleCode) return texts.roleRequired;
         if (!reason) return common.reasonRequired;
-        const label = roleLabel(roleCode, choices.find((role) => role.code === roleCode)?.description);
+        const chosen = choices.find((role) => role.code === roleCode);
+        const label = chosen ? nameOf(chosen) : roleLabel(roleCode);
         return run(
           () => grantRole(detail.account.userId, roleCode, reason),
           (updated) => onDone(updated, texts.done(label)),
@@ -143,8 +147,7 @@ function GrantRole({
           </option>
           {choices.map((role) => (
             <option key={role.code} value={role.code}>
-              {roleLabel(role.code, role.description)} —{' '}
-              {scopeLabel(role.scopeType, role.scopeType === 'domain' ? role.service : null)}
+              {nameOf(role)} — {scopeLabel(role.scopeType, role.scopeType === 'domain' ? role.service : null)}
             </option>
           ))}
         </SelectField>
@@ -383,7 +386,15 @@ function AccountView({
           id="compte-double-authentification"
           action={
             detail.actions.resetMfa ? (
-              <AccountChange detail={detail} action="resetMfa" onDone={onDone} onStale={onStaleKept} />
+              <ResetMfa
+                detail={detail}
+                onDone={onDone}
+                onStale={(message) => {
+                  setDone(null);
+                  setStale(message);
+                  onStale();
+                }}
+              />
             ) : null
           }
         >

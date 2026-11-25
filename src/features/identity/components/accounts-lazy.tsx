@@ -17,3 +17,8 @@ export const AccountsSearch = dynamic(() => import('./accounts-search').then((m)
 export const AccountDetail = dynamic(() => import('./account-detail').then((m) => m.AccountDetailView), {
   loading,
 });
+
+/* Rôles dynamiques (ADR-057) : liste, fiche, création. */
+export const RolesList = dynamic(() => import('./roles-list').then((m) => m.RolesList), { loading });
+export const RoleDetail = dynamic(() => import('./role-detail').then((m) => m.RoleDetailView), { loading });
+export const RoleCreate = dynamic(() => import('./role-create').then((m) => m.RoleCreateView), { loading });

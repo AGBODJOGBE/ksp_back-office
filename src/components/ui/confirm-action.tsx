@@ -27,6 +27,7 @@ export function ConfirmAction({
   onOpen,
   variant,
   danger = false,
+  disabled = false,
   className,
 }: {
   /** Libellé du bouton qui ouvre la boîte. */
@@ -51,6 +52,8 @@ export function ConfirmAction({
    * rouge discret. Sinon, la confirmation est l'action principale de la boîte (vert).
    */
   danger?: boolean;
+  /** Bouton d'ouverture désactivé (rien à confirmer, par exemple un formulaire inchangé). */
+  disabled?: boolean;
   className?: string;
 }) {
   const id = useId();
@@ -85,6 +88,7 @@ export function ConfirmAction({
       <Button
         variant={variant ?? (danger ? 'danger' : 'secondary')}
         onClick={open}
+        disabled={disabled}
         className={className}
         aria-label={accessibleLabel}
       >

@@ -41,7 +41,7 @@ const services: Record<string, string> = {
   recovery: 'Recouvrement',
   wallet: 'Finance',
 };
-const serviceLabel = (code: string) => services[code] ?? code;
+export const serviceLabel = (code: string) => services[code] ?? code;
 
 /** Périmètre d'une attribution : tout KSP, ou un métier. */
 export function scopeLabel(scopeType: string, scopeId: string | null): string {
@@ -181,12 +181,19 @@ export const accountTexts = {
     resetMfa: {
       label: 'Réinitialiser',
       title: 'Réinitialiser la double authentification ?',
-      text: 'À faire si la personne a perdu son téléphone, après avoir vérifié son identité. Son application et ses codes de récupération ne marchent plus ; à sa prochaine connexion, elle configurera une nouvelle application.',
+      titleFor: (name: string) => `Réinitialiser la double authentification de ${name} ?`,
+      text: 'À faire si la personne a perdu son téléphone, après avoir vérifié son identité. Son application et ses codes de récupération ne marchent plus, et ses sessions du back-office sont fermées tout de suite ; à sa prochaine connexion, elle configurera une nouvelle application.',
+      check: 'J’ai vérifié l’identité de la personne (en personne ou par un moyen sûr).',
+      checkRequired: 'Confirmez avoir vérifié l’identité de la personne.',
       confirm: 'Réinitialiser',
       done: 'Double authentification réinitialisée.',
     },
   },
   errors: {
     stale: 'Ce compte a changé entre-temps : la fiche a été actualisée.',
+    mfaNotEnrolled:
+      'Ce compte n’a plus de double authentification configurée (déjà réinitialisée ?) : la fiche a été actualisée.',
+    selfAction:
+      'Vous ne pouvez pas réinitialiser votre propre double authentification. Demandez-le à un autre super administrateur.',
   },
 } as const;
