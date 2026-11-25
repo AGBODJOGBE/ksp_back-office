@@ -27,6 +27,35 @@ export const invoicePaymentSchema = z.object({
   recordedAt: z.string(),
 });
 
+/** `InvoiceLine` : ligne d'une facture ou d'un avoir (montants en FCFA). */
+const lineSchema = z.object({
+  label: z.string(),
+  quantity: z.int(),
+  unitPrice: moneySchema,
+  amount: moneySchema,
+});
+
+/**
+ * `CreditNote` : avoir sur une facture émise (R-PE-07). Il réduit d'abord le reste dû ; la part au-delà
+ * (facture déjà payée) est créditée au portefeuille du titulaire.
+ */
+export const creditNoteSchema = z.object({
+  id: z.string(),
+  number: z.string(),
+  invoiceId: z.string(),
+  invoiceNumber: z.string(),
+  customerId: z.string(),
+  organizationId: z.nullable(z.string()),
+  lines: z.array(lineSchema),
+  total: moneySchema,
+  reason: z.string(),
+  /** Compte du back-office, ou `service:cleaning`. */
+  issuedBy: z.string(),
+  issuedAt: z.string(),
+  appliedToBalance: moneySchema,
+  creditedToWallet: moneySchema,
+});
+
 /** `Invoice` : facture mensuelle d'un contrat (pour le Nettoyage, une mission d'entreprise). */
 export const invoiceSchema = z.object({
   id: z.string(),
@@ -40,9 +69,7 @@ export const invoiceSchema = z.object({
   periodIndex: z.int(),
   periodStart: z.string(),
   periodEnd: z.string(),
-  lines: z.array(
-    z.object({ label: z.string(), quantity: z.int(), unitPrice: moneySchema, amount: moneySchema }),
-  ),
+  lines: z.array(lineSchema),
   total: moneySchema,
   paid: moneySchema,
   balance: moneySchema,
@@ -52,11 +79,25 @@ export const invoiceSchema = z.object({
   payments: z.array(invoicePaymentSchema),
   /** `null` pour un particulier et pour une facture émise avant l'enregistrement de l'en-tête. */
   organization: z.nullable(invoiceOrganizationSchema),
+  /** v2 : avoirs émis sur cette facture ; absent pour une facture v1. */
+  creditNotes: z.optional(z.array(creditNoteSchema)),
 });
 
 export const invoiceListSchema = z.object({
   data: z.array(invoiceSchema),
   nextCursor: z.nullable(z.string()),
+});
+
+export const creditNoteListSchema = z.object({
+  data: z.array(creditNoteSchema),
+  nextCursor: z.nullable(z.string()),
+});
+
+/** `CreditNoteIssued` : avoir émis (ou retrouvé avec la même clé, `created: false`) et facture à jour. */
+export const creditNoteIssuedSchema = z.object({
+  creditNote: creditNoteSchema,
+  invoice: invoiceSchema,
+  created: z.boolean(),
 });
 
 /** `BillingSettings` : délai de règlement après l'émission (1 à 90 jours). */
@@ -70,3 +111,6 @@ export type Invoice = z.infer<typeof invoiceSchema>;
 export type InvoiceList = z.infer<typeof invoiceListSchema>;
 export type InvoicePayment = z.infer<typeof invoicePaymentSchema>;
 export type BillingSettings = z.infer<typeof billingSettingsSchema>;
+export type CreditNote = z.infer<typeof creditNoteSchema>;
+export type CreditNoteList = z.infer<typeof creditNoteListSchema>;
+export type CreditNoteIssued = z.infer<typeof creditNoteIssuedSchema>;

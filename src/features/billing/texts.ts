@@ -6,6 +6,7 @@ export const billingPaths = {
   invoices: '/finance/factures',
   invoice: (id: string) => `/finance/factures/${encodeURIComponent(id)}`,
   settings: '/finance/reglages',
+  creditNotes: '/finance/avoirs',
 } as const;
 
 type StatusLabel = { label: string; tone: BadgeTone };

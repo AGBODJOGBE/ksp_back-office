@@ -80,12 +80,14 @@ describe('droits de la facturation', () => {
       invoices: true,
       settings: false,
       cleaningSettings: false,
+      creditNotes: false,
     });
     expect(billingAccess(['finance_officer'])).toMatchObject({ invoices: true, settings: true });
     expect(billingAccess(['super_admin'])).toEqual({
       invoices: true,
       settings: true,
       cleaningSettings: true,
+      creditNotes: true,
     });
     expect(billingAccess(['support_agent']).invoices).toBe(false);
   });

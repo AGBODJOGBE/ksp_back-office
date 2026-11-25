@@ -17,6 +17,7 @@ export function financeTabs(
 ): SubNavItem[] {
   const tabs: Array<SubNavItem & { show: boolean }> = [
     { href: billingPaths.invoices, label: 'Factures', show: billing.invoices },
+    { href: billingPaths.creditNotes, label: 'Avoirs', show: billing.creditNotes },
     { href: paymentPaths.list, label: 'Paiements en ligne', show: payment.list },
     { href: walletPaths.overview, label: 'Portefeuilles', show: wallet.wallets },
     { href: paymentPaths.payouts, label: 'Reversements', show: payment.payouts },
