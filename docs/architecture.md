@@ -76,7 +76,7 @@ Le nom d'une fonctionnalité est celui du service du backend, en anglais (le cod
 | ---------------------------------- | --------------------------------------------------------------- | ------------------------- | ----- | ------------------------------------------ |
 | Ma journée (`/`)                   | `features/dashboard`                                            | — (sections des services) | 1     | file « À traiter » branchée                |
 | Recouvrement (`/recouvrement`)     | `features/recovery`                                             | recovery                  | 1     | page d'attente                             |
-| Nettoyage (`/nettoyage`)           | `features/cleaning`                                             | cleaning                  | 1     | écrans branchés (29 routes + 3)            |
+| Nettoyage (`/nettoyage`)           | `features/cleaning`                                             | cleaning                  | 1     | v2 : catalogue et réglages (sous-lot 1a)   |
 | Finance (`/finance`)               | `features/payment`, `features/wallet`, `features/billing`       | payment, wallet, billing  | 1     | factures et paiements branchés             |
 | Clients et comptes (`/clients`)    | `features/identity`                                             | identity                  | 1     | comptes entreprise branchés                |
 | Notifications (`/notifications`)   | `features/notification`                                         | notification              | 1     | historique des envois et modèles (ADR-039) |
@@ -148,85 +148,93 @@ Le front **n'autorise rien**. Il reçoit de la gateway la session de l'agent (se
 
 Le cadre des pages `(app)` importe `@/features/identity/session` (garde et panneau du compte) et non l'index, pour ne pas charger le parcours de connexion sur chaque page : point d'entrée secondaire autorisé par la règle ESLint, comme `/server`. Les pages `(app)` sont gardées par `RequireSession` : sans session, retour à `/connexion?retour=<page demandée>` (chemin interne seulement) ; session terminée pendant la visite (12 h, 30 min sans activité, rôle retiré), explication et lien pour se reconnecter. Le jeton d'accès reste en mémoire ; le jeton de renouvellement est dans le cookie `__Secure-ksp_admin_rt` posé par la gateway. Aucune minuterie ne renouvelle la session : seul l'agent qui agit la prolonge.
 
-## Nettoyage (`features/cleaning`)
+## Nettoyage v2 (`features/cleaning`, ADR-054 à ADR-059)
 
-Module branché sur les 28 routes `/api/v1/admin/cleaning/*` du contrat (`ksp-api.v1.yaml`), plus deux routes publiques — `GET /api/v1/cleaning/services` (noms des prestations : les fiches ne portent que leur code) et `GET /api/v1/cleaning/zones` (filtre de commune du superviseur) — et la recherche de compte d'identity, `POST /api/v1/admin/identity/accounts/lookup` (ADR-029, dans `features/identity/account-lookup.ts`, exportée par l'index d'identity). Aucune règle métier dans le front : prix, lignes du devis, acompte, transitions et refus viennent de la gateway ; l'écran propose les actions que l'état permet et affiche le refus du backend (message français, référence pour le support sur une erreur serveur).
+Le backend a remplacé le Nettoyage v1 sur place, sans compatibilité (ADR-054) : routes `quote-requests`, `quote-request-groups`, `missions`, `interventions`, `catalog`, mesures v1 supprimées. Le module du back-office est reconstruit en trois sous-lots sur la même branche : **1a** socle v2, catalogue, tarifs et réglages (ci-dessous) ; **1b** dossiers (demandes, visites, constat retenu, devis) ; **1c** agents, équipes, planning, affectations, programmes, séances, réclamations. Le code v1 (écrans, schémas, textes, tests, sections de « Ma journée ») est retiré. Les trois sous-lots sont livrés (1c-4 : réclamations, sections de « Ma journée ») : il ne reste plus aucune page provisoire dans le module (`ComingSoon` supprimé).
 
 ```
 features/cleaning/
-├── index.ts               onglets, écrans (relais à la demande), textes des titres
-├── api.ts                 28 appels admin + noms des prestations et zones ouvertes (routes publiques)
-├── schemas.ts             zod/mini, champ par champ selon le contrat
-├── access.ts              rôles → sections affichées (affichage seulement)
-├── paths.ts, errors.ts    adresses des écrans ; message affichable d'une erreur (refus précisés par leurs détails)
-├── texts.ts               libellés communs et états ; *-texts.ts : textes propres à chaque écran
+├── index.ts               onglets, menus de section, écrans (relais à la demande), textes des pages
+├── queue.ts               point d'entrée `@/features/cleaning/queue` : sections de « Ma journée » (+ queue-texts.ts)
+├── access.ts              permissions du contrat (x-ksp-permission) ← rôles par défaut (x-ksp-default-roles) ; rolesWith
+├── api.ts                 42 opérations admin du sous-lot 1a (listes paginées, lectures complètes, total)
+├── requests-api.ts        1b : dossiers, visites, version retenue, devis (+ requests-schemas, -filters, -texts)
+├── agents-api.ts          1c-1 : agents, disponibilités, équipes (+ agents-schemas, -filters, -texts, teams-texts)
+├── planning-api.ts        1c-2 : planning, à affecter, affectations, propositions, automatique (+ planning-*)
+├── programs-api.ts        1c-3 : programmes, séances, décisions (+ programs-*, schedule-plan.ts, session-texts)
+├── claims-api.ts          1c-4 : réclamations (+ claims-schemas, claims-filters, claims-texts)
+├── schemas.ts             zod/mini, champ par champ, énumérations du contrat
+├── errors.ts              message affichable, champ refusé (details.field), tarif incomplet (details.reason, index)
+├── inputs.ts              entiers, FCFA, coefficients (points de base ↔ « 1,15 »), pourcentages, codes
+├── paths.ts, sections.ts  adresses ; étapes du catalogue et sections des réglages (fichier léger des coques)
+├── texts.ts, catalog-texts.ts, simulator-texts.ts, settings-texts.ts
+├── *-fixtures.test-utils.ts, fake-gateway.test-utils.ts   passerelle commune + réponses TEST v2
 └── components/
-    ├── lazy.tsx           relais next/dynamic : une page ne télécharge que son écran
-    ├── cleaning-tabs.tsx  onglets du module filtrés par rôle
-    ├── requests-list.tsx, request-detail.tsx, quote-form.tsx
-    ├── missions-list.tsx, mission-detail.tsx, intervention-form.tsx, intervention-screen.tsx
-    ├── catalog-screen.tsx, service-editor.tsx, place-types-panel.tsx, zones-screen.tsx, team-screen.tsx
-    ├── register-agent.tsx rattacher un agent : recherche du compte par téléphone, puis confirmation
-    └── parts.tsx          états communs (chargement, erreur, panneaux), droits de la session
+    ├── lazy.tsx                 relais next/dynamic : une page ne télécharge que son écran
+    ├── cleaning-tabs.tsx, section-nav.tsx, legacy-mission.tsx
+    ├── parts.tsx, editors.tsx, catalog-parts.tsx, request-parts.tsx   états, formulaires, motifs, clés
+    ├── catalog-overview.tsx, parameters.tsx, categories.tsx, places.tsx, skills.tsx,
+    │   cleaning-types.tsx, offers.tsx, tariffs.tsx, simulator.tsx
+    ├── settings.tsx, zones.tsx, holidays.tsx
+    ├── requests-*.tsx, request-*.tsx, visits-*.tsx, visit-panel.tsx        dossiers et visites (1b)
+    ├── agent-*.tsx, agents-*.tsx, team-*.tsx, teams-list.tsx              agents et équipes (1c-1)
+    ├── planning-*.tsx, assignment-*.tsx                                   planning (1c-2)
+    ├── program-*.tsx, programs-*.tsx, session-*.tsx                       programmes et séances (1c-3)
+    └── claims-queue.tsx, claims-filter-bar.tsx, claim-detail.tsx, claim-actions.tsx, claim-messages.tsx (1c-4)
 ```
 
-| Adresse                                         | Écran                                                                                                   | Onglet visible pour                                 |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `/nettoyage`                                    | Demandes : filtres état, commune (code de zone) et type de client, tous passés à la gateway, dans l'URL | `cleaning_supervisor`, `cleaning_admin`             |
-| `/nettoyage/demandes/[id]`                      | Fiche : client, locaux, visite, devis, historique ; visite, compte rendu, devis, refus                  | idem                                                |
-| `/nettoyage/missions`                           | Missions, filtre par état dans l'URL                                                                    | les trois rôles (l'agent ne reçoit que les siennes) |
-| `/nettoyage/missions/[id]`                      | Fiche : passages, paiement ; planifier un passage, paiement manuel, annulation                          | les trois rôles ; actions : superviseur et admin    |
-| `/nettoyage/missions/[id]/passages/[passageId]` | Passage (téléphone de l'agent) : démarrer, liste de contrôle, incident, reprise, clôture                | les trois rôles                                     |
-| `/nettoyage/catalogue`                          | Types de lieu, prestations (questions, options, tarifs, essai de prix), réglages                        | `cleaning_admin`                                    |
-| `/nettoyage/zones`                              | Zones desservies : ouverture, désactivation, réactivation                                               | `cleaning_admin`                                    |
-| `/nettoyage/equipe`                             | Agents (rattachement, indisponibilités) et équipes                                                      | superviseur (lecture) et admin                      |
+**Parcours du module** (onglets, dans l'ordre du métier, chacun suivant la permission de sa route) : Catalogue · Dossiers · Visites · Planning · Programmes · Agents et équipes · Réclamations · Réglages.
 
-| Route de la gateway                                            | Écran ou composant                                   |
-| -------------------------------------------------------------- | ---------------------------------------------------- |
-| `GET /admin/cleaning/quote-requests`                           | `RequestsList` (`status`, `commune`, `customerKind`) |
-| `GET /admin/cleaning/quote-requests/{id}`                      | `RequestDetail`                                      |
-| `POST /admin/cleaning/quote-requests/{id}/reject`              | `RequestDetail` (confirmation, motif obligatoire)    |
-| `POST /admin/cleaning/quote-requests/{id}/visits`              | `RequestDetail` (boîte « Planifier la visite »)      |
-| `POST /admin/cleaning/visits/{id}/complete`                    | `RequestDetail` (compte rendu)                       |
-| `POST /admin/cleaning/quote-requests/{id}/quote`               | `QuoteForm` (chargé à l'ouverture)                   |
-| `GET /admin/cleaning/missions`                                 | `MissionsList`                                       |
-| `GET /admin/cleaning/missions/{id}`                            | `MissionDetail`, `InterventionScreen`                |
-| `POST /admin/cleaning/missions/{id}/interventions`             | `InterventionForm` (chargé à l'ouverture)            |
-| `POST /admin/cleaning/missions/{id}/payments`                  | `MissionDetail` (particulier, `Idempotency-Key`)     |
-| `POST /admin/cleaning/missions/{id}/cancel`                    | `MissionDetail` (confirmation, motif obligatoire)    |
-| `POST /admin/cleaning/interventions/{id}/start`                | `InterventionScreen`                                 |
-| `PUT /admin/cleaning/interventions/{id}/checklist`             | `InterventionScreen` (case par case)                 |
-| `POST /admin/cleaning/interventions/{id}/incident`             | `InterventionScreen` (confirmation, note)            |
-| `POST /admin/cleaning/interventions/{id}/resume`               | `InterventionScreen`                                 |
-| `POST /admin/cleaning/interventions/{id}/complete`             | `InterventionScreen` (confirmation)                  |
-| `GET /admin/cleaning/catalog`                                  | `CatalogScreen`                                      |
-| `PUT /admin/cleaning/catalog/services/{code}`                  | `ServiceEditor` (chargé à l'ouverture)               |
-| `PUT /admin/cleaning/catalog/settings`                         | `CatalogScreen` (réglages)                           |
-| `GET /admin/cleaning/zones`                                    | `ZonesScreen`, filtre de commune de l'admin          |
-| `POST /admin/cleaning/zones`                                   | `ZonesScreen` (ouverture et réactivation)            |
-| `POST /admin/cleaning/zones/{code}/deactivate`                 | `ZonesScreen` (confirmation)                         |
-| `GET /admin/cleaning/agents`                                   | `TeamScreen`, choix des agents (visite, passage)     |
-| `POST /admin/cleaning/agents`                                  | `RegisterAgentDialog` (après la recherche du compte) |
-| `POST /admin/cleaning/agents/{id}/unavailabilities`            | `TeamScreen`                                         |
-| `GET /admin/cleaning/teams`                                    | `TeamScreen`, `InterventionForm`                     |
-| `POST /admin/cleaning/teams`, `PUT /admin/cleaning/teams/{id}` | `TeamScreen` (composer, modifier)                    |
-| `GET /cleaning/zones` (publique)                               | filtre de commune du superviseur                     |
-| `POST /admin/identity/accounts/lookup`                         | `RegisterAgentDialog` (numéro dans le corps)         |
+| Adresse                                                            | Écran                                                                                                 | Sous-lot |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | -------- |
+| `/nettoyage/catalogue`                                             | Ordre de construction, nombre d'éléments par étape, première étape vide mise en avant                 | 1a       |
+| `/nettoyage/catalogue/parametres[/nouveau, /{id}]`                 | 1. Paramètres (nombre, choix, oui/non ; valeurs désactivables)                                        | 1a       |
+| `/nettoyage/catalogue/categories[/nouveau, /{id}]`                 | 2. Catégories de lieu, frais de visite, lieux rattachés                                               | 1a       |
+| `/nettoyage/catalogue/lieux[/nouveau, /{id}]`                      | 3. Lieux (`?categorie=`), paramètres ordonnés, superficie, visibilité sur le portail, offres du lieu  | 1a       |
+| `/nettoyage/catalogue/competences`                                 | 4. Compétences (ajout, renommage, désactivation)                                                      | 1a       |
+| `/nettoyage/catalogue/types[/nouveau, /{id}]`                      | 5. Types de nettoyage et packs, liste de contrôle                                                     | 1a       |
+| `/nettoyage/catalogue/offres[/nouveau, /{id}]`                     | 6. Offres (`?lieu=`, `?type=`), équipe par tranches ; tarif : versions, brouillon, essai, publication | 1a       |
+| `/nettoyage/catalogue/simulateur`                                  | 7. Simulateur (`?lieu=&types=&brouillons=`), détail ligne par ligne                                   | 1a       |
+| `/nettoyage/reglages`, `/reglages/zones`, `/reglages/jours-feries` | Réglages bornés ; zones et communes ; jours fériés (`?annee=`)                                        | 1a       |
+| `/nettoyage` (Dossiers), `/nettoyage/dossiers/{id}`                | File des dossiers (« À traiter », filtres) ; fiche par étapes : demande, visite, retenu, devis        | 1b       |
+| `/nettoyage/visites`                                               | Calendrier des visites (jour, semaine, filtres), gestion d'une visite                                 | 1b       |
+| `/nettoyage/equipe[/agents/{id}, /agents/nouveau, /equipes…]`      | Agents (candidatures en tête), fiche et cycle de vie, disponibilités ; équipes                        | 1c-1     |
+| `/nettoyage/planning` (`?vue=jour&date=`)                          | Planning jour/semaine, colonne « à affecter », affectation contrôlée, propositions, automatique       | 1c-2     |
+| `/nettoyage/programmes[/{id}, /{id}/seances/{sessionId}]`          | Programmes, décisions (horaire, avenant, suspension, arrêt validé par une 2ᵉ personne) ; séance       | 1c-3     |
+| `/nettoyage/missions/{id}`                                         | Ancienne fiche mission (v1) encore citée par factures et paiements : renvoi vers les programmes       | 1c-3     |
+| `/nettoyage/reclamations[/{id}]`                                   | File (`?statut=&agent=&client=&organisation=&tri=`, compteurs) ; fiche : échanges, décision, crédit   | 1c-4     |
 
-Noms et suspensions (PR #25 et #26 du backend, ADR-029 et ADR-030) :
+| Route du contrat (`/api/v1/admin/cleaning`)                                       | Écran ou composant                                                     |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `GET`, `POST /parameters` ; `GET`, `PATCH /parameters/{id}`                       | `ParametersList`, `NewParameter`, `ParameterDetail`                    |
+| `GET`, `POST /place-categories` ; `GET`, `PATCH /place-categories/{id}`           | `CategoriesList`, `NewCategory`, `CategoryDetail`                      |
+| `GET`, `POST /place-types` ; `GET`, `PATCH /place-types/{id}`                     | `PlacesList`, `NewPlace`, `PlaceDetail`, `CategoryPlaces`              |
+| `GET`, `POST /skills` ; `PATCH /skills/{id}`                                      | `SkillsScreen`, choix de la compétence d'un type                       |
+| `GET`, `POST /cleaning-types` ; `GET`, `PATCH /cleaning-types/{id}`               | `CleaningTypesList`, `NewCleaningType`, `CleaningTypeDetail`           |
+| `GET`, `POST /offers` ; `GET`, `PATCH /offers/{id}`                               | `OffersList`, `NewOffer`, `OfferDetail`, `PlaceOffers`                 |
+| `GET`, `POST /offers/{id}/tariffs` ; `PUT …/tariffs/{version}` ; `POST …/publish` | `TariffsPanel` (fiche de l'offre), brouillons du simulateur            |
+| `POST /simulations`                                                               | `Simulator`                                                            |
+| `GET`, `POST /holidays` ; `DELETE /holidays/{id}`                                 | `HolidaysScreen`                                                       |
+| `GET`, `POST /zones` ; `PATCH /zones/{id}` ; `POST /zones/{id}/activation`        | `ZonesScreen` ; communes du simulateur                                 |
+| `GET /communes`                                                                   | `ZonesScreen` (communes sans zone)                                     |
+| `GET`, `PATCH /settings`                                                          | `SettingsScreen`                                                       |
+| `GET /claims` ; `GET`, `PATCH /claims/{id}`                                       | `ClaimsQueue` ; `ClaimDetail` (prise en charge, réponse)               |
+| `POST /claims/{id}/decision` ; `POST …/decision/approve`                          | `ClaimActions` (décision confirmée, crédit validé par une 2ᵉ personne) |
 
-- **Droits** : `super_admin` a la même portée que `cleaning_admin` (`access.ts`, `config/modules.ts`) : tous les onglets, toutes les actions. Le module est aussi ouvert à `cleaning_agent` (missions et passages) : **à valider**.
-- **Noms affichés** (lus dans identity par cleaning, facultatifs, `null` si inconnus) : client et organisation des demandes et des missions, agent de la visite, auteur d'un paiement, auteur de la grille, des réglages et des zones. Repli sur un libellé court (« Client sans nom », « Entreprise sans nom », « un membre de l'équipe ») ; les identifiants techniques ne sont plus affichés, sauf la colonne « Compte » des agents.
-- **Type de client de la mission** (`customerKind`, `organizationId`) : le paiement manuel est masqué pour une entreprise ; la demande d'origine n'est plus relue.
-- **Paiement manuel idempotent** : clé tirée à l'ouverture du formulaire (`ConfirmAction.onOpen`, `newIdempotencyKey` de `lib/api`) et renvoyée telle quelle à chaque nouvel essai ; nouvelle clé à la prochaine ouverture.
-- **Refus précisés** (`errors.ts`) : `CLEANING_INTERVENTION_TOO_EARLY` (jour prévu), `CLEANING_VISIT_TOO_EARLY` (heure prévue), `CLEANING_PAYMENT_INVALID` avec `details.remainingDue` (reste dû), `CLEANING_ORGANIZATION_SUSPENDED`. Les autres refus gardent le message de la gateway.
-- **« Démarrer le passage »** est désactivé avant le jour prévu, à l'heure du Bénin, avec le jour affiché : confort d'affichage seulement, la gateway tranche (la règle est réglable de son côté : **à valider**).
-- **Suspension** : toutes les causes actives (`suspension.causes`, la plus ancienne d'abord) s'affichent en clair, par exemple « Compte entreprise suspendu par KSP » et « 2 factures impayées ».
-- **Rattacher un agent** : l'admin saisit un numéro (sans indicatif, +229 est ajouté), voit le compte trouvé (nom, numéro masqué, état) et confirme, avec un nom affiché modifiable. Compte introuvable (404) et limite de recherches (429, délai de la gateway) ont leur message.
+Les routes des sous-lots 1b et 1c (dossiers, visites, devis, agents, équipes, planning, programmes, séances) sont listées dans les en-têtes de `requests-api.ts`, `agents-api.ts`, `planning-api.ts` et `programs-api.ts`.
 
-Les photos des passages ne sont pas envoyables : la gateway n'expose aucune route du service `file` (l'écran le dit).
+Aucune route publique `/api/v1/cleaning/catalog/*` n'est lue : le back-office voit les mêmes données (et les éléments désactivés) par ses routes.
 
-Briques ajoutées à `components/ui` (à faire converger avec le portail avant `ksp-ui`) : `ResponsiveTable` (tableau qui devient des cartes sous 768 px), `ConfirmAction` (`<dialog>` modal natif), `SubNav` (onglets en liens), `SelectField` et `TextAreaField`, `DescriptionList`, variante `danger` de `Button`. Côté `lib` : `format.ts` (XOF, dates `Africa/Porto-Novo`, champs `datetime-local`), `use-resource.ts` (repris du portail), `put` dans le client de la gateway.
+- **Ordre de construction** : paramètres, catégories, lieux, compétences (facultatif), types, offres et tarifs, simulateur. Les paramètres viennent d'abord parce que le contrat exige la superficie d'un lieu (`areaParameterId`, R-CA-14) et un paramètre de base pour un tarif. L'accueil compte les éléments de chaque étape (`total`, lecture `limit=1`) et met en avant la première étape vide : orientation seulement.
+- **Droits** (`access.ts`, seul fichier qui traduit les rôles) : chaque permission du contrat est accordée par ses rôles par défaut. Le passage aux permissions du jeton (ADR-057, lot séparé) ne changera que `cleaningAccess`. `cleaning_agent` n'a plus aucune route du back-office (application de l'agent) : il sort du module ; `support_agent` y entre (lecture du catalogue, des dossiers et des programmes ; réclamations). Écrans en lecture seule sans `cleaning.catalog.manage`, `cleaning.zone.manage` ou `cleaning.settings.manage` ; 403 en note neutre, 404 « introuvable ».
+- **Rien n'est supprimé** (R-CA-06) : désactiver demande une confirmation ; activer se fait d'un geste. Lieux et offres sont créés désactivés (R-CA-12) ; leur visibilité sur le portail (`publiclyVisible`, `visibilityReasons`) est affichée.
+- **Codes** proposés à partir du nom, modifiables avant la création, figés ensuite ; codes des valeurs de choix et des points de contrôle tirés des libellés.
+- **Tarif** (ADR-056) : version en vigueur, brouillon (préparé depuis la version en vigueur ; première sauvegarde `POST` avec clé, suivantes `PUT`), « Essayer ce brouillon au simulateur », publication confirmée (`Idempotency-Key`). Saisie en FCFA entiers, coefficients en multiplicateur (« 1,15 » = 11 500 points de base), remise de pack en pourcentage. Contiguïté et cohérence jugées par la gateway : `CLEANING_TARIFF_INCOMPLETE` traduit avec le rang, `CLEANING_VALIDATION_FAILED` placé sous le champ (`brackets[2].to`).
+- **Idempotence** : clé tirée au premier envoi, renvoyée telle quelle après une coupure ou une erreur du serveur, renouvelée après une réussite ou un refus définitif.
+- **Montants masqués** sans `cleaning.amounts.read` : « Montant masqué », champ non envoyé.
+- **Réclamations** (1c-4, `cleaning.claim.manage`, support compris) : file triée des plus anciennes aux plus récentes (défaut du contrat), compteurs « Nouvelles » et « En cours », colonne « À faire » (prendre en charge, décider, crédit à valider) et signal « plus de 24 h sans réponse » (objectif `firstResponseAt`). Fiche : séance et programme liés, récit et photos, échanges avec le client et réponse (`PATCH`, 2 000 caractères), décision confirmée avec motif (repasse gratuite, crédit en FCFA entiers, rejet), validation d'un crédit au-delà de 50 000 FCFA par une autre personne que l'auteur (bouton masqué pour l'auteur, `CLEANING_SECOND_APPROVER_REQUIRED` en dernier ressort). Crédit « Montant masqué » sans `cleaning.amounts.read`. Les trois gestes portent une `Idempotency-Key`.
+- **Double authentification récente** : clôture et absence d'une séance ou d'une visite, retrait de photo, décision et validation d'un crédit exigent une double authentification de moins de 10 minutes (`x-ksp-mfa-max-age: 600`). Le contrat n'offre aucune route pour la refaire pendant une session (`/identity/mfa/verify` exige le `mfaToken` de la connexion) : l'écran l'annonce en note et affiche le refus de la gateway (`GATEWAY_MFA_REQUIRED`, 403, absent du contrat). **Manque du backend.**
+- **Ma journée** : sections v2 par `@/features/cleaning/queue` (voir « Ma journée » ci-dessous).
 
 ## Finance et comptes entreprise (`features/billing`, `features/payment`, `features/identity`)
 
@@ -288,69 +296,24 @@ Briques ajoutées : `components/ui/loading-block.tsx`, `panel.tsx`, `back-link.t
 
 Accueil `/` : file « À traiter », puis « Vos modules ». Chaque fonctionnalité fournit ses sections par un point d'entrée `@/features/<domaine>/queue` (forme commune `WorkQueueSection` de `lib/work-queue.ts`) ; le tableau de bord les ordonne, filtre par rôle (`sectionsFor`, affichage seulement) et les lit en parallèle. La file est chargée à la demande (`day-queue-lazy.tsx`). Les points d'entrée `/queue` ne sont pas exportés par les index : une page serveur qui lit un index ne charge donc pas la file (exportés par les index, ils ajoutaient 3,7 à 4,5 Ko aux pages des modules, mesuré).
 
-| Ordre | Section                      | Route et filtres du contrat                                            | Rôles (`x-ksp-roles`)                                             | Action de la ligne                                                     |
-| ----- | ---------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| 1     | Écarts de paiement           | `GET /admin/payment/payments?underReview=true&limit=20`                | finance_officer, cleaning_admin, super_admin                      | « Traiter l'écart » sur place                                          |
-| 2     | Incidents                    | `GET /admin/cleaning/missions?status=on_hold&limit=20`                 | cleaning_supervisor, cleaning_agent, cleaning_admin, super_admin  | passage en attente (`interventions[].status = on_hold`), sinon mission |
-| 3     | Comptes rendus à saisir      | `GET /admin/cleaning/visits?status=scheduled&to=<maintenant>&limit=20` | idem                                                              | fiche de la demande (supervision) ; `/nettoyage/visites` (agent)       |
-| 4     | Demandes à visiter           | `GET /admin/cleaning/quote-requests?status=received&limit=20`          | cleaning_supervisor, cleaning_admin, super_admin                  | fiche de la demande (« Planifier la visite »)                          |
-| 5     | Comptes entreprise à valider | `GET /admin/identity/organizations?status=pending_review&limit=20`     | super_admin, support_agent                                        | fiche (décision : super_admin)                                         |
-| 6     | Factures impayées            | `GET /admin/billing/invoices?status=overdue&limit=20`                  | finance_officer, cleaning_supervisor, cleaning_admin, super_admin | fiche (« Enregistrer un paiement »)                                    |
+| Ordre | Section                      | Route et filtres du contrat                                        | Rôles (`x-ksp-roles`)                                             | Action de la ligne                  |
+| ----- | ---------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------- | ----------------------------------- |
+| 1     | Écarts de paiement           | `GET /admin/payment/payments?underReview=true&limit=20`            | finance_officer, cleaning_admin, super_admin                      | « Traiter l'écart » sur place       |
+| 2     | Réclamations à traiter       | `GET /admin/cleaning/claims?status=open` puis `status=in_progress` | `cleaning.claim.manage` (support compris)                         | fiche (geste attendu)               |
+| 3     | Interventions à affecter     | `GET /admin/cleaning/planning/unassigned?sort=urgency`             | `cleaning.planning.manage`                                        | planning du jour                    |
+| 4     | Visites à planifier          | `GET /admin/cleaning/requests?status=visit_to_schedule`            | `cleaning.request.process`                                        | fiche dossier                       |
+| 5     | Devis à préparer             | `GET /admin/cleaning/requests?status=visit_done`                   | `cleaning.quote.manage`                                           | fiche dossier                       |
+| 6     | Candidatures d'agents        | `GET /admin/cleaning/agents?status=applicant` puis `under_review`  | `cleaning.agent.manage`                                           | fiche agent                         |
+| 7     | Comptes entreprise à valider | `GET /admin/identity/organizations?status=pending_review&limit=20` | super_admin, support_agent                                        | fiche (décision : super_admin)      |
+| 8     | Factures impayées            | `GET /admin/billing/invoices?status=overdue&limit=20`              | finance_officer, cleaning_supervisor, cleaning_admin, super_admin | fiche (« Enregistrer un paiement ») |
 
-- Compteur : les listes ne renvoient pas de total ; « N », ou « 20+ » quand `nextCursor` n'est pas nul. 5 lignes au plus, dans l'ordre de la gateway ; « Tout voir » ouvre la liste déjà filtrée.
+- Compteur : les listes sans total affichent « N », ou « 20+ » quand `nextCursor` n'est pas nul ; celles du Nettoyage donnent `total` (compteur exact, somme des deux statuts lus). 5 lignes au plus, dans l'ordre de la gateway ; « Tout voir » ouvre la liste déjà filtrée.
+- Nettoyage : rôles d'une section = rôles par défaut de la permission de sa route (`rolesWith`, `access.ts`). Place des cinq sections entre les écarts de paiement et les comptes entreprise, et leur ordre interne : **à valider**. Arrêts de programme à valider : pas de section, `GET /programs` n'a pas de filtre sur `pendingCancellation` (**manque du contrat**).
 - États : squelette par section, section repliée « Rien à traiter », « Tout est à jour » quand toutes sont vides, erreur limitée à la section (message, référence, « Réessayer »), section absente hors des rôles.
-- Hors périmètre (manques du backend) : « Devis à envoyer » (aucun filtre sur la visite réalisée) et « Passages du jour » (aucune liste des passages par date).
+- Nettoyage v1 : les trois sections (incidents, comptes rendus à saisir, demandes à visiter) lisaient des routes supprimées par la v2 (ADR-054) ; remplacées par les sections v2 ci-dessus.
 - Menu : modules rangés par groupe (`group` dans `config/modules.ts` : Ma journée, Opérations, Finance, Clients, Pilotage), sans compteur.
 
-Écrans liés : `/nettoyage/visites` (`GET /admin/cleaning/visits`, filtres `?etat=` et `?periode=passee|a-venir`, compte rendu par demande sur la ligne via `POST /admin/cleaning/visits/{id}/complete`, onglet ouvert à `cleaning_agent`) ; `/finance/paiements?a-examiner=1` (`underReview=true`) et « Traiter l'écart » (`POST /admin/payment/payments/{id}/resolve-mismatch`, note obligatoire, `Idempotency-Key` tirée à l'ouverture, accusé de réception, liste relue).
-
-## De la demande au devis (`features/cleaning`, étape 3)
-
-Contrat `ksp-api.v1.yaml` (schéma `CleaningQuoteRequest`, ADR-033 à ADR-035). La fiche ne lit plus `premisesType` ni `quantity` (dépréciés) : elle lit les réponses (`answers`, `selectedOptions`, `frequency`, libellés tirés des formulaires publics de `GET /cleaning/services`), le calcul du serveur (`pricingVersion`, `calculation`), le lieu (`placeType*`, `landmark`, `geocodedAddress`, `geocodingProvider`, `location`) et le groupe (`groupId`, `groupSize`, `groupRequests`).
-
-| Adresse                                 | Écran                                                                                                                                                                                                       |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/nettoyage`                            | Filtres ajoutés `?lieu=` (`placeType`), `?prestation=` (`serviceCode`), `?groupe=` (`groupId`, rappelé avec « Retirer ») ; badge « Groupe · N » vers la vue du groupe                                       |
-| `/nettoyage/demandes/[id]`              | Fiche dossier : bandeau Demande → Visite et mesures → Devis → Mission → Paiement (`dossierStep`), une action principale, étapes repliées sauf l'étape en cours ; mesures constatées et prix recalculé       |
-| `/nettoyage/demandes/groupes/[groupId]` | Vue du groupe (nouvelle) : demandes lues par `?groupId=&limit=10`, visite commune (exclusions), compte rendu commun, devis groupés, refus du groupe, demandes ignorées (`skipped`) ; pas de total de groupe |
-| `/nettoyage/visites`                    | Filtre `?groupe=`, « Saisir les mesures » (agent compris), compte rendu commun, « Corriger la position » sur une visite planifiée                                                                           |
-
-| Route du contrat                                                                            | Écran ou composant                                                           |
-| ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `GET /admin/cleaning/quote-requests` (+ `groupId`, `placeType`, `serviceCode`)              | `RequestsList`, `GroupDetail` (`limit=10`)                                   |
-| `PUT /admin/cleaning/quote-requests/{id}/location`                                          | `LocationAction` (fiche, étape Visite ; visites planifiées)                  |
-| `POST /admin/cleaning/quote-request-groups/{id}/visits`                                     | `GroupDetail` (`Idempotency-Key`)                                            |
-| `POST /admin/cleaning/quote-request-groups/{id}/visits/complete`                            | `GroupDetail`, `VisitsList` (`Idempotency-Key`)                              |
-| `POST /admin/cleaning/quote-request-groups/{id}/reject`                                     | `GroupDetail` (`Idempotency-Key`, motif de 1 à 500 caractères)               |
-| `POST /admin/cleaning/quote-request-groups/{id}/quotes`                                     | `GroupQuotesForm` (`Idempotency-Key`, erreur nommée par `details.requestId`) |
-| `GET /admin/cleaning/visits` (+ `groupId`)                                                  | `VisitsList`                                                                 |
-| `GET /admin/cleaning/place-types` (admin) ; `GET /cleaning/catalog` (superviseur, publique) | filtre « Type de lieu »                                                      |
-
-- **Envoi d'un devis** (seul ou groupé) : formulaire, puis boîte « Envoyer — le prix est figé à l'envoi » (`SendDialog`) avec le récapitulatif ; bouton désactivé pendant l'envoi. Avant l'envoi, seule l'estimation déjà calculée par le serveur (`calculation`, sinon `estimate`) est montrée, avec « Estimation : prix définitif calculé à l'envoi » : aucun calcul dans le front.
-- **Idempotence** : routes de groupe, clé tirée à l'ouverture de la boîte et renvoyée telle quelle si l'agent renvoie. Routes d'une demande (refus, visite, compte rendu, devis, position), sans clé dans le contrat : bouton désactivé pendant l'envoi, fiche relue après une coupure réseau (`attemptOrReread`).
-- **Position** : en texte seul (coordonnées, précision, repère), ni carte ni lien externe ; saisie à la main ou par l'API de géolocalisation du navigateur (`Permissions-Policy: geolocation=(self)`). Le résultat annonce les demandes et missions mises à jour.
-- **États** : squelette, vide, erreur avec message, référence et « Réessayer » ; 403 en note neutre, 404 « introuvable » (`ResourceView` avec `refusals`).
-- Textes par écran : `request-texts.ts` (liste), `request-detail-texts.ts`, `group-texts.ts`, `quote-texts.ts`, `location-texts.ts`, `visit-texts.ts`. Formulaires et boîtes chargés par `next/dynamic`.
-
-## Après la visite : mesures et catalogue (`features/cleaning`, étape 4)
-
-Contrat `ksp-api.v1.yaml` (ADR-033, ADR-034, ADR-037). Le front construit les formulaires depuis la définition des prestations et affiche les calculs de la gateway ; il ne calcule aucun prix.
-
-| Route du contrat                                                 | Écran ou composant                                                              |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `POST /admin/cleaning/quote-requests/{id}/estimate`              | `MeasurementsPanel`, `GroupReportForm` (prix recalculé, 600 ms après la saisie) |
-| `PUT /admin/cleaning/quote-requests/{id}/measurements`           | `MeasurementsPanel` (fiche, visites de l'agent)                                 |
-| `POST /admin/cleaning/visits/{id}/complete` (+ `measurements`)   | `MeasurementsPanel` (« Clore la visite avec ces mesures », confirmation)        |
-| `POST /admin/cleaning/quote-request-groups/{id}/visits/complete` | `GroupReportForm` (mesures par demande cochée, tout ou rien, confirmation)      |
-| `GET`, `PUT /admin/cleaning/place-types[/{code}]`                | `PlaceTypesPanel` (alertes de cohérence, prestations ordonnées)                 |
-| `POST /admin/cleaning/catalog/services/{code}/preview`           | `ServiceEditor` (essai de prix en direct avec la définition à l'écran, 800 ms)  |
-
-- **Fiche dossier** (`request-detail.tsx`) : `dossierStep` et `stepState` (`workflow.ts`) donnent l'étape en cours ; la mission liée est lue pour les étapes Mission et Paiement. « Prochaine étape » porte un seul bouton mis en avant et sa phrase d'explication ; les autres actions et le refus suivent, plus discrets.
-- **Demande** : lieu et prestation d'abord, réponses lisibles `answerSummary` (une demande à l'ancien format y porte « Type de locaux » et « Quantité »), position avec « Voir sur la carte ».
-- **Mesures** (`form-model.ts`, `service-fields.tsx`) : formulaire public de la prestation, prérempli avec les mesures déjà saisies sinon les réponses du client ; rappel « Déclaré par le client » et badge « Modifié » sous chaque champ ; contrôles locaux (obligatoire, entier, bornes) avant tout appel ; erreur de la gateway placée sous le champ (`measurements.answers.<champ>`, `options[i]` → code de l'option) ; `CLEANING_MEASUREMENTS_LOCKED` → lecture seule. Après l'enregistrement, tableau « Déclaré / Constaté » avec les écarts.
-- **Agent de terrain** : la route de la fiche lui est fermée ; il saisit les mesures depuis `/nettoyage/visites`, formulaire vide (il ne lit pas les réponses du client), puis voit l'écart renvoyé par la gateway.
-- **Devis** : prérempli depuis `measuredCalculation` (sinon `calculation`), lignes montrées ; « Modifier ces lignes » les copie dans la saisie avec la ligne d'ajustement ou de minimum.
-- **Catalogue** (`service-draft.ts`, `service-editor.tsx`) : tout en libellés métier, aucun code à écrire (codes tirés des libellés pour les nouveaux éléments, jamais affichés) ; montants en FCFA entiers, effets en pourcentage (« +30 », « -15 ») convertis en points de base ; un élément déjà enregistré se désactive au lieu d'être supprimé (les demandes passées gardent leurs réponses) ; erreurs locales et de la gateway au chemin du contrat (`fields[0].max`). Enregistrer crée une nouvelle version, annoncée à l'écran.
+Écran lié : `/finance/paiements?a-examiner=1` (`underReview=true`) et « Traiter l'écart » (`POST /admin/payment/payments/{id}/resolve-mismatch`, note obligatoire, `Idempotency-Key` tirée à l'ouverture, accusé de réception, liste relue).
 
 ## Stratégie de rendu
 
@@ -476,6 +439,8 @@ Mesure du 5 novembre 2026, de la demande au devis (`pnpm build && pnpm size`) :
 Fiche d'une demande, vue du groupe, formulaires de devis et boîte de position sont des morceaux chargés à la demande (environ 9, 5,5, 5 et 4,7 Ko compressés), hors « First Load JS ». Les fiches (`[id]`, `[groupId]`) n'apparaissent pas dans `pnpm size`.
 
 Mesure du 9 novembre 2026, après le module Notifications (ADR-039) : `/notifications/envois` et `/notifications/modeles` 212,5 Ko (écrans chargés à la demande ; budget « espace connecté » : 215 Ko) ; `/` 213,0 Ko.
+
+Mesure du 24 novembre 2026, Nettoyage v2, sous-lot 1a (`pnpm build && pnpm size`) : `/nettoyage` et ses 24 sous-pages statiques 216,8 Ko (avant : 217,5 Ko pour les pages v1) ; autres pages inchangées (à 0,1 Ko près). Les écrans du catalogue, du tarif, du simulateur et des réglages sont des morceaux chargés à la demande (`lazy.tsx`) ; la coque ne charge que les onglets, les menus de section (`sections.ts`) et la session. Les fiches (`[id]`) n'apparaissent pas dans `pnpm size`.
 
 ## Ajouter une fonctionnalité
 

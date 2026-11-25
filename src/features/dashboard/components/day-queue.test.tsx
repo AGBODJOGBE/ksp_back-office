@@ -11,11 +11,12 @@ import { DayQueue } from './day-queue';
 
 const ROUTES = {
   payments: '/api/v1/admin/payment/payments',
-  missions: '/api/v1/admin/cleaning/missions',
-  visits: '/api/v1/admin/cleaning/visits',
-  requests: '/api/v1/admin/cleaning/quote-requests',
   organizations: '/api/v1/admin/identity/organizations',
   invoices: '/api/v1/admin/billing/invoices',
+  requests: '/api/v1/admin/cleaning/requests',
+  unassigned: '/api/v1/admin/cleaning/planning/unassigned',
+  agents: '/api/v1/admin/cleaning/agents',
+  claims: '/api/v1/admin/cleaning/claims',
 };
 
 const id = (suffix: string) => `0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d${suffix}`;
@@ -42,127 +43,6 @@ const mismatch = {
   organizationName: 'SARL TEST Propre',
 };
 
-const passage = {
-  id: id('3001'),
-  status: 'on_hold',
-  scheduledStart: '2026-11-04T08:00:00Z',
-  durationMinutes: 180,
-  agents: [{ agentId: id('0002'), displayName: 'Agent TEST' }],
-  checklist: [],
-  incidentNote: 'Accès fermé',
-  beforePhotoFileIds: [],
-  afterPhotoFileIds: [],
-  startedAt: '2026-11-04T08:05:00Z',
-  completedAt: null,
-  cancellationCause: null,
-};
-
-const onHoldMission = {
-  id: id('2001'),
-  requestId: id('1001'),
-  quoteId: id('5001'),
-  customerId: CUSTOMER,
-  customerName: 'Client TEST',
-  organizationName: null,
-  status: 'on_hold',
-  serviceCode: 'menage_test',
-  commune: 'Cotonou',
-  address: 'Rue TEST',
-  chosenSlot: { start: '2026-11-04T08:00:00Z', end: '2026-11-04T11:00:00Z' },
-  recurrence: null,
-  plannedInterventions: 1,
-  completedInterventions: 0,
-  interventions: [passage],
-  payment: {
-    plan: { option: 'full', timing: 'after', method: 'cash' },
-    status: 'due',
-    total: xof(10000),
-    depositPercent: 30,
-    depositAmount: xof(3000),
-    paid: xof(0),
-    payments: [],
-  },
-  cancellationReason: null,
-  daysPerWeek: null,
-  suspension: null,
-  createdAt: '2026-10-28T10:00:00Z',
-  updatedAt: '2026-11-04T08:30:00Z',
-};
-
-const lateVisit = {
-  id: id('4001'),
-  groupVisitId: null,
-  groupId: null,
-  status: 'scheduled',
-  scheduledAt: '2026-11-04T09:00:00Z',
-  completedAt: null,
-  report: null,
-  agentId: id('0002'),
-  agentName: 'Agent TEST',
-  customerId: CUSTOMER,
-  customerName: 'Client TEST',
-  organizationName: null,
-  commune: 'Abomey-Calavi',
-  address: 'Rue TEST',
-  location: null,
-  landmark: null,
-  geocodedAddress: null,
-  placeType: null,
-  placeTypeLabel: null,
-  requests: [
-    {
-      requestId: id('1002'),
-      visitId: id('4001'),
-      serviceCode: 'menage_test',
-      serviceName: 'Ménage TEST',
-      status: 'visit_scheduled',
-    },
-  ],
-};
-
-const receivedRequest = (suffix: string) => ({
-  id: id(suffix),
-  status: 'received',
-  customerId: CUSTOMER,
-  customerKind: 'individual',
-  organizationId: null,
-  serviceCode: 'menage_test',
-  premisesType: 'apartment',
-  quantity: 4,
-  options: [],
-  commune: 'Cotonou',
-  address: 'Rue TEST',
-  preferredSlots: [],
-  comment: null,
-  recurrence: null,
-  requestedTeamSize: null,
-  daysPerWeek: null,
-  recommendedTeamSize: 2,
-  estimate: null,
-  visit: null,
-  quote: null,
-  missionId: null,
-  closingReason: null,
-  createdAt: '2026-11-05T07:00:00Z',
-  updatedAt: '2026-11-05T07:00:00Z',
-  customerName: `Client TEST ${suffix}`,
-  organizationName: null,
-  serviceName: 'Ménage TEST',
-  answers: null,
-  selectedOptions: [],
-  frequency: null,
-  pricingVersion: null,
-  calculation: null,
-  groupId: null,
-  groupSize: 1,
-  placeType: null,
-  placeTypeLabel: null,
-  location: null,
-  landmark: null,
-  geocodingProvider: null,
-  geocodedAddress: null,
-});
-
 const pendingOrganization = {
   id: id('0a01'),
   legalName: 'SARL TEST Propre',
@@ -179,6 +59,13 @@ const pendingOrganization = {
   reviewedBy: null,
   suspendedAt: null,
 };
+
+/** Compte entreprise en attente n° `index` (compteur « 20+ »). */
+const pendingOrganizationNumber = (index: number) => ({
+  ...pendingOrganization,
+  id: id(String(9100 + index)),
+  legalName: `SARL TEST ${index}`,
+});
 
 const overdueInvoice = {
   id: id('7001'),
@@ -208,21 +95,48 @@ const page = (data: unknown[], nextCursor: string | null = null) => ({
 });
 const empty = page([]);
 
+/** Listes du service cleaning : `total` exact (compteur sans « 20+ »). */
+const cleaningPage = (data: unknown[], total = data.length) => ({
+  status: 200,
+  body: { data, nextCursor: null, total },
+});
+const cleaningEmpty = cleaningPage([]);
+
+/** Réclamation TEST nouvelle, sans réponse depuis plus de 24 h (`CleaningClaim`). */
+const openClaim = {
+  id: id('8001'),
+  sessionId: id('8002'),
+  programId: id('8003'),
+  customerId: CUSTOMER,
+  organizationId: null,
+  category: 'damage',
+  text: 'Vase cassé.',
+  photos: [],
+  status: 'open',
+  messages: [],
+  decision: null,
+  openedAt: '2026-11-21T09:00:00Z',
+  firstResponseAt: null,
+  closedAt: null,
+  customerName: 'Afi Mensah',
+  organizationName: null,
+};
+
+type Response = ReturnType<typeof page> | ReturnType<typeof cleaningPage>;
+type Handler = Response | Response[] | ((body: unknown, url: URL) => Response);
+
 /** Gateway : une page par route ; `overrides` remplace la réponse d'une route. */
-function gateway(
-  overrides: Partial<Record<keyof typeof ROUTES, ReturnType<typeof page> | ReturnType<typeof page>[]>> = {},
-) {
+function gateway(overrides: Partial<Record<keyof typeof ROUTES, Handler>> = {}) {
   const full = {
     payments: page([mismatch]),
-    missions: page([onHoldMission]),
-    visits: page([lateVisit]),
-    // 20 demandes et une page suivante : compteur « 20+ », 5 lignes affichées.
-    requests: page(
-      Array.from({ length: 20 }, (_, index) => receivedRequest(String(1100 + index))),
-      id('1199'),
-    ),
     organizations: page([pendingOrganization]),
     invoices: page([overdueInvoice]),
+    requests: cleaningEmpty,
+    unassigned: cleaningEmpty,
+    agents: cleaningEmpty,
+    // Nouvelles : une réclamation ; en cours : aucune.
+    claims: (_body: unknown, url: URL) =>
+      url.searchParams.get('status') === 'open' ? cleaningPage([openClaim]) : cleaningEmpty,
     ...overrides,
   };
   return stubGateway(
@@ -239,18 +153,21 @@ const sectionNamed = (name: string) => screen.getByRole('region', { name });
 afterEach(() => vi.unstubAllGlobals());
 
 describe('file « À traiter » de Ma journée', () => {
-  it('super_admin : six sections dans l’ordre de priorité, filtres du contrat, compteurs et actions', async () => {
+  it('super_admin : sections dans l’ordre de priorité, filtres du contrat, compteurs et actions', async () => {
     session.set(sessionBody(['super_admin']));
     const { calls } = gateway();
     render(<DayQueue />);
-    await screen.findByText('SARL TEST Propre');
+    await screen.findByRole('link', { name: 'Valider ou refuser : SARL TEST Propre' });
     await waitFor(() => expect(screen.queryAllByRole('status', { busy: true })).toHaveLength(0));
 
+    // Sections du Nettoyage v2 entre les écarts de paiement et les comptes entreprise.
     expect(sectionTitles()).toEqual([
       'Écarts de paiement',
-      'Incidents',
-      'Comptes rendus à saisir',
-      'Demandes à visiter',
+      'Réclamations à traiter',
+      'Interventions à affecter',
+      'Visites à planifier',
+      'Devis à préparer',
+      'Candidatures d’agents',
       'Comptes entreprise à valider',
       'Factures impayées',
     ]);
@@ -258,30 +175,33 @@ describe('file « À traiter » de Ma journée', () => {
     const search = (path: string) =>
       decodeURIComponent(calls.find((call) => call.path === path)?.search ?? '');
     expect(search(ROUTES.payments)).toBe('?limit=20&underReview=true');
-    expect(search(ROUTES.missions)).toBe('?limit=20&status=on_hold');
-    expect(search(ROUTES.visits)).toMatch(/^\?limit=20&status=scheduled&to=\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
-    expect(search(ROUTES.requests)).toBe('?limit=20&status=received');
     expect(search(ROUTES.organizations)).toBe('?limit=20&status=pending_review');
     expect(search(ROUTES.invoices)).toBe('?limit=20&status=overdue');
-    expect(calls).toHaveLength(6);
-
-    const requests = sectionNamed('Demandes à visiter');
-    expect(within(requests).getByText('20+')).toBeInTheDocument();
-    expect(within(requests).getByText('20 ou plus à traiter')).toBeInTheDocument();
-    expect(within(requests).getAllByRole('link', { name: /^Planifier la visite : / })).toHaveLength(5);
-    expect(within(requests).getByRole('link', { name: /Voir toutes les demandes reçues/ })).toHaveAttribute(
+    // Nettoyage : filtres du contrat, deux statuts lus pour les candidatures et les réclamations.
+    const cleaning = calls
+      .filter((call) => call.path.startsWith('/api/v1/admin/cleaning'))
+      .map((call) => decodeURIComponent(call.path + call.search))
+      .sort();
+    expect(cleaning).toEqual([
+      `${ROUTES.agents}?limit=20&status=applicant&sort=-createdAt`,
+      `${ROUTES.agents}?limit=20&status=under_review&sort=-createdAt`,
+      `${ROUTES.claims}?limit=20&status=in_progress`,
+      `${ROUTES.claims}?limit=20&status=open`,
+      `${ROUTES.unassigned}?limit=20&sort=urgency`,
+      `${ROUTES.requests}?limit=20&status=visit_done`,
+      `${ROUTES.requests}?limit=20&status=visit_to_schedule`,
+    ]);
+    expect(calls).toHaveLength(10);
+    const claims = sectionNamed('Réclamations à traiter');
+    expect(
+      within(claims).getByRole('link', { name: 'Prendre en charge : Réclamation — Dégât' }),
+    ).toHaveAttribute('href', `/nettoyage/reclamations/${openClaim.id}`);
+    expect(within(claims).getByText(/Plus de 24 h sans réponse/)).toBeInTheDocument();
+    expect(within(claims).getByRole('link', { name: /Voir les réclamations/ })).toHaveAttribute(
       'href',
-      '/nettoyage?etat=received',
+      '/nettoyage/reclamations?statut=open',
     );
 
-    expect(
-      within(sectionNamed('Incidents')).getByRole('link', { name: 'Ouvrir le passage : Client TEST' }),
-    ).toHaveAttribute('href', `/nettoyage/missions/${onHoldMission.id}/passages/${passage.id}`);
-    expect(
-      within(sectionNamed('Comptes rendus à saisir')).getByRole('link', {
-        name: 'Saisir le compte rendu : Client TEST',
-      }),
-    ).toHaveAttribute('href', `/nettoyage/demandes/${id('1002')}`);
     expect(
       within(sectionNamed('Comptes entreprise à valider')).getByRole('link', {
         name: 'Valider ou refuser : SARL TEST Propre',
@@ -300,6 +220,21 @@ describe('file « À traiter » de Ma journée', () => {
     expect(within(sectionNamed('Écarts de paiement')).getByText('1')).toBeInTheDocument();
   });
 
+  it('une page pleine et une suite : compteur « 20+ », cinq lignes affichées', async () => {
+    session.set(sessionBody(['super_admin']));
+    gateway({
+      organizations: page(
+        Array.from({ length: 20 }, (_, index) => pendingOrganizationNumber(index)),
+        id('9199'),
+      ),
+    });
+    render(<DayQueue />);
+    const organizations = sectionNamed('Comptes entreprise à valider');
+    expect(await within(organizations).findByText('20+')).toBeInTheDocument();
+    expect(within(organizations).getByText('20 ou plus à traiter')).toBeInTheDocument();
+    expect(within(organizations).getAllByRole('link', { name: /^Valider ou refuser : / })).toHaveLength(5);
+  });
+
   it('finance : écarts de paiement et factures impayées seulement', async () => {
     session.set(sessionBody(['finance_officer']));
     const { calls } = gateway();
@@ -309,15 +244,12 @@ describe('file « À traiter » de Ma journée', () => {
     expect(calls.map((call) => call.path).sort()).toEqual([ROUTES.invoices, ROUTES.payments]);
   });
 
-  it('agent de terrain : ses incidents et ses comptes rendus, saisis dans la liste des visites', async () => {
+  it('agent de terrain du Nettoyage : aucune section (routes du personnel seulement)', () => {
     session.set(sessionBody(['cleaning_agent']));
-    gateway();
+    const { calls } = gateway();
     render(<DayQueue />);
-    expect(sectionTitles()).toEqual(['Incidents', 'Comptes rendus à saisir']);
-    expect(await screen.findByRole('link', { name: 'Saisir le compte rendu : Client TEST' })).toHaveAttribute(
-      'href',
-      '/nettoyage/visites?etat=scheduled&periode=passee',
-    );
+    expect(screen.getByText(/Aucune file « À traiter » ne correspond à vos rôles/)).toBeInTheDocument();
+    expect(calls).toHaveLength(0);
   });
 
   it('support : comptes entreprise à examiner, sans décision', async () => {
@@ -339,17 +271,10 @@ describe('file « À traiter » de Ma journée', () => {
 
   it('tout est vide : sections repliées et « Tout est à jour »', async () => {
     session.set(sessionBody(['super_admin']));
-    gateway({
-      payments: empty,
-      missions: empty,
-      visits: empty,
-      requests: empty,
-      organizations: empty,
-      invoices: empty,
-    });
+    gateway({ payments: empty, organizations: empty, invoices: empty, claims: cleaningEmpty });
     render(<DayQueue />);
     expect(await screen.findByText('Tout est à jour : rien à traiter pour le moment.')).toBeInTheDocument();
-    expect(screen.getAllByText('Rien à traiter')).toHaveLength(6);
+    expect(screen.getAllByText('Rien à traiter')).toHaveLength(8);
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
@@ -367,7 +292,9 @@ describe('file « À traiter » de Ma journée', () => {
       'Service de facturation indisponible. Référence pour le support : c-test.',
     );
     // Les autres sections s'affichent.
-    expect(await screen.findByRole('link', { name: 'Ouvrir le passage : Client TEST' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('link', { name: 'Valider ou refuser : SARL TEST Propre' }),
+    ).toBeInTheDocument();
     expect(screen.queryByText('Tout est à jour : rien à traiter pour le moment.')).not.toBeInTheDocument();
 
     fireEvent.click(within(invoices).getByRole('button', { name: 'Réessayer' }));

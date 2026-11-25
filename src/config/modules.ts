@@ -51,11 +51,12 @@ export const MODULES: readonly BackofficeModule[] = [
     slug: 'nettoyage',
     label: 'Nettoyage',
     description:
-      'Grille tarifaire du simulateur, devis, visites techniques, planning des équipes, missions avec photos, contrats récurrents.',
-    // cleaning_agent : missions, passages et visites sur le terrain (contrat, routes /admin/cleaning/missions,
-    // /interventions et /visits).
-    // super_admin : même portée que cleaning_admin sur toutes les routes du Nettoyage (contrat).
-    roles: ['cleaning_supervisor', 'cleaning_admin', 'cleaning_agent', SUPER_ADMIN],
+      'Catalogue et tarifs par tranches, simulateur, dossiers et visites, devis, planning des agents, programmes de séances, réclamations, réglages.',
+    // Nettoyage v2 (ADR-054, ADR-057) : rôles par défaut des permissions des routes /admin/cleaning/*
+    // (`x-ksp-default-roles`). cleaning_agent n'a plus aucune route du back-office (application de
+    // l'agent, /api/v1/cleaning/agent/*) ; support_agent lit le catalogue, les dossiers, les programmes et
+    // traite les réclamations. Détail par section : features/cleaning/access.ts.
+    roles: ['cleaning_supervisor', 'cleaning_admin', 'support_agent', SUPER_ADMIN],
     phase: 1,
     group: 'operations',
   },

@@ -1,195 +1,166 @@
-/** Textes de la fiche dossier d'une demande (étapes : demande, visite et mesures, devis, mission, paiement). */
+import type { BadgeTone } from '@/components/ui/badge';
+import type { NextActionKey, StepKey, StepState } from './request-steps';
+import type { VisitFee, VisitStatus } from './requests-schemas';
 
-export const requestTexts = {
-  back: 'Toutes les demandes',
-  title: (service: string) => `Dossier · ${service}`,
-  receivedAt: (date: string) => `Reçue le ${date}`,
-  notFound: 'Demande introuvable. Elle a pu être supprimée, ou l’adresse est incomplète.',
-  forbidden:
-    'Votre rôle ne permet pas d’ouvrir les demandes de devis. Demandez l’accès à l’admin du Nettoyage.',
+/** Textes de la fiche dossier (sous-lot 1b) : frise, demande, visites. */
+
+const names =
+  <K extends string>(entries: Record<K, string>) =>
+  (code: K | string): string =>
+    (entries as Record<string, string>)[code] ?? code;
+
+export const requestDetailTexts = {
+  back: 'Retour aux dossiers',
+  title: (number: string) => `Dossier ${number}`,
+  created: (date: string) => `Reçu le ${date}`,
+  readOnly: 'Lecture seule : votre rôle ne permet pas de traiter ce dossier.',
+  warnings: { organization_unpaid_invoices: 'L’organisation a des factures impayées.' } as Record<
+    string,
+    string
+  >,
   steps: {
-    label: 'Avancement du dossier',
-    request: 'Demande',
-    visit: 'Visite et mesures',
-    quote: 'Devis',
-    mission: 'Mission',
-    payment: 'Paiement',
-    done: 'terminée',
-    current: 'en cours',
-    upcoming: 'à venir',
-    closed: 'Dossier clos : aucune étape en cours.',
-    finished: 'Dossier terminé : mission réalisée et réglée.',
+    label: 'Étapes du dossier',
+    names: {
+      request: 'Demande',
+      visit: 'Visite',
+      retained: 'Version retenue',
+      quote: 'Devis',
+      follow: 'Suite',
+    } satisfies Record<StepKey, string>,
+    states: {
+      done: 'terminée',
+      current: 'en cours',
+      todo: 'à venir',
+      stopped: 'dossier arrêté ici',
+    } satisfies Record<StepState, string>,
   },
-  /** Phrase qui accompagne l'action principale, selon l'étape. */
-  guidance: {
-    schedule_visit: 'La visite des lieux est obligatoire avant tout devis : planifiez-la.',
-    report: 'Après la visite, corrigez les dimensions réelles : le prix se recalcule tout seul.',
-    quote: 'La visite est faite : envoyez le devis, prérempli avec le calcul des mesures.',
-    mission: 'Le client a accepté : planifiez et suivez les passages de la mission.',
-    payment: 'La mission est terminée : vérifiez que le paiement est réglé.',
-    group: 'Cette étape se traite pour tout le groupe, sur la page du groupe.',
+  next: {
+    title: 'Action suivante',
+    go: 'Aller à l’étape',
+    labels: {
+      decideReactivation: 'Le client demande la réactivation de son devis expiré : décidez.',
+      waitFee: 'En attente du paiement des frais de visite par le client.',
+      scheduleVisit: 'Planifier la visite du lieu.',
+      waitVisit: 'Visite planifiée : en attente du passage de l’agent.',
+      retain: 'Ajuster le constat de l’agent (version retenue).',
+      composeQuote: 'Vérifier la version retenue puis composer le devis.',
+      approveAdjustment: 'La remise du brouillon attend la validation d’un administrateur.',
+      sendQuote: 'Relire le brouillon de devis puis l’envoyer au client.',
+      waitCustomer: 'Devis envoyé : en attente de la réponse du client.',
+      openProgram: 'Devis accepté : suivre le programme de séances.',
+      accepted: 'Devis accepté : le programme est en préparation.',
+      closed: 'Dossier clos : aucune action attendue.',
+    } satisfies Record<NextActionKey, string>,
   },
-  measuresAction: 'Saisir les mesures et le compte rendu',
-  paymentAction: 'Voir le paiement',
-  mission: {
-    none: 'Pas encore de mission : elle est créée quand le client accepte le devis.',
-    status: 'État de la mission',
-    interventions: 'Passages réalisés',
-    open: 'Ouvrir la mission',
-    loading: 'Lecture de la mission…',
-    unavailable: 'Mission illisible pour l’instant : ouvrez-la pour voir son état.',
-  },
-  payment: {
-    none: 'Le paiement se suit sur la mission, une fois le devis accepté.',
-    status: 'État du paiement',
-    paid: 'Déjà réglé',
-    total: 'Total',
-    business: 'Client entreprise : réglé par facture (Finance).',
-  },
-  group: {
-    banner: (size: number) =>
-      `Cette demande fait partie d’un groupe de ${size} demandes pour le même lieu : la visite et les devis se traitent ensemble.`,
-    open: 'Ouvrir le groupe',
-  },
-  primary: {
-    request: {
-      schedule_visit: 'Planifier la visite',
-      report: 'Saisir le compte rendu',
-      quote: 'Établir le devis',
-      mission: 'Voir la mission',
-    },
-    group: {
-      schedule_visit: 'Planifier la visite commune',
-      report: 'Saisir le compte rendu commun',
-      quote: 'Établir les devis du groupe',
-      mission: 'Voir la mission',
-    },
-  },
-  nextStep: 'Prochaine étape',
-  quoteSentNote: 'Devis envoyé : en attente de la réponse du client.',
-  noAction: 'Aucune action possible dans cet état.',
-  otherActions: 'Autres actions',
-  networkReread:
-    'La connexion a été coupée pendant l’envoi : la fiche a été relue pour montrer son état réel. Vérifiez-la avant de recommencer.',
-  customer: 'Client',
-  place: 'Lieu et prestation',
-  answers: 'Réponses du client',
-  calculation: 'Prix annoncé au client',
-  map: 'Voir sur la carte',
-  newTab: '(nouvel onglet)',
-  fields: {
-    kind: 'Type de client',
-    customerName: 'Nom du client',
-    organizationName: 'Organisation',
-    comment: 'Commentaire du client',
-    closingReason: 'Motif de clôture',
-    placeType: 'Lieu',
-    service: 'Prestation',
-    landmark: 'Repère',
-    address: 'Adresse',
-    geocodedAddress: 'Adresse trouvée par la position',
+  request: {
+    title: 'Demande',
+    customer: 'Client',
+    customerKind: 'Clientèle',
+    organization: 'Organisation',
+    noName: 'Nom indisponible',
+    place: 'Lieu',
+    placeType: 'Type de lieu',
     commune: 'Commune',
-    position: 'Position',
-    accuracy: 'Précision',
-    frequency: 'Fréquence',
-    options: 'Options',
-    recurrence: 'Récurrence',
-    requestedTeamSize: 'Agents souhaités',
-    recommendedTeamSize: 'Agents recommandés',
-    daysPerWeek: 'Jours par semaine',
-    preferredSlots: 'Créneaux souhaités',
-  },
-  communeSource: {
-    geocoded: 'trouvée à partir de la position',
-    chosen: 'choisie par le client',
-  },
-  coordinates: (latitude: string, longitude: string) => `Latitude ${latitude}, longitude ${longitude}`,
-  accuracy: (meters: string) => `± ${meters} m`,
-  accuracyUnknown: 'Inconnue',
-  noPosition: 'Aucune position GPS : le client n’a donné que l’adresse.',
-  yes: 'Oui',
-  no: 'Non',
-  legacyAnswers:
-    'Demande antérieure au formulaire paramétrable : seules les options et la récurrence ont été enregistrées.',
-  noAnswers: 'Aucune réponse enregistrée.',
-  option: (label: string) => `Option : ${label}`,
-  calc: {
-    version: (version: number) => `Grille version ${version}`,
-    lines: 'Lignes du calcul',
-    columns: { label: 'Ligne', quantity: 'Quantité', unitPrice: 'Prix unitaire', amount: 'Montant' },
-    base: 'Somme des lignes',
-    coefficients: 'Coefficients appliqués',
-    coefficient: (label: string, value: string) => `${label} : × ${value}`,
-    subtotal: 'Après coefficients',
-    minimum: 'Minimum de commande',
-    minimumApplied: 'appliqué',
-    computed: 'Prix d’un passage',
-    estimate: 'Fourchette',
-    recommendedTeamSize: 'Agents recommandés',
-    notPriced: 'Pas de prix calculé',
-    reasons: {
-      price_not_set: 'un prix de la prestation n’est pas fixé dans la grille',
-      option_price_not_set: 'le prix d’une option n’est pas fixé dans la grille',
-      answers_incomplete: 'réponses incomplètes (ancien formulaire)',
-    } as Record<string, string>,
-    legacy: 'Demande antérieure au calcul détaillé : seule la fourchette du simulateur est connue.',
-    none: 'Aucune estimation n’a été calculée pour cette demande.',
-  },
-  visit: {
-    none: 'Aucune visite planifiée. La visite des lieux est obligatoire avant tout devis.',
-    when: 'Date et heure de la visite',
-    agent: 'Agent',
-    common: 'Visite commune du groupe',
-    own: 'Visite propre à cette demande',
-    report: 'Compte rendu',
-    completedAt: 'Réalisée le',
-  },
-  quote: {
-    none: 'Pas encore de devis.',
-    lines: 'Lignes du devis',
-    total: 'Total',
-    subtotal: 'Sous-total d’un passage',
-    interventions: 'Passages',
-    deposit: 'Acompte',
-    validUntil: 'Valable jusqu’au',
-    teamSize: 'Agents',
-    duration: 'Durée d’un passage',
-    recurrence: 'Récurrence',
-    slots: 'Créneaux proposés',
-    sentAt: 'Envoyé le',
+    address: 'Adresse',
+    readableAddress: 'Adresse calculée',
+    landmark: 'Repère',
+    coordinates: 'Coordonnées',
+    coordinatesValue: (lat: number, lng: number, accuracy: number | null) =>
+      `${lat}, ${lng}${accuracy === null ? '' : ` (à ${accuracy} m près)`}`,
+    locationHidden: 'Position non communiquée à votre rôle.',
+    types: 'Types demandés',
+    answers: 'Réponses du client',
+    noAnswer: 'Aucune réponse enregistrée.',
+    freeDescription: 'Description libre',
+    comment: 'Commentaire du client',
+    photos: 'Photos du client',
+    photo: (rank: number) => `Photo ${rank}`,
+    photoExpired: 'photo non conservée',
+    slots: 'Créneaux proposés pour la visite',
+    declaredPrice: 'Estimation à la demande',
+    fee: 'Frais de visite',
+    feeHistory: 'Frais précédents',
+    feeRank: (rank: number) => `Frais n° ${rank}`,
+    payBefore: (date: string) => `à payer avant le ${date}`,
+    paidAt: (date: string) => `payés le ${date}`,
+    refundedAt: (date: string) => `remboursés le ${date}`,
   },
   reject: {
-    label: 'Refuser la demande',
-    title: 'Refuser cette demande ?',
-    text: 'Le client est prévenu avec votre motif. La demande ne pourra plus être traitée.',
-    confirm: 'Refuser la demande',
-    hint: '1 à 500 caractères, transmis au client.',
+    open: 'Refuser le dossier',
+    title: 'Refuser ce dossier ?',
+    text: 'Le client est prévenu. Sans visite faite, ses frais de visite lui sont remboursés.',
+    confirm: 'Refuser le dossier',
+    reasonCode: 'Raison',
+    reason: 'Motif communiqué',
+    reasons: {
+      place_inaccessible: 'Lieu inaccessible',
+      service_impossible: 'Prestation impossible',
+      other: 'Autre raison',
+    },
   },
-  scheduleVisit: {
-    label: 'Planifier la visite',
-    relabel: 'Replanifier la visite',
-    labelAlone: 'Planifier cette demande seule',
-    title: 'Planifier la visite des lieux',
-    text: 'Obligatoire avant tout devis. Le client est prévenu.',
-    detach:
-      'Attention : planifier cette demande seule la détache de la visite commune du groupe. Elle aura sa propre visite.',
-    when: 'Date et heure de la visite',
-    agent: 'Agent',
-    noAgent: 'Aucun agent actif : rattachez un agent dans « Agents et équipes ».',
-    chooseAgent: 'Choisissez un agent',
-    confirm: 'Planifier',
+  location: {
+    open: 'Corriger la position',
+    title: 'Corriger la position du lieu ?',
+    text: 'La commune est recalculée. La correction s’applique à la visite et aux séances à venir.',
+    confirm: 'Corriger la position',
+    latitude: 'Latitude',
+    longitude: 'Longitude',
+    accuracy: 'Précision (mètres) — facultatif',
+    landmark: 'Repère — laisser vide pour le garder',
+    address: 'Adresse — laisser vide pour la garder',
+    reason: 'Motif de la correction',
+    invalid: 'Latitude entre −90 et 90, longitude entre −180 et 180 (point décimal ou virgule).',
+    done: (commune: string, changed: boolean) =>
+      changed ? `Position corrigée : le lieu passe dans la commune ${commune}.` : 'Position corrigée.',
   },
-  report: {
-    label: 'Compte rendu sans mesures',
-    labelAlone: 'Compte rendu de cette demande seule',
-    title: 'Compte rendu de la visite',
-    field: 'Constats de la visite',
-    hint: 'Surface, accès, état des lieux : ce qui sert à établir le devis. 5 000 caractères au plus.',
-    confirm: 'Enregistrer le compte rendu',
+  reactivation: {
+    title: 'Réactivation demandée',
+    requested: (date: string) => `Demandée le ${date}.`,
+    statuses: { pending: 'En attente', accepted: 'Acceptée', refused: 'Refusée' } as Record<string, string>,
+    accept: 'Accepter la réactivation',
+    acceptTitle: 'Accepter la réactivation ?',
+    acceptText: 'Le dossier repasse « visite faite » et un nouveau devis est émis aux tarifs du jour.',
+    refuse: 'Refuser la réactivation',
+    refuseTitle: 'Refuser la réactivation ?',
+    refuseText: 'Le dossier reste clos. Le client est prévenu.',
+    reason: 'Motif — facultatif',
   },
-  sendQuote: {
-    label: 'Établir le devis',
-    labelAlone: 'Devis de cette demande seule',
-    relabel: 'Renvoyer un devis',
-  },
+  reason: 'Motif',
+  reasonHint: '500 caractères au plus.',
 } as const;
+
+export const feeStatus = (status: VisitFee['status']): { label: string; tone: BadgeTone } =>
+  (
+    ({
+      awaiting_payment: { label: 'À payer', tone: 'warning' },
+      paid: { label: 'Payés', tone: 'success' },
+      refunded: { label: 'Remboursés', tone: 'neutral' },
+      retained: { label: 'Conservés', tone: 'neutral' },
+      deducted: { label: 'Déduits du devis', tone: 'brand' },
+    }) as Record<string, { label: string; tone: BadgeTone }>
+  )[status] ?? { label: status, tone: 'neutral' };
+
+export const visitStatus = (status: VisitStatus | string): { label: string; tone: BadgeTone } =>
+  (
+    ({
+      scheduled: { label: 'Planifiée', tone: 'brand' },
+      in_progress: { label: 'En cours', tone: 'accent' },
+      completed: { label: 'Faite', tone: 'success' },
+      missed: { label: 'Client absent', tone: 'warning' },
+      cancelled: { label: 'Annulée', tone: 'neutral' },
+    }) as Record<string, { label: string; tone: BadgeTone }>
+  )[status] ?? { label: status, tone: 'neutral' };
+
+export const cancelCause = names({
+  request_cancelled: 'dossier annulé par le client',
+  request_rejected: 'dossier refusé',
+  slot_changed: 'créneau changé',
+  ksp: 'annulée par KSP',
+  agent_no_show: 'agent absent',
+});
+
+export const agentConfirmation = names({
+  confirmed: 'confirmé',
+  pending: 'à confirmer',
+  proposed: 'proposé',
+});

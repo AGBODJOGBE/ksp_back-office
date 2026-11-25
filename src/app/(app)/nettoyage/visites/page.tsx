@@ -1,22 +1,24 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Heading } from '@/components/ui/heading';
-import { VisitsList, visitsTexts } from '@/features/cleaning';
+import { VisitsCalendar, visitsTexts } from '@/features/cleaning';
 
-export const metadata: Metadata = { title: visitsTexts.title };
+const t = visitsTexts;
 
-/** Visites techniques : coque statique ; les filtres sont lus dans l'adresse sous Suspense. */
+export const metadata: Metadata = { title: t.title };
+
+/** Calendrier des visites : vue, jour et filtres lus dans l'adresse sous Suspense. */
 export default function CleaningVisitsPage() {
   return (
     <div className="grid gap-6">
       <div>
         <Heading as="h1" size="h2">
-          {visitsTexts.title}
+          {t.title}
         </Heading>
-        <p className="text-ink-muted max-w-reading mt-2">{visitsTexts.lead}</p>
+        <p className="text-ink-muted max-w-reading mt-2">{t.lead}</p>
       </div>
       <Suspense>
-        <VisitsList />
+        <VisitsCalendar />
       </Suspense>
     </div>
   );

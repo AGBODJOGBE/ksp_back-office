@@ -25,14 +25,17 @@ import { paymentQueueSections } from '@/features/payment/queue';
 import { dashboardTexts as t } from '@/features/dashboard/texts';
 
 /**
- * Ordre de priorité de la file, validé le 5 novembre 2026 : écarts de paiement, incidents, comptes rendus
- * à saisir, demandes à visiter, comptes entreprise à valider, factures impayées.
+ * Ordre de priorité de la file, validé le 5 novembre 2026 : écarts de paiement, puis le Nettoyage v2
+ * (réclamations, interventions à affecter, visites à planifier, devis à préparer, candidatures d'agents ;
+ * ordre interne à valider), comptes entreprise à valider, factures impayées.
  */
 export const QUEUE_ORDER = [
   'payment-mismatches',
-  'cleaning-incidents',
-  'cleaning-visit-reports',
-  'cleaning-requests-to-visit',
+  'cleaning-claims',
+  'cleaning-unassigned',
+  'cleaning-visits-to-schedule',
+  'cleaning-visits-done',
+  'cleaning-agent-applications',
   'organizations-to-validate',
   'invoices-overdue',
 ] as const;

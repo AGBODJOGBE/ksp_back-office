@@ -1,102 +1,140 @@
 // Point d'entrée `@/features/cleaning/queue` : lu seulement par la file « À traiter » du tableau de bord (navigateur).
-import { formatDateTime } from '@/lib/format';
-import { toQueuePage, type WorkQueueSection } from '@/lib/work-queue';
-import { CLEANING_ROLES, cleaningAccess } from './access';
-import { listMissions, listRequests, listVisits } from './api';
+import { beninDay, formatDate, formatDateTime } from '@/lib/format';
+import { QUEUE_ROWS, type WorkQueuePage, type WorkQueueRow, type WorkQueueSection } from '@/lib/work-queue';
+import { rolesWith } from './access';
+import { listAgents } from './agents-api';
+import { agentName, agentStatus, APPLICATION_STATUSES } from './agents-texts';
+import { listClaims } from './claims-api';
+import { claimCategory, claimCustomer, claimNextStep, claimsTexts, responseLate } from './claims-texts';
 import { cleaningPaths } from './paths';
-import { cleaningTexts, customerLabel } from './texts';
+import { listUnassigned } from './planning-api';
+import { planningTexts } from './planning-texts';
+import { listRequests } from './requests-api';
+import type { RequestStatus, RequestSummary } from './requests-schemas';
+import { cleaningQueueTexts as t } from './queue-texts';
 
-const t = cleaningTexts.queue;
-const { supervisor, admin, agent, superAdmin } = CLEANING_ROLES;
-
-/** Rôles du contrat (`x-ksp-roles`) : missions et visites, ouvertes à l'agent ; demandes, à la supervision. */
-const FIELD_ROLES = [supervisor, agent, admin, superAdmin];
-const SUPERVISION_ROLES = [supervisor, admin, superAdmin];
-
-const visitsToReport = `${cleaningPaths.visits}?etat=scheduled&periode=passee`;
-
-/**
- * Sections du Nettoyage dans la file « À traiter ». Chaque lecture reprend les filtres du contrat et une
- * page de 20 (`PAGE_SIZE`) ; un agent ne reçoit que ses missions et ses visites (gateway).
+/*
+ * Sections du Nettoyage v2 dans la file « À traiter » (ordre : `QUEUE_ORDER` du tableau de bord). Les
+ * listes du service cleaning donnent leur `total` : le compteur est exact, pas « 20+ ». Chaque section
+ * suit la permission de la route (rôles par défaut du contrat, `access.ts`) et mène à l'écran filtré.
+ * Les arrêts de programme à valider n'ont pas de section : `GET /programs` n'a pas de filtre sur
+ * `pendingCancellation` (manque du contrat).
  */
+
+type Listed<T> = { data: readonly T[]; total: number };
+
+/** Pages de la gateway (une ou deux listes) → page de la file : `QUEUE_ROWS` lignes, total exact. */
+function fromTotals<T>(pages: readonly Listed<T>[], row: (item: T) => WorkQueueRow): WorkQueuePage {
+  const items = pages.flatMap((page) => page.data);
+  const count = pages.reduce((sum, page) => sum + page.total, 0);
+  return { rows: items.slice(0, QUEUE_ROWS).map(row), count, more: false };
+}
+
+/** Geste attendu sur une réclamation, ou « Ouvrir » quand le service attend autre chose. */
+const claimAction = (claim: Parameters<typeof claimNextStep>[0]) => {
+  const step = claimNextStep(claim);
+  return step.action ? step.label : t.claims.open;
+};
+
+const withStatus = (base: string, status: string) => `${base}?statut=${encodeURIComponent(status)}`;
+
+/** Ligne d'un dossier : numéro, client, lieu et commune ; action sur la fiche. */
+function requestRow(action: string) {
+  return (item: RequestSummary): WorkQueueRow => {
+    const name = item.customerKind === 'organization' ? item.organizationName : item.customerName;
+    return {
+      id: item.id,
+      title: t.dossier(item.number),
+      details: [name?.trim() || t.noName, item.placeTypeName, item.communeName],
+      action: { kind: 'link', href: cleaningPaths.request(item.id), label: action },
+    };
+  };
+}
+
+function requestSection(
+  id: string,
+  status: RequestStatus,
+  texts: { title: string; description: string; seeAll: string; action: string },
+  roles: readonly string[],
+): WorkQueueSection {
+  return {
+    id,
+    title: texts.title,
+    description: texts.description,
+    roles,
+    seeAll: { href: withStatus(cleaningPaths.requests, status), label: texts.seeAll },
+    load: async () => fromTotals([await listRequests({ status })()], requestRow(texts.action)),
+  };
+}
+
 export const cleaningQueueSections: readonly WorkQueueSection[] = [
+  requestSection(
+    'cleaning-visits-to-schedule',
+    'visit_to_schedule',
+    t.visitToSchedule,
+    rolesWith('cleaning.request.process'),
+  ),
+  requestSection('cleaning-visits-done', 'visit_done', t.visitDone, rolesWith('cleaning.quote.manage')),
   {
-    // `GET /admin/cleaning/missions?status=on_hold`.
-    id: 'cleaning-incidents',
-    title: t.incidents.title,
-    description: t.incidents.description,
-    roles: FIELD_ROLES,
-    seeAll: { href: `${cleaningPaths.missions}?etat=on_hold`, label: t.incidents.seeAll },
+    id: 'cleaning-unassigned',
+    title: t.unassigned.title,
+    description: t.unassigned.description,
+    roles: rolesWith('cleaning.planning.manage'),
+    seeAll: { href: cleaningPaths.planning, label: t.unassigned.seeAll },
     load: async () =>
-      toQueuePage(await listMissions('on_hold'), (mission) => {
-        // Passage mis en attente par un incident, s'il figure dans la mission (sinon, la mission).
-        const passage = mission.interventions.find((item) => item.status === 'on_hold');
-        return {
-          id: mission.id,
-          title: customerLabel(mission),
-          details: [
-            mission.commune,
-            passage ? t.incidents.passage(formatDateTime(passage.scheduledStart)) : '',
-            passage?.incidentNote ?? '',
-          ].filter(Boolean),
-          action: passage
-            ? {
-                kind: 'link',
-                href: cleaningPaths.intervention(mission.id, passage.id),
-                label: t.incidents.action,
-              }
-            : { kind: 'link', href: cleaningPaths.mission(mission.id), label: t.incidents.missionAction },
-        };
-      }),
-  },
-  {
-    // `GET /admin/cleaning/visits?status=scheduled&to=<maintenant>` : `to` est exclu.
-    id: 'cleaning-visit-reports',
-    title: t.reports.title,
-    description: t.reports.description,
-    roles: FIELD_ROLES,
-    seeAll: { href: visitsToReport, label: t.reports.seeAll },
-    load: async (roles) => {
-      // La fiche d'une demande est réservée à la supervision : l'agent saisit son compte rendu dans la liste.
-      const supervise = cleaningAccess(roles).supervise;
-      const page = await listVisits({ status: 'scheduled', to: new Date().toISOString() });
-      return toQueuePage(page, (visit) => {
-        const first = visit.requests[0];
-        return {
-          id: visit.id,
-          title: customerLabel(visit),
-          details: [
-            visit.requests.map((request) => request.serviceName ?? request.serviceCode).join(', '),
-            visit.commune,
-            t.reports.scheduled(formatDateTime(visit.scheduledAt)),
-            visit.agentName ?? '',
-          ].filter(Boolean),
-          action: {
-            kind: 'link',
-            href: supervise && first ? cleaningPaths.request(first.requestId) : visitsToReport,
-            label: t.reports.action,
-          },
-        };
-      });
-    },
-  },
-  {
-    // `GET /admin/cleaning/quote-requests?status=received`.
-    id: 'cleaning-requests-to-visit',
-    title: t.toVisit.title,
-    description: t.toVisit.description,
-    roles: SUPERVISION_ROLES,
-    seeAll: { href: `${cleaningPaths.requests}?etat=received`, label: t.toVisit.seeAll },
-    load: async () =>
-      toQueuePage(await listRequests({ status: 'received' }), (request) => ({
-        id: request.id,
-        title: customerLabel(request),
+      fromTotals([await listUnassigned()()], (item) => ({
+        id: `${item.kind}-${item.id}`,
+        title: planningTexts.itemTitle(item.kind, item.number, item.rank),
         details: [
-          request.serviceName ?? request.serviceCode,
-          request.commune,
-          t.toVisit.received(formatDateTime(request.createdAt)),
+          formatDateTime(item.start),
+          item.communeName,
+          item.late ? t.unassigned.late : item.urgent ? t.unassigned.urgent : '',
         ].filter(Boolean),
-        action: { kind: 'link', href: cleaningPaths.request(request.id), label: t.toVisit.action },
+        action: {
+          kind: 'link',
+          href: cleaningPaths.planningDay(beninDay(item.start)),
+          label: t.unassigned.action,
+        },
       })),
+  },
+  {
+    id: 'cleaning-agent-applications',
+    title: t.applications.title,
+    description: t.applications.description,
+    roles: rolesWith('cleaning.agent.manage'),
+    seeAll: { href: withStatus(cleaningPaths.team, APPLICATION_STATUSES[0]), label: t.applications.seeAll },
+    load: async () =>
+      fromTotals(
+        await Promise.all(APPLICATION_STATUSES.map((status) => listAgents({ status, sort: '-createdAt' })())),
+        (agent) => ({
+          id: agent.id,
+          title: agentName(agent),
+          details: [agentStatus(agent.status).label, formatDate(agent.createdAt)],
+          action: { kind: 'link', href: cleaningPaths.agent(agent.id), label: t.applications.action },
+        }),
+      ),
+  },
+  {
+    id: 'cleaning-claims',
+    title: t.claims.title,
+    description: t.claims.description,
+    roles: rolesWith('cleaning.claim.manage'),
+    seeAll: { href: withStatus(cleaningPaths.claims, 'open'), label: t.claims.seeAll },
+    load: async () => {
+      const now = Date.now();
+      const pages = await Promise.all(
+        (['open', 'in_progress'] as const).map((status) => listClaims({ status })()),
+      );
+      return fromTotals(pages, (claim) => ({
+        id: claim.id,
+        title: claimsTexts.detail.heading(claimCategory(claim.category)),
+        details: [
+          claimCustomer(claim) ?? t.noName,
+          formatDateTime(claim.openedAt),
+          responseLate(claim, now) ? t.claims.late : '',
+        ].filter(Boolean),
+        action: { kind: 'link', href: cleaningPaths.claim(claim.id), label: claimAction(claim) },
+      }));
+    },
   },
 ];

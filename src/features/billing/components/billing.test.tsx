@@ -306,7 +306,7 @@ describe('réglages de la facturation', () => {
     render(<BillingSettingsScreen />);
     expect(await screen.findByRole('link', { name: 'Ouvrir les réglages du Nettoyage' })).toHaveAttribute(
       'href',
-      '/nettoyage/catalogue',
+      '/nettoyage/reglages',
     );
   });
 });

@@ -99,7 +99,7 @@ export function BillingSettingsScreen() {
         <p className="text-ink">{t.thresholds}</p>
         {access?.cleaningSettings ? (
           <Link
-            href="/nettoyage/catalogue"
+            href="/nettoyage/reglages"
             className="text-accent-ink justify-self-start font-semibold underline"
           >
             {t.thresholdsLink}

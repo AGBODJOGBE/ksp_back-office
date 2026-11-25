@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { Heading } from '@/components/ui/heading';
-import { CatalogScreen, catalogTexts } from '@/features/cleaning';
+import { CatalogOverview, catalogTexts } from '@/features/cleaning';
 
 export const metadata: Metadata = { title: catalogTexts.title };
 
+/** Catalogue : ordre de construction et état de chaque étape. */
 export default function CleaningCatalogPage() {
   return (
     <div className="grid gap-6">
@@ -13,7 +14,7 @@ export default function CleaningCatalogPage() {
         </Heading>
         <p className="text-ink-muted max-w-reading mt-2">{catalogTexts.lead}</p>
       </div>
-      <CatalogScreen />
+      <CatalogOverview />
     </div>
   );
 }
