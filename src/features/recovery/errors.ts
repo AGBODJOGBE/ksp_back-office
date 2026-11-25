@@ -20,7 +20,9 @@ const KNOWN: Record<string, (error: ApiError) => string | null> = {
   RECOVERY_PRICING_RULE_CONFLICT: (error) =>
     `${error.message} Archivez l’autre règle, ou changez la cible ou la période de celle-ci.`,
   RECOVERY_APPROVAL_BY_REQUESTER: () =>
-    'Vous avez créé cette règle : sa validation revient à une autre personne.',
+    'Vous êtes l’auteur de cette demande (règle, paiement saisi) : sa validation revient à une autre personne.',
+  RECOVERY_CONTACT_OUTSIDE_HOURS: (error) =>
+    `${error.message} Les contacts manuels se font dans les plages autorisées (réglages du recouvrement).`,
   RECOVERY_NOT_IMPLEMENTED: () =>
     'Cette action n’est pas encore disponible : elle arrive avec la procédure contentieuse.',
 };

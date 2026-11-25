@@ -32,7 +32,7 @@ import { dashboardTexts as t } from '@/features/dashboard/texts';
  * (réclamations, interventions à affecter, visites à planifier, devis à préparer, candidatures d'agents ;
  * ordre interne à valider), comptes entreprise à valider, factures impayées. Le Recouvrement (rappels,
  * promesses et échéances non tenues, relances du jour, contestations et échéanciers) vient après : place
- * « à valider ».
+ * « à valider ». Les paiements hors ligne à valider (finance) ouvrent le Recouvrement : place « à valider ».
  */
 export const QUEUE_ORDER = [
   'payment-mismatches',
@@ -46,6 +46,7 @@ export const QUEUE_ORDER = [
   'cleaning-agent-applications',
   'organizations-to-validate',
   'invoices-overdue',
+  'recovery-offline-payments',
   'recovery-callbacks',
   'recovery-promises',
   'recovery-reminders',

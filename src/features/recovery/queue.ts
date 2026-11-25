@@ -1,17 +1,28 @@
 // Point d'entrée `@/features/recovery/queue` : lu seulement par la file « À traiter » du tableau de bord (navigateur).
-import { formatDateTime, formatXof } from '@/lib/format';
-import { QUEUE_ROWS, type WorkQueuePage, type WorkQueueSection } from '@/lib/work-queue';
+import { formatDate, formatDateTime, formatXof } from '@/lib/format';
+import {
+  QUEUE_LIMIT,
+  QUEUE_ROWS,
+  toQueuePage,
+  type WorkQueuePage,
+  type WorkQueueSection,
+} from '@/lib/work-queue';
 import { rolesFor } from './access';
 import { getMyDay } from './api';
+import { listOfflinePayments } from './offline-api';
+import type { OfflinePayment } from './offline-schemas';
+import { offlineSourceLabel, offlineTexts } from './offline-texts';
 import { recoveryPaths } from './paths';
 import { recoveryQueueTexts as t, workItemLabel } from './queue-texts';
 import type { WorkItem, WorkItemKind, WorkQueue } from './schemas';
+import { actorName } from './texts';
 
 /*
  * Sections du Recouvrement dans Ma journée. Une seule route (`GET /recovery/my-day`, file du chargé
  * triée par le service) alimente quatre sections, par nature de tâche : les sections qui s'ouvrent
  * ensemble partagent la même lecture (une requête en cours est réutilisée). Le service renvoie toute
- * la file : le compteur est exact. Chaque ligne mène à la fiche du dossier (sous-lot 4b).
+ * la file : le compteur est exact. Chaque ligne mène à la fiche du dossier. Pour la finance, une
+ * cinquième section lit les paiements hors ligne à valider (`GET /recovery/offline-payments`).
  */
 
 let inFlight: Promise<WorkQueue> | null = null;
@@ -57,7 +68,33 @@ function section(
   };
 }
 
+/** Paiement hors ligne à valider : la ligne mène à la file, où se font validation et refus. */
+function offlineRow(payment: OfflinePayment) {
+  const q = offlineTexts.queue;
+  return {
+    id: `offline-${payment.id}`,
+    title: q.row(formatXof(payment.amount), payment.caseNumber),
+    details: [
+      offlineSourceLabel(payment.source),
+      q.received(formatDate(`${payment.receivedOn}T12:00:00+01:00`)),
+      q.by(actorName(payment.recordedBy)),
+    ],
+    action: { kind: 'link' as const, href: recoveryPaths.offlinePayments, label: q.open },
+  };
+}
+
+const offlineSection: WorkQueueSection = {
+  id: 'recovery-offline-payments',
+  title: offlineTexts.queue.title,
+  description: offlineTexts.queue.description,
+  roles: rolesFor('offlinePayments'),
+  seeAll: { href: recoveryPaths.offlinePayments, label: offlineTexts.queue.seeAll },
+  load: async () =>
+    toQueuePage(await listOfflinePayments({ status: 'pending_approval' }, QUEUE_LIMIT)(), offlineRow),
+};
+
 export const RECOVERY_QUEUE_IDS = [
+  'recovery-offline-payments',
   'recovery-callbacks',
   'recovery-promises',
   'recovery-reminders',
@@ -65,8 +102,9 @@ export const RECOVERY_QUEUE_IDS = [
 ] as const;
 
 export const recoveryQueueSections: readonly WorkQueueSection[] = [
-  section(RECOVERY_QUEUE_IDS[0], t.callbacks, ['promised_callback', 'callback_request']),
-  section(RECOVERY_QUEUE_IDS[1], t.promises, ['broken_promise', 'missed_installment']),
-  section(RECOVERY_QUEUE_IDS[2], t.reminders, ['reminder_due']),
-  section(RECOVERY_QUEUE_IDS[3], t.decisions, ['dispute', 'plan_to_validate']),
+  offlineSection,
+  section(RECOVERY_QUEUE_IDS[1], t.callbacks, ['promised_callback', 'callback_request']),
+  section(RECOVERY_QUEUE_IDS[2], t.promises, ['broken_promise', 'missed_installment']),
+  section(RECOVERY_QUEUE_IDS[3], t.reminders, ['reminder_due']),
+  section(RECOVERY_QUEUE_IDS[4], t.decisions, ['dispute', 'plan_to_validate']),
 ];

@@ -20,6 +20,7 @@ const ROUTES = {
   withdrawals: '/api/v1/admin/wallet/withdrawals',
   creditRequests: '/api/v1/admin/wallet/credit-requests',
   myDay: '/api/v1/admin/recovery/my-day',
+  offlinePayments: '/api/v1/admin/recovery/offline-payments',
 };
 
 const id = (suffix: string) => `0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d${suffix}`;
@@ -174,8 +175,29 @@ const recoveryItem = (kind: string, suffix: string) => ({
   note: kind === 'callback_request' ? 'Rappeler après 17 h.' : null,
 });
 
+/** Paiements hors ligne à valider (`RecoveryOfflinePaymentPage`). */
+const offlinePage = (payments: unknown[]) => ({ status: 200, body: { payments, nextCursor: null } });
+const offlinePayment = {
+  id: id('0f01'),
+  caseId: id('ca01'),
+  caseNumber: 'RC-2026-0001',
+  source: 'cash',
+  amount: xof(75000),
+  receivedOn: '2026-11-24',
+  reference: 'REC-TEST-1',
+  proofFileId: null,
+  status: 'pending_approval',
+  recordedBy: { type: 'staff', userId: id('9e02'), displayName: 'Finance TEST' },
+  approvedBy: null,
+  rejectionReason: null,
+  collectionId: null,
+  createdAt: '2026-11-24T10:00:00Z',
+  partnerAssignmentId: null,
+};
+
 type Response =
   | ReturnType<typeof page>
+  | ReturnType<typeof offlinePage>
   | ReturnType<typeof cleaningPage>
   | typeof noCreditRequests
   | ReturnType<typeof myDay>;
@@ -197,6 +219,7 @@ function gateway(overrides: Partial<Record<keyof typeof ROUTES, Handler>> = {}) 
       url.searchParams.get('status') === 'awaiting_approval' ? page([awaitingWithdrawal]) : empty,
     creditRequests: noCreditRequests,
     myDay: myDay([]),
+    offlinePayments: offlinePage([]),
     ...overrides,
   };
   return stubGateway(
@@ -233,6 +256,7 @@ describe('file « À traiter » de Ma journée', () => {
       'Candidatures d’agents',
       'Comptes entreprise à valider',
       'Factures impayées',
+      'Paiements hors ligne à valider',
       'Rappels du recouvrement',
       'Promesses et échéances non tenues',
       'Relances du jour',
@@ -260,7 +284,7 @@ describe('file « À traiter » de Ma journée', () => {
     ]);
     // Recouvrement : une seule lecture de la file du chargé pour ses quatre sections.
     expect(calls.filter((call) => call.path === ROUTES.myDay)).toHaveLength(1);
-    expect(calls).toHaveLength(14);
+    expect(calls).toHaveLength(15);
     const wallet = calls
       .filter((call) => call.path.startsWith('/api/v1/admin/wallet'))
       .map((call) => decodeURIComponent(call.path + call.search))
@@ -318,9 +342,9 @@ describe('file « À traiter » de Ma journée', () => {
     expect(within(organizations).getAllByRole('link', { name: /^Valider ou refuser : / })).toHaveLength(5);
   });
 
-  it('finance : écarts de paiement, retraits, demandes de crédit et factures impayées', async () => {
+  it('finance : écarts de paiement, retraits, demandes de crédit, factures impayées, paiements hors ligne', async () => {
     session.set(sessionBody(['finance_officer']));
-    const { calls } = gateway();
+    const { calls } = gateway({ offlinePayments: offlinePage([offlinePayment]) });
     render(<DayQueue />);
     await screen.findByRole('link', { name: 'Enregistrer un paiement : Facture FAC-2026-000012' });
     expect(sectionTitles()).toEqual([
@@ -329,14 +353,27 @@ describe('file « À traiter » de Ma journée', () => {
       'Retraits à traiter',
       'Demandes de crédit à valider',
       'Factures impayées',
+      'Paiements hors ligne à valider',
     ]);
+    const offline = sectionNamed('Paiements hors ligne à valider');
+    expect(
+      await within(offline).findByRole('link', {
+        name: /^Valider ou refuser : 75\s000\sF\sCFA — dossier RC-2026-0001$/,
+      }),
+    ).toHaveAttribute('href', '/recouvrement/paiements-hors-ligne');
+    expect(
+      within(offline).getByText(/Espèces au guichet · Reçu le .* · Saisi par Finance TEST/),
+    ).toBeInTheDocument();
     expect(calls.map((call) => call.path).sort()).toEqual([
       ROUTES.invoices,
       ROUTES.payments,
+      ROUTES.offlinePayments,
       ROUTES.creditRequests,
       ROUTES.withdrawals,
       ROUTES.withdrawals,
     ]);
+    const search = calls.find((call) => call.path === ROUTES.offlinePayments)?.search;
+    expect(search).toBe('?limit=20&status=pending_approval');
   });
 
   it('agent de terrain du Nettoyage : aucune section (routes du personnel seulement)', () => {
@@ -408,7 +445,7 @@ describe('file « À traiter » de Ma journée', () => {
     });
     render(<DayQueue />);
     expect(await screen.findByText('Tout est à jour : rien à traiter pour le moment.')).toBeInTheDocument();
-    expect(screen.getAllByText('Rien à traiter')).toHaveLength(15);
+    expect(screen.getAllByText('Rien à traiter')).toHaveLength(16);
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 

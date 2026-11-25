@@ -9,7 +9,8 @@ const INVOICES = `${ROOT}/factures`;
 
 /**
  * Filtres de la file des dossiers lus dans l'adresse (paramètres en français), traduits pour
- * `GET /recovery/cases` : le tableau de bord y mène déjà ; l'écran (sous-lot 4b) les lira.
+ * `GET /recovery/cases` : le tableau de bord y mène ; la file les lit (`case-logic.ts`). La recherche
+ * (`recherche`) est lue si elle arrive, mais jamais écrite : un nom de débiteur n'entre pas dans l'adresse.
  */
 export const CASE_PARAMS = {
   status: 'statut',
@@ -37,13 +38,13 @@ function withQuery(base: string, filters: CaseFilters): string {
 export const recoveryPaths = {
   /** Tableau de bord : racine du module. */
   home: ROOT,
-  /** File des dossiers (sous-lot 4b). */
+  /** File des dossiers. */
   cases: CASES,
   /** File des dossiers filtrée (`CASE_PARAMS`). */
   casesWith: (filters: CaseFilters) => withQuery(CASES, filters),
-  /** Fiche d'un dossier (sous-lot 4b). */
+  /** Fiche d'un dossier. */
   case: (value: string) => `${CASES}/${id(value)}`,
-  /** Paiements hors ligne à valider (sous-lot 4b). */
+  /** Paiements hors ligne à valider. */
   offlinePayments: `${ROOT}/paiements-hors-ligne`,
   pricing: PRICING,
   newRule: `${PRICING}/nouvelle`,
@@ -55,4 +56,6 @@ export const recoveryPaths = {
   holidays: `${SETTINGS}/jours-feries`,
   invoices: INVOICES,
   invoice: (value: string) => `${INVOICES}/${id(value)}`,
+  /** Factures de commission d'un créancier (filtre `creancier` de la liste des factures). */
+  invoicesOf: (creditorId: string) => `${INVOICES}?creancier=${id(creditorId)}`,
 } as const;

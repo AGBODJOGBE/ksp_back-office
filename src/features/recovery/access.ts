@@ -23,9 +23,20 @@ const ROLES = {
   overview: [AGENT, SUPERVISOR, LEGAL, ADMIN, SUPER_ADMIN, FINANCE],
   /** Ma journée du chargé (`GET /recovery/my-day`). */
   myDay: [AGENT, SUPERVISOR, LEGAL, ADMIN, SUPER_ADMIN],
-  /** Dossiers, fiche et journal en lecture (`GET /recovery/cases*`, sous-lot 4b). */
+  /** Dossiers, fiche et journal en lecture (`GET /recovery/cases*`). */
   cases: [AGENT, SUPERVISOR, LEGAL, ADMIN, SUPER_ADMIN, FINANCE],
-  /** Paiements hors ligne à valider (`GET /recovery/offline-payments`, sous-lot 4b). */
+  /** Recevabilité, affectation, validation d'un échéancier hors barème (`assessment`, `assign`, `approval`). */
+  assess: [SUPERVISOR, ADMIN, SUPER_ADMIN],
+  /** Suivi d'un dossier : contacts, promesses, messages, notes, échéanciers, remises. */
+  work: [AGENT, SUPERVISOR, LEGAL, ADMIN, SUPER_ADMIN],
+  /** Changer d'étape (`POST /recovery/cases/{id}/stage`). */
+  stage: [SUPERVISOR, ADMIN, SUPER_ADMIN, LEGAL],
+  /** Trancher une contestation (`POST /recovery/cases/{id}/disputes/{dispute}/resolution`). */
+  disputes: [LEGAL, ADMIN, SUPER_ADMIN],
+  /**
+   * Argent hors ligne : file à valider, saisie, validation, refus, remboursement d'un trop-perçu
+   * (`/recovery/offline-payments*`, `/recovery/cases/{id}/offline-payments`, `…/overpayment-refunds`).
+   */
   offlinePayments: [FINANCE, SUPER_ADMIN],
   /** Règles tarifaires et simulateur (`GET /recovery/pricing-rules*`, `POST /recovery/pricing-simulations`). */
   pricingRead: [ADMIN, SUPER_ADMIN, FINANCE],

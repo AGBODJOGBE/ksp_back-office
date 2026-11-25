@@ -95,16 +95,6 @@ export const recoveryTexts = {
     mfaHint:
       'Publier, valider, archiver et modifier les réglages exigent une double authentification de moins de 10 minutes : reconnectez-vous si la gateway le demande.',
   },
-  /** Écrans livrés avec le sous-lot suivant (dossiers, paiements hors ligne). */
-  pending: {
-    title: 'Arrive avec le sous-lot 4b',
-    cases:
-      'La file des dossiers et la fiche dossier (recevabilité, affectation, contacts, promesses, échéanciers, remises, étapes, journal) arrivent avec le prochain sous-lot.',
-    offlinePayments:
-      'La file des paiements hors ligne à valider (espèces, virements saisis par un chargé) arrive avec le prochain sous-lot.',
-    caseDetail: 'La fiche dossier arrive avec le prochain sous-lot.',
-    back: 'Revenir au tableau de bord',
-  },
 } as const;
 
 /** Nom affichable d'un acteur (`RecoveryActor`) : son nom, ou une mention neutre. */
