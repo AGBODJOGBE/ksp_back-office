@@ -49,7 +49,7 @@ export const placeLocationSchema = z.object({
 });
 
 /** `CleaningPlaceSummary` : lieu d'un dossier ; `location` nulle pour qui n'a pas à la voir. */
-const placeSummarySchema = z.object({
+export const placeSummarySchema = z.object({
   placeId: z.string(),
   name: z.string(),
   placeTypeId: z.string(),
@@ -115,7 +115,7 @@ export const assignedAgentSchema = z.object({
 });
 
 /** `CleaningArrivalCheck` : arrivée comparée à la position du lieu. */
-const arrivalCheckSchema = z.object({
+export const arrivalCheckSchema = z.object({
   arrivedAt: z.string(),
   distanceMeters: z.nullable(z.int()),
   alert: z.boolean(),

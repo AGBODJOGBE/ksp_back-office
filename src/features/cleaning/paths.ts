@@ -14,10 +14,18 @@ export const cleaningPaths = {
   request: (value: string) => `/nettoyage/dossiers/${id(value)}`,
   visits: '/nettoyage/visites',
   planning: '/nettoyage/planning',
+  /** Planning d'un jour (`AAAA-MM-JJ`, jour du Bénin), en vue « jour ». */
+  planningDay: (day: string) => `/nettoyage/planning?vue=jour&date=${id(day)}`,
   programs: '/nettoyage/programmes',
   /** Fiche d'un programme (sous-lot 1c). */
   program: (value: string) => `/nettoyage/programmes/${id(value)}`,
-  /** Ancienne fiche « mission » (v1), encore citée par la facturation et les paiements. */
+  /** Détail d'une séance, rattaché à la fiche de son programme. */
+  session: (programId: string, sessionId: string) =>
+    `/nettoyage/programmes/${id(programId)}/seances/${id(sessionId)}`,
+  /**
+   * Ancienne fiche « mission » (v1), encore citée par la facturation et les paiements : page sobre qui
+   * renvoie vers les programmes (aucune correspondance mission → programme dans le contrat).
+   */
   missionPrefix: '/nettoyage/missions',
   /** Agents et équipes (sous-lot 1c) : la liste des agents est la page d'accueil de l'onglet. */
   team: TEAM,
