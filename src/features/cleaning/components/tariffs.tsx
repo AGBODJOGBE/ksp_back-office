@@ -83,6 +83,9 @@ function askedParameters(offer: Offer, catalog: Catalog): Parameter[] {
 function TariffSummary({ tariff, parameters }: { tariff: Tariff; parameters: Parameter[] }) {
   const label = (code: string) => parameters.find((parameter) => parameter.code === code)?.label ?? code;
   const unit = (code: string | null) => parameters.find((parameter) => parameter.code === code)?.unit ?? '';
+  const choiceLabel = (code: string, choice: string) =>
+    parameters.find((parameter) => parameter.code === code)?.choices.find((item) => item.code === choice)
+      ?.label ?? choice;
   return (
     <div className="grid gap-3">
       <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-[minmax(9rem,max-content)_1fr]">
@@ -121,7 +124,9 @@ function TariffSummary({ tariff, parameters }: { tariff: Tariff; parameters: Par
             <li key={index} className="flex flex-wrap gap-x-3">
               <span>
                 {label(supplement.parameterCode)}
-                {supplement.choiceCode ? ` = ${supplement.choiceCode}` : ''}
+                {supplement.choiceCode
+                  ? ` = ${choiceLabel(supplement.parameterCode, supplement.choiceCode)}`
+                  : ''}
               </span>
               <span className="text-ink-muted">
                 {t.supplementModes[supplement.mode]}

@@ -22,7 +22,8 @@ export const paymentSchema = z.object({
   status: z.string(),
   subject: paymentSubjectSchema,
   amount: moneySchema,
-  customerId: z.string(),
+  // Nul pour un paiement fait sans compte (débiteur du recouvrement, ADR-061).
+  customerId: z.nullable(z.string()),
   organizationId: z.nullable(z.string()),
   method: z.string(),
   provider: z.string(),
