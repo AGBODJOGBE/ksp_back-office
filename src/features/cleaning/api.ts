@@ -58,17 +58,21 @@ const FULL_PAGE = 100;
 /** Garde-fou des lectures complètes : au plus 10 pages (1 000 éléments). */
 const MAX_PAGES = 10;
 
-const path = (...segments: string[]) => [ADMIN, ...segments.map(encodeURIComponent)].join('/');
+export const path = (...segments: string[]) => [ADMIN, ...segments.map(encodeURIComponent)].join('/');
 
-type Query = Record<string, string | number | undefined>;
+export type Query = Record<string, string | number | undefined>;
 type PageSchema<T> = z.ZodMiniType<Page<T>>;
 
-async function read<S extends z.ZodMiniType>(schema: S, url: string, query?: Query): Promise<z.infer<S>> {
+export async function read<S extends z.ZodMiniType>(
+  schema: S,
+  url: string,
+  query?: Query,
+): Promise<z.infer<S>> {
   return parseResponse(schema, await api.get(url, { query }));
 }
 
 /** Une page d'une liste : `limit` du contrat (20 par défaut), curseur opaque. */
-function listPage<T>(schema: PageSchema<T>, url: string, query: Query = {}) {
+export function listPage<T>(schema: PageSchema<T>, url: string, query: Query = {}) {
   return (cursor?: string): Promise<Page<T>> => read(schema, url, { limit: PAGE_SIZE, ...query, cursor });
 }
 

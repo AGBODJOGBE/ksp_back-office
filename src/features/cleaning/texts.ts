@@ -75,12 +75,6 @@ export const cleaningTexts = {
   },
   /** Sections du parcours v2 encore provisoires (écrans des livraisons suivantes). */
   placeholders: {
-    requests: {
-      title: 'Dossiers',
-      lead: 'Les demandes des clients : un dossier par lieu, de la demande au devis.',
-      coming:
-        'Liste des dossiers et fiche dossier : refus, réactivation, position, visite, constat retenu, devis et envoi.',
-    },
     visits: {
       title: 'Visites',
       lead: 'Les visites techniques des lieux, payées par le client avant le devis.',

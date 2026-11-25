@@ -52,3 +52,6 @@ export const Simulator = dynamic(() => import('./simulator').then((m) => m.Simul
 export const SettingsScreen = dynamic(() => import('./settings').then((m) => m.SettingsScreen), { loading });
 export const ZonesScreen = dynamic(() => import('./zones').then((m) => m.ZonesScreen), { loading });
 export const HolidaysScreen = dynamic(() => import('./holidays').then((m) => m.HolidaysScreen), { loading });
+export const RequestsQueue = dynamic(() => import('./requests-queue').then((m) => m.RequestsQueue), {
+  loading,
+});

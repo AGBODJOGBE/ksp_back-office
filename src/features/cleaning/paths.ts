@@ -9,6 +9,8 @@ export const cleaningPaths = {
   requests: '/nettoyage',
   /** Préfixe des fiches dossier (sous-lot 1b), rattachées à l'onglet « Dossiers ». */
   requestPrefix: '/nettoyage/dossiers',
+  /** Fiche d'un dossier. */
+  request: (value: string) => `/nettoyage/dossiers/${id(value)}`,
   visits: '/nettoyage/visites',
   planning: '/nettoyage/planning',
   programs: '/nettoyage/programmes',

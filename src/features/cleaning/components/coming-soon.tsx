@@ -11,7 +11,18 @@ const t = cleaningTexts.comingSoon;
  * (1b : dossiers et visites ; 1c : planning, programmes, agents, réclamations). Composant serveur,
  * aucune donnée : il dit seulement ce qui viendra ici.
  */
-export function ComingSoon({ title, lead, coming }: { title: string; lead: string; coming: string }) {
+export function ComingSoon({
+  title,
+  lead,
+  coming,
+  back = { href: cleaningPaths.catalog.home, label: t.back },
+}: {
+  title: string;
+  lead: string;
+  coming: string;
+  /** Lien de retour (par défaut : le catalogue). */
+  back?: { href: string; label: string };
+}) {
   return (
     <div className="grid gap-6">
       <div>
@@ -23,8 +34,8 @@ export function ComingSoon({ title, lead, coming }: { title: string; lead: strin
       <Placeholder title={t.badge} className="max-w-reading">
         {coming}
       </Placeholder>
-      <ButtonLink href={cleaningPaths.catalog.home} variant="secondary" className="justify-self-start">
-        {t.back}
+      <ButtonLink href={back.href} variant="secondary" className="justify-self-start">
+        {back.label}
       </ButtonLink>
     </div>
   );

@@ -11,9 +11,9 @@ import * as z from 'zod/mini';
 /** `Money` : entiers de FCFA, jamais de décimales. */
 export const moneySchema = z.object({ amount: z.int(), currency: z.literal('XOF') });
 /** Montant facultatif (masqué sans `cleaning.amounts.read`) et éventuellement nul. */
-const hiddenMoney = z.optional(z.nullable(moneySchema));
+export const hiddenMoney = z.optional(z.nullable(moneySchema));
 
-const page = <T extends z.ZodMiniType>(item: T) =>
+export const page = <T extends z.ZodMiniType>(item: T) =>
   z.object({ data: z.array(item), nextCursor: z.nullable(z.string()), total: z.int() });
 
 /** Trace de la dernière modification (nom lu dans identity, `null` s'il est inconnu). */
