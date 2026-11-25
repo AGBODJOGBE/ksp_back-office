@@ -333,28 +333,6 @@ export const locationCorrectionSchema = z.object({
   correctedAt: z.string(),
 });
 
-export const AGENT_STATUSES = [
-  'applicant',
-  'under_review',
-  'active',
-  'suspended',
-  'deactivated',
-  'rejected',
-] as const;
-
-/**
- * `CleaningAgent`, réduit aux champs utiles au choix d'un agent pour une visite (les autres champs du
- * contrat sont ignorés à la lecture).
- */
-export const agentOptionSchema = z.object({
-  id: z.string(),
-  status: z.enum(AGENT_STATUSES),
-  firstName: z.string(),
-  lastName: z.string(),
-  zoneKeys: z.array(z.string()),
-});
-export const agentOptionListSchema = page(agentOptionSchema);
-
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 export type CustomerKind = (typeof CUSTOMER_KINDS)[number];
 export type RequestSort = (typeof REQUEST_SORTS)[number];
@@ -376,4 +354,3 @@ export type QuoteAdjustment = z.infer<typeof quoteAdjustmentSchema>;
 export type RequestSummary = z.infer<typeof requestSummarySchema>;
 export type CleaningRequest = z.infer<typeof requestSchema>;
 export type LocationCorrection = z.infer<typeof locationCorrectionSchema>;
-export type AgentOption = z.infer<typeof agentOptionSchema>;

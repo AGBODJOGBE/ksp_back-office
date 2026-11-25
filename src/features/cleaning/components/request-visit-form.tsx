@@ -7,13 +7,10 @@ import { beninInputToIso, formatSlot, isoToBeninInput } from '@/lib/format';
 import { useResource } from '@/lib/use-resource';
 import { loadErrorText } from '@/features/cleaning/errors';
 import { parseInteger } from '@/features/cleaning/inputs';
-import {
-  activeAgents,
-  scheduleVisit,
-  type UpdateVisitBody,
-  updateVisit,
-} from '@/features/cleaning/requests-api';
-import type { AgentOption, Visit } from '@/features/cleaning/requests-schemas';
+import { activeAgents } from '@/features/cleaning/agents-api';
+import type { AgentOption } from '@/features/cleaning/agents-schemas';
+import { scheduleVisit, type UpdateVisitBody, updateVisit } from '@/features/cleaning/requests-api';
+import type { Visit } from '@/features/cleaning/requests-schemas';
 import { visitTexts } from '@/features/cleaning/request-work-texts';
 import { cleaningTexts } from '@/features/cleaning/texts';
 import { CheckField } from './editors';

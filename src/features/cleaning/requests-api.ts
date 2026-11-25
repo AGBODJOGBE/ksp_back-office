@@ -2,8 +2,6 @@ import type * as z from 'zod/mini';
 import { api, parseResponse } from '@/lib/api';
 import { type AmountInput, listPage, path, read, readAll, type Values } from './api';
 import {
-  type AgentOption,
-  agentOptionListSchema,
   type CleaningRequest,
   type CustomerKind,
   type LocationCorrection,
@@ -230,9 +228,3 @@ export const approveQuoteAdjustment = (id: string, key: string): Promise<Quote> 
   send('post', quoteSchema, path('quotes', id, 'approve-adjustment'), undefined, key);
 export const sendQuote = (id: string, key: string): Promise<Quote> =>
   send('post', quoteSchema, path('quotes', id, 'send'), undefined, key);
-
-// --- Agents (lecture, choix d'un agent pour une visite) ------------------------------------------
-
-/** Agents actifs (`GET /agents?status=active`, permission `cleaning.planning.manage`), triés par nom. */
-export const activeAgents = (): Promise<AgentOption[]> =>
-  readAll(agentOptionListSchema, path('agents'), { status: 'active' });

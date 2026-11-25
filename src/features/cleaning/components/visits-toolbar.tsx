@@ -8,7 +8,7 @@ import { useResource } from '@/lib/use-resource';
 import type { CleaningAccess } from '@/features/cleaning/access';
 import { listCommunes } from '@/features/cleaning/api';
 import { visitStatus } from '@/features/cleaning/request-detail-texts';
-import { activeAgents } from '@/features/cleaning/requests-api';
+import { activeAgents } from '@/features/cleaning/agents-api';
 import { VISIT_STATUSES } from '@/features/cleaning/requests-schemas';
 import {
   CALENDAR_VIEWS,
