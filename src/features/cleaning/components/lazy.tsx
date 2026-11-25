@@ -55,3 +55,6 @@ export const HolidaysScreen = dynamic(() => import('./holidays').then((m) => m.H
 export const RequestsQueue = dynamic(() => import('./requests-queue').then((m) => m.RequestsQueue), {
   loading,
 });
+export const RequestDetail = dynamic(() => import('./request-detail').then((m) => m.RequestDetail), {
+  loading,
+});

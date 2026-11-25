@@ -49,10 +49,6 @@ export const requestsTexts = {
   },
   detail: {
     title: 'Fiche dossier',
-    lead: 'Étapes du dossier, visites, constat retenu et devis.',
-    coming:
-      'Fiche dossier : refus, réactivation, correction de la position, visites, version retenue, devis et envoi.',
-    back: 'Retour aux dossiers',
   },
 } as const;
 

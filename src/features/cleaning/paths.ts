@@ -14,6 +14,8 @@ export const cleaningPaths = {
   visits: '/nettoyage/visites',
   planning: '/nettoyage/planning',
   programs: '/nettoyage/programmes',
+  /** Fiche d'un programme (sous-lot 1c). */
+  program: (value: string) => `/nettoyage/programmes/${id(value)}`,
   /** Ancienne fiche « mission » (v1), encore citée par la facturation et les paiements. */
   missionPrefix: '/nettoyage/missions',
   team: '/nettoyage/equipe',

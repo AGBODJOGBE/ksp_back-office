@@ -1,7 +1,7 @@
 /**
  * Nettoyage v2 (service cleaning, ADR-054 à ADR-059) : socle du module (onglets du parcours, droits
- * d'affichage), catalogue, tarifs, simulateur et réglages (sous-lot 1a) ; file des dossiers (sous-lot 1b).
- * Fiche dossier, visites, planning, programmes, agents et réclamations : pages provisoires.
+ * d'affichage), catalogue, tarifs, simulateur et réglages (sous-lot 1a) ; file et fiche des dossiers
+ * (sous-lot 1b). Visites, planning, programmes, agents et réclamations : pages provisoires.
  */
 export { type CleaningAccess, type CleaningPermission, cleaningAccess } from './access';
 export { CleaningTabs } from './components/cleaning-tabs';
@@ -26,6 +26,7 @@ export {
   ParametersList,
   PlaceDetail,
   PlacesList,
+  RequestDetail,
   RequestsQueue,
   SettingsScreen,
   Simulator,

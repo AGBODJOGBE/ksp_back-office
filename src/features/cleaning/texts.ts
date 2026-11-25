@@ -92,6 +92,12 @@ export const cleaningTexts = {
       coming:
         'Liste et fiche des programmes, séances et paiements ; changement d’horaire, avenant, suspension, arrêt ; report, annulation, reprise et clôture d’une séance.',
     },
+    program: {
+      title: 'Programme de séances',
+      lead: 'Le programme né d’un devis accepté : ses séances, leurs agents et leurs paiements.',
+      coming: 'Fiche du programme : séances, paiements, changement d’horaire, avenant, suspension et arrêt.',
+      back: 'Retour aux dossiers',
+    },
     mission: {
       title: 'Mission du Nettoyage',
       lead: 'Les missions de l’ancien Nettoyage sont remplacées par les programmes de séances.',

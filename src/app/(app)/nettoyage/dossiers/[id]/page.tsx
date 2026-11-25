@@ -1,18 +1,15 @@
 import type { Metadata } from 'next';
-import { ComingSoon, cleaningPaths, requestsTexts } from '@/features/cleaning';
+import { Suspense } from 'react';
+import { RequestDetail, requestsTexts } from '@/features/cleaning';
 
-const t = requestsTexts.detail;
+export const metadata: Metadata = { title: requestsTexts.detail.title };
 
-export const metadata: Metadata = { title: t.title };
-
-/** Fiche dossier (sous-lot 1b, écrans suivants) : page provisoire. */
-export default function CleaningRequestPage() {
+/** Fiche dossier par étapes (rendue à la demande ; les données sont lues par le navigateur). */
+export default async function CleaningRequestPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   return (
-    <ComingSoon
-      title={t.title}
-      lead={t.lead}
-      coming={t.coming}
-      back={{ href: cleaningPaths.requests, label: t.back }}
-    />
+    <Suspense>
+      <RequestDetail id={id} />
+    </Suspense>
   );
 }

@@ -77,7 +77,7 @@ export function listPage<T>(schema: PageSchema<T>, url: string, query: Query = {
 }
 
 /** Toute une liste (choix d'un lieu, d'un paramètre…), page après page, sans dépasser `MAX_PAGES`. */
-async function readAll<T>(schema: PageSchema<T>, url: string, query: Query = {}): Promise<T[]> {
+export async function readAll<T>(schema: PageSchema<T>, url: string, query: Query = {}): Promise<T[]> {
   const items: T[] = [];
   let cursor: string | undefined;
   for (let index = 0; index < MAX_PAGES; index += 1) {
