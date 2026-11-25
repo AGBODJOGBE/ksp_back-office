@@ -28,6 +28,8 @@ export function tabsFor(access: CleaningAccess): SubNavItem[] {
     {
       href: cleaningPaths.programs,
       label: t.programs,
+      // Fiches programme et séance (sous l'adresse des programmes) ; ancienne fiche « mission » (v1),
+      // qui renvoie vers les programmes.
       match: [cleaningPaths.missionPrefix],
       show: access['cleaning.program.read'],
     },

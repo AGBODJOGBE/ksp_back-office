@@ -1,18 +1,10 @@
 import type { Metadata } from 'next';
-import { ComingSoon, cleaningPaths, cleaningTexts } from '@/features/cleaning';
+import { ProgramDetail, programsTexts } from '@/features/cleaning';
 
-const t = cleaningTexts.placeholders.program;
+export const metadata: Metadata = { title: programsTexts.detail.title };
 
-export const metadata: Metadata = { title: t.title };
-
-/** Fiche d'un programme (sous-lot 1c) : page provisoire, ouverte depuis la fiche dossier. */
-export default function CleaningProgramPage() {
-  return (
-    <ComingSoon
-      title={t.title}
-      lead={t.lead}
-      coming={t.coming}
-      back={{ href: cleaningPaths.requests, label: t.back }}
-    />
-  );
+/** Fiche d'un programme (rendue à la demande ; les données sont lues par le navigateur). */
+export default async function CleaningProgramPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <ProgramDetail id={id} />;
 }

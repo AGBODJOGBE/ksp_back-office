@@ -70,3 +70,12 @@ export const AgentInvite = dynamic(() => import('./agent-invite').then((m) => m.
 export const TeamsList = dynamic(() => import('./teams-list').then((m) => m.TeamsList), { loading });
 export const TeamDetail = dynamic(() => import('./team-detail').then((m) => m.TeamDetail), { loading });
 export const NewTeam = dynamic(() => import('./team-detail').then((m) => m.NewTeam), { loading });
+export const ProgramsList = dynamic(() => import('./programs-list').then((m) => m.ProgramsList), {
+  loading,
+});
+export const ProgramDetail = dynamic(() => import('./program-detail').then((m) => m.ProgramDetail), {
+  loading,
+});
+export const SessionDetail = dynamic(() => import('./session-detail').then((m) => m.SessionDetail), {
+  loading,
+});

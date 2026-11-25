@@ -1,11 +1,25 @@
 import type { Metadata } from 'next';
-import { ComingSoon, cleaningTexts } from '@/features/cleaning';
+import { Suspense } from 'react';
+import { Heading } from '@/components/ui/heading';
+import { ProgramsList, programsTexts } from '@/features/cleaning';
 
-const t = cleaningTexts.placeholders.programs;
+const t = programsTexts.list;
 
 export const metadata: Metadata = { title: t.title };
 
-/** Programmes (sous-lot 1c) : page provisoire. */
+/** Programmes : filtres lus dans l'adresse sous Suspense ; données lues par le navigateur. */
 export default function CleaningProgramsPage() {
-  return <ComingSoon title={t.title} lead={t.lead} coming={t.coming} />;
+  return (
+    <div className="grid gap-6">
+      <div>
+        <Heading as="h1" size="h2">
+          {t.title}
+        </Heading>
+        <p className="text-ink-muted max-w-reading mt-2">{t.lead}</p>
+      </div>
+      <Suspense>
+        <ProgramsList />
+      </Suspense>
+    </div>
+  );
 }

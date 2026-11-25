@@ -74,25 +74,15 @@ export const cleaningTexts = {
     back: 'Ouvrir le catalogue',
   },
   /** Sections du parcours v2 encore provisoires (écrans des livraisons suivantes). */
+  /** Ancienne fiche « mission » (v1) encore citée par les factures, les paiements et les portefeuilles. */
+  legacyMission: {
+    title: 'Mission de l’ancien Nettoyage',
+    lead: 'Cet élément renvoie à une mission de l’ancien Nettoyage. Les missions ont été remplacées par les programmes de séances, sans reprise de leurs données : cette référence ne correspond à aucun programme.',
+    reference: (id: string) => `Référence de l’ancienne mission : ${id}`,
+    hint: 'Pour un client actuel, cherchez son programme dans la liste des programmes.',
+    back: 'Ouvrir les programmes',
+  },
   placeholders: {
-    programs: {
-      title: 'Programmes',
-      lead: 'Les programmes de séances nés des devis acceptés, et le paiement de chaque séance.',
-      coming:
-        'Liste et fiche des programmes, séances et paiements ; changement d’horaire, avenant, suspension, arrêt ; report, annulation, reprise et clôture d’une séance.',
-    },
-    program: {
-      title: 'Programme de séances',
-      lead: 'Le programme né d’un devis accepté : ses séances, leurs agents et leurs paiements.',
-      coming: 'Fiche du programme : séances, paiements, changement d’horaire, avenant, suspension et arrêt.',
-      back: 'Retour aux dossiers',
-    },
-    mission: {
-      title: 'Mission du Nettoyage',
-      lead: 'Les missions de l’ancien Nettoyage sont remplacées par les programmes de séances.',
-      coming:
-        'Le suivi d’un programme, de ses séances et de leurs paiements arrive avec les écrans des programmes.',
-    },
     claims: {
       title: 'Réclamations',
       lead: 'Les réclamations des clients après une séance.',
