@@ -71,7 +71,7 @@ export function SidebarNav({ modules }: { modules: readonly BackofficeModule[] }
 
   return (
     <div className="grid gap-5">
-      {groupModules(visibleModules(current.roles, undefined, modules)).map((group) => {
+      {groupModules(visibleModules(current, undefined, modules)).map((group) => {
         const heading = `${id}-${group.id}`;
         // « Ma journée » n'a qu'une entrée du même nom : pas de titre visible, la liste garde son nom.
         const titled = group.id !== 'journee';

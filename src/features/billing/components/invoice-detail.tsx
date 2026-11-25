@@ -12,6 +12,7 @@ import { ResourceView } from '@/components/ui/resource-view';
 import { ResponsiveTable, type TableColumn } from '@/components/ui/responsive-table';
 import { SelectField } from '@/components/ui/select-field';
 import { apiErrorText, useSession } from '@/lib/api';
+import { NO_GRANTS } from '@/lib/grants';
 import { formatDate, formatDateTime, formatXof } from '@/lib/format';
 import { isModuleVisible } from '@/lib/navigation/visible-modules';
 import { useResource } from '@/lib/use-resource';
@@ -166,7 +167,8 @@ function InvoiceView({
   onStale: () => void;
 }) {
   const access = useBillingAccess();
-  const roles = useSession()?.roles ?? [];
+  const grants = useSession() ?? NO_GRANTS;
+  const { roles } = grants;
   const [done, setDone] = useState<string | null>(null);
   // Message d'une facture changée entre-temps, gardé sur la fiche : la relecture peut fermer la fenêtre de
   // paiement (facture payée) avant qu'elle ait affiché l'explication.
@@ -228,7 +230,7 @@ function InvoiceView({
               {
                 term: t.contract,
                 value:
-                  sourcePath && isModuleVisible('nettoyage', roles) ? (
+                  sourcePath && isModuleVisible('nettoyage', grants) ? (
                     <Link
                       href={sourcePath(invoice.contractId)}
                       className="text-accent-ink font-semibold underline"
@@ -257,7 +259,7 @@ function InvoiceView({
           ) : (
             <p className="text-small text-ink-muted">{t.noHeader}</p>
           )}
-          {invoice.organizationId && isModuleVisible('clients', roles) ? (
+          {invoice.organizationId && isModuleVisible('clients', grants) ? (
             <Link
               href={organizationPaths.organization(invoice.organizationId)}
               className="text-accent-ink justify-self-start font-semibold underline"

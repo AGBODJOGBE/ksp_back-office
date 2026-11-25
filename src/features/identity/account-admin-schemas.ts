@@ -86,6 +86,14 @@ export const assignableRoleListSchema = z.object({
       description: z.string(),
       backofficeAccess: z.boolean(),
       grantable: z.boolean(),
+      /** v2 (ADR-057) : nom affiché. */
+      name: z.optional(z.string()),
+      /** v2 : false pour un rôle désactivé, jamais attribuable. */
+      active: z.optional(z.boolean()),
+      /** v2 : son retrait ferme tout de suite les sessions (R-RB-05). */
+      sensitive: z.optional(z.boolean()),
+      /** v2 : livré par un service, ou créé par le super administrateur. */
+      origin: z.optional(z.enum(['default', 'custom'])),
     }),
   ),
 });

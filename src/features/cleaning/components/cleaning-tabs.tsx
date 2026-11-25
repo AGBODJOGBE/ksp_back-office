@@ -48,10 +48,6 @@ export function CleaningTabs() {
   const current = useSession();
   if (!current) return <div className="border-line -mx-gutter min-h-11 border-b" aria-hidden="true" />;
   return (
-    <SubNav
-      label={t.label}
-      items={tabsFor(cleaningAccess(current.roles))}
-      rootHref={cleaningPaths.requests}
-    />
+    <SubNav label={t.label} items={tabsFor(cleaningAccess(current))} rootHref={cleaningPaths.requests} />
   );
 }

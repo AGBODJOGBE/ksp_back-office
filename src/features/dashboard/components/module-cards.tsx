@@ -15,9 +15,7 @@ import { visibleModules } from '@/lib/navigation/visible-modules';
 export function ModuleCards({ modules }: { modules: readonly BackofficeModule[] }) {
   const current = useSession();
   if (!current) return null;
-  const open = visibleModules(current.roles, undefined, modules).filter(
-    (item) => item.slug !== 'tableau-de-bord',
-  );
+  const open = visibleModules(current, undefined, modules).filter((item) => item.slug !== 'tableau-de-bord');
 
   if (!open.length) {
     return (

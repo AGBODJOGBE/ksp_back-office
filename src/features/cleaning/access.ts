@@ -1,20 +1,28 @@
 /**
  * Droits d'affichage du Nettoyage v2. Chaque route `/api/v1/admin/cleaning/*` du contrat déclare une
  * permission (`x-ksp-permission`, ADR-057) et les rôles qui la portent par défaut
- * (`x-ksp-default-roles`). Le back-office décide encore par rôle (claim `roles` du jeton) : cette table
- * traduit les rôles de la session en permissions, et **seul ce fichier** le fait. Le passage aux
- * permissions du jeton (claim `perms`, lot séparé) ne changera que `cleaningAccess`.
+ * (`x-ksp-default-roles`).
+ *
+ * - Jeton qui porte des permissions (claims `perms`, `zone_perms`) : elles seules décident, comme à la
+ *   gateway. Un rôle créé ou modifié au back-office s'applique donc sans changer le code.
+ * - Jeton qui n'en porte pas (émis avant ADR-057) : **repli** sur la table ci-dessous, qui traduit les
+ *   rôles de la session en permissions d'après leurs rôles par défaut.
  *
  * Affichage seulement : la gateway et le service cleaning restent seuls juges, et un refus (403)
  * s'affiche proprement.
  */
+
+import { CLEANING_BACKOFFICE_PERMISSIONS, type CleaningPermission } from '@/config/permissions';
+import { fromRoles, type Grants, hasPermission } from '@/lib/grants';
+
+export type { CleaningPermission } from '@/config/permissions';
 
 const ADMIN = 'cleaning_admin';
 const SUPERVISOR = 'cleaning_supervisor';
 const SUPPORT = 'support_agent';
 const SUPER_ADMIN = 'super_admin';
 
-/** Permissions du contrat et rôles qui les portent par défaut (`x-ksp-default-roles`). */
+/** Repli (jeton sans permissions) : rôles qui portent chaque permission par défaut (`x-ksp-default-roles`). */
 const DEFAULT_ROLES = {
   /** Catalogue, compétences, jours fériés, zones et communes en lecture ; simulateur. */
   'cleaning.catalog.read': [ADMIN, SUPERVISOR, SUPPORT, SUPER_ADMIN],
@@ -24,42 +32,48 @@ const DEFAULT_ROLES = {
   'cleaning.zone.manage': [ADMIN, SUPER_ADMIN],
   /** Dossiers, visites et réglages en lecture. */
   'cleaning.request.read': [ADMIN, SUPERVISOR, SUPPORT, SUPER_ADMIN],
-  /** Dossiers et visites : traiter (sous-lot 1b). */
+  /** Dossiers et visites : traiter. */
   'cleaning.request.process': [ADMIN, SUPERVISOR, SUPER_ADMIN],
-  /** Devis (sous-lot 1b). */
+  /** Devis. */
   'cleaning.quote.manage': [ADMIN, SUPERVISOR, SUPER_ADMIN],
-  /** Remise au-delà du seuil (sous-lot 1b). */
+  /** Remise au-delà du seuil. */
   'cleaning.quote.adjust_price': [ADMIN, SUPER_ADMIN],
-  /** Planning, affectations, agents et équipes en lecture (sous-lot 1c). */
+  /** Planning, affectations, agents et équipes en lecture. */
   'cleaning.planning.manage': [ADMIN, SUPERVISOR, SUPER_ADMIN],
-  /** Agents : créer, valider, suspendre (sous-lot 1c). */
+  /** Agents : créer, valider, suspendre. */
   'cleaning.agent.manage': [ADMIN, SUPER_ADMIN],
-  /** Programmes et séances en lecture (sous-lot 1c). */
+  /** Programmes et séances en lecture. */
   'cleaning.program.read': [ADMIN, SUPERVISOR, SUPPORT, SUPER_ADMIN],
-  /** Programmes et séances : décisions (sous-lot 1c). */
+  /** Programmes et séances : décisions. */
   'cleaning.program.manage': [ADMIN, SUPERVISOR, SUPER_ADMIN],
-  /** Réclamations (sous-lot 1c). */
+  /** Réclamations. */
   'cleaning.claim.manage': [ADMIN, SUPERVISOR, SUPPORT, SUPER_ADMIN],
   /** Réglages : modifier. */
   'cleaning.settings.manage': [ADMIN, SUPER_ADMIN],
-} as const satisfies Record<string, readonly string[]>;
-
-export type CleaningPermission = keyof typeof DEFAULT_ROLES;
+} as const satisfies Record<CleaningPermission, readonly string[]>;
 
 /** Permissions du Nettoyage accordées à la session (affichage seulement). */
 export type CleaningAccess = Readonly<Record<CleaningPermission, boolean>>;
 
-export const CLEANING_PERMISSIONS = Object.keys(DEFAULT_ROLES) as CleaningPermission[];
+export const CLEANING_PERMISSIONS: readonly CleaningPermission[] = CLEANING_BACKOFFICE_PERMISSIONS;
 
-/** Rôles de la session → permissions du Nettoyage, d'après les rôles par défaut du contrat. */
-export function cleaningAccess(roles: readonly string[]): CleaningAccess {
+/**
+ * Droits de la session → permissions du Nettoyage. Reçoit les droits du jeton (`Grants`, la session
+ * convient), ou des rôles seuls (repli, comme un jeton émis avant ADR-057).
+ */
+export function cleaningAccess(grants: Grants | readonly string[]): CleaningAccess {
+  const given = isRoleList(grants) ? fromRoles(grants) : grants;
   return Object.fromEntries(
     CLEANING_PERMISSIONS.map((permission) => [
       permission,
-      (DEFAULT_ROLES[permission] as readonly string[]).some((role) => roles.includes(role)),
+      hasPermission(given, permission, DEFAULT_ROLES[permission]),
     ]),
   ) as CleaningAccess;
 }
 
-/** Rôles qui portent une permission (file « À traiter » de Ma journée : sections affichées par rôle). */
+function isRoleList(grants: Grants | readonly string[]): grants is readonly string[] {
+  return Array.isArray(grants);
+}
+
+/** Rôles qui portent une permission par défaut (repli de la file « À traiter » de Ma journée). */
 export const rolesWith = (permission: CleaningPermission): readonly string[] => DEFAULT_ROLES[permission];

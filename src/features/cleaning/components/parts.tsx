@@ -24,7 +24,7 @@ const t = cleaningTexts.common;
 /** Droits d'affichage de la session (`access.ts`) ; `null` tant que la session n'est pas reprise. */
 export function useCleaningAccess(): CleaningAccess | null {
   const current = useSession();
-  return current ? cleaningAccess(current.roles) : null;
+  return current ? cleaningAccess(current) : null;
 }
 
 /** Squelette d'un écran en chargement : réserve la place du contenu, sans décalage à l'arrivée. */

@@ -13,7 +13,7 @@ import {
   uniqueCode,
 } from './inputs';
 
-describe('droits d’affichage du Nettoyage v2 (rôles par défaut du contrat)', () => {
+describe('droits d’affichage du Nettoyage v2 (permissions du jeton, repli par rôle)', () => {
   it('admin et super_admin : catalogue, zones et réglages modifiables', () => {
     for (const role of ['cleaning_admin', 'super_admin']) {
       const access = cleaningAccess([role]);
@@ -37,6 +37,20 @@ describe('droits d’affichage du Nettoyage v2 (rôles par défaut du contrat)',
     expect(support['cleaning.claim.manage']).toBe(true);
     expect(support['cleaning.planning.manage']).toBe(false);
     expect(Object.values(cleaningAccess(['cleaning_agent'])).some(Boolean)).toBe(false);
+  });
+
+  it('jeton qui porte des permissions (ADR-057) : elles seules décident, rôle dynamique compris', () => {
+    const planner = cleaningAccess({
+      roles: ['cleaning_planner'],
+      permissions: ['cleaning.request.read', 'cleaning.planning.manage'],
+    });
+    expect(planner['cleaning.planning.manage']).toBe(true);
+    expect(planner['cleaning.request.read']).toBe(true);
+    expect(planner['cleaning.catalog.read']).toBe(false);
+    expect(tabsFor(planner).map((tab) => tab.label)).toContain('Planning');
+    // Rôle par défaut retiré de ses permissions au back-office : plus rien, malgré le rôle.
+    const emptied = cleaningAccess({ roles: ['cleaning_admin'], permissions: [] });
+    expect(Object.values(emptied).some(Boolean)).toBe(false);
   });
 
   it('onglets du parcours v2, dans l’ordre, filtrés par permission', () => {

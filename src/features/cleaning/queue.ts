@@ -1,7 +1,7 @@
 // Point d'entrée `@/features/cleaning/queue` : lu seulement par la file « À traiter » du tableau de bord (navigateur).
 import { beninDay, formatDate, formatDateTime } from '@/lib/format';
 import { QUEUE_ROWS, type WorkQueuePage, type WorkQueueRow, type WorkQueueSection } from '@/lib/work-queue';
-import { rolesWith } from './access';
+import { type CleaningPermission, rolesWith } from './access';
 import { listAgents } from './agents-api';
 import { agentName, agentStatus, APPLICATION_STATUSES } from './agents-texts';
 import { listClaims } from './claims-api';
@@ -55,13 +55,14 @@ function requestSection(
   id: string,
   status: RequestStatus,
   texts: { title: string; description: string; seeAll: string; action: string },
-  roles: readonly string[],
+  permission: CleaningPermission,
 ): WorkQueueSection {
   return {
     id,
     title: texts.title,
     description: texts.description,
-    roles,
+    roles: rolesWith(permission),
+    permission,
     seeAll: { href: withStatus(cleaningPaths.requests, status), label: texts.seeAll },
     load: async () => fromTotals([await listRequests({ status })()], requestRow(texts.action)),
   };
@@ -72,14 +73,15 @@ export const cleaningQueueSections: readonly WorkQueueSection[] = [
     'cleaning-visits-to-schedule',
     'visit_to_schedule',
     t.visitToSchedule,
-    rolesWith('cleaning.request.process'),
+    'cleaning.request.process',
   ),
-  requestSection('cleaning-visits-done', 'visit_done', t.visitDone, rolesWith('cleaning.quote.manage')),
+  requestSection('cleaning-visits-done', 'visit_done', t.visitDone, 'cleaning.quote.manage'),
   {
     id: 'cleaning-unassigned',
     title: t.unassigned.title,
     description: t.unassigned.description,
     roles: rolesWith('cleaning.planning.manage'),
+    permission: 'cleaning.planning.manage',
     seeAll: { href: cleaningPaths.planning, label: t.unassigned.seeAll },
     load: async () =>
       fromTotals([await listUnassigned()()], (item) => ({
@@ -102,6 +104,7 @@ export const cleaningQueueSections: readonly WorkQueueSection[] = [
     title: t.applications.title,
     description: t.applications.description,
     roles: rolesWith('cleaning.agent.manage'),
+    permission: 'cleaning.agent.manage',
     seeAll: { href: withStatus(cleaningPaths.team, APPLICATION_STATUSES[0]), label: t.applications.seeAll },
     load: async () =>
       fromTotals(
@@ -119,6 +122,7 @@ export const cleaningQueueSections: readonly WorkQueueSection[] = [
     title: t.claims.title,
     description: t.claims.description,
     roles: rolesWith('cleaning.claim.manage'),
+    permission: 'cleaning.claim.manage',
     seeAll: { href: withStatus(cleaningPaths.claims, 'open'), label: t.claims.seeAll },
     load: async () => {
       const now = Date.now();

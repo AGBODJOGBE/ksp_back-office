@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { type Grants, hasPermission } from '@/lib/grants';
 
 /*
  * File « À traiter » du tableau de bord « Ma journée » : forme commune des sections que chaque
@@ -41,8 +42,13 @@ export interface WorkQueueSection {
   id: string;
   title: string;
   description: string;
-  /** Rôles qui peuvent lire la liste (`x-ksp-roles` de la route) : affichage seulement. */
+  /**
+   * Rôles qui peuvent lire la liste (`x-ksp-roles` de la route) ; pour une section qui a une
+   * `permission`, rôles qui la portent par défaut (repli, jeton sans permissions). Affichage seulement.
+   */
   roles: readonly string[];
+  /** Permission exigée par la route lue (`x-ksp-permission`, ADR-057) : décide quand le jeton en porte. */
+  permission?: string;
   seeAll: { href: string; label: string };
   load: (roles: readonly string[]) => Promise<WorkQueuePage>;
 }
@@ -65,12 +71,12 @@ export function countLabel(page: Pick<WorkQueuePage, 'count' | 'more'>): string 
 }
 
 /**
- * Sections visibles pour ces rôles, dans l'ordre de priorité donné (identifiants) ; une section absente
- * de l'ordre vient après les autres. Affichage seulement : la gateway refuse de toute façon une lecture
- * hors des rôles.
+ * Sections visibles pour ces droits (permission de la section si elle en a une, sinon rôles), dans
+ * l'ordre de priorité donné (identifiants) ; une section absente de l'ordre vient après les autres.
+ * Affichage seulement : la gateway refuse de toute façon une lecture hors des droits.
  */
 export function sectionsFor(
-  roles: readonly string[],
+  grants: Grants,
   sections: readonly WorkQueueSection[],
   order: readonly string[],
 ): WorkQueueSection[] {
@@ -79,6 +85,10 @@ export function sectionsFor(
     return index === -1 ? order.length : index;
   };
   return sections
-    .filter((section) => section.roles.some((role) => roles.includes(role)))
+    .filter((section) =>
+      section.permission
+        ? hasPermission(grants, section.permission, section.roles)
+        : section.roles.some((role) => grants.roles.includes(role)),
+    )
     .sort((a, b) => rank(a.id) - rank(b.id));
 }
