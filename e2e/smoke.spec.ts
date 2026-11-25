@@ -84,7 +84,9 @@ test('avec une session, Ma journée s’affiche avec le menu filtré par rôle',
   const menu = page.getByRole('navigation', { name: 'Modules' });
   await expect(menu.getByRole('link', { name: 'Ma journée' })).toHaveAttribute('aria-current', 'page');
   await menu.getByRole('link', { name: 'Recouvrement' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Recouvrement' })).toBeVisible();
+  // La racine du module est son tableau de bord (comme « Dossiers » pour le Nettoyage).
+  await expect(page).toHaveURL(/\/recouvrement$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Tableau de bord' })).toBeVisible();
   await expect(page.getByText('Koffi Adjovi').first()).toBeAttached();
 });
 

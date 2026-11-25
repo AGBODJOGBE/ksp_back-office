@@ -60,9 +60,10 @@ describe('menu des modules', () => {
     ]);
     unmount();
 
+    // La finance lit aussi le Recouvrement (tableau de bord, tarification, factures de commission).
     session.set(sessionBody(['finance_officer']));
     render(<SidebarNav modules={MODULES} />);
-    expect(groups().map((group) => group.name)).toEqual(['Ma journée', 'Finance']);
+    expect(groups().map((group) => group.name)).toEqual(['Ma journée', 'Opérations', 'Finance']);
   });
 
   it('indique la page courante, sous-pages comprises', () => {

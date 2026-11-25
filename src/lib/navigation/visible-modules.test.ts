@@ -78,7 +78,8 @@ describe('accès aux modules du back-office', () => {
     expect(waiting).not.toContain('finance');
     expect(waiting).not.toContain('clients');
     expect(waiting).not.toContain('notifications');
-    expect(waiting).toEqual(['recouvrement']);
+    expect(waiting).not.toContain('recouvrement');
+    expect(waiting).toEqual([]);
     expect(waitingModules(1, []).map((module) => module.slug)).toContain('nettoyage');
   });
 });

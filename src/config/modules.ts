@@ -54,8 +54,17 @@ export const MODULES: readonly BackofficeModule[] = [
     slug: 'recouvrement',
     label: 'Recouvrement',
     description:
-      'Dossiers par état, fiche dossier, décisions, affectations, relances planifiées, courriers, reversements, conseil et formations.',
-    roles: ['recovery_agent', 'recovery_admin'],
+      'Tableau de bord, dossiers et fiche dossier, paiements hors ligne, tarification par paliers, réglages, jours fériés, factures de commission.',
+    // Union des rôles des routes /admin/recovery/* et /admin/billing/commission-invoices* (`x-ksp-roles` :
+    // le contrat n'y déclare aucune permission). Détail par écran : features/recovery/access.ts.
+    roles: [
+      'recovery_agent',
+      'recovery_supervisor',
+      'legal_officer',
+      'recovery_admin',
+      SUPER_ADMIN,
+      'finance_officer',
+    ],
     phase: 1,
     group: 'operations',
   },
@@ -158,6 +167,7 @@ export const MODULES: readonly BackofficeModule[] = [
  * sortent des pages d'attente générées par `[module]`, pour qu'une adresse n'ait jamais deux pages.
  */
 export const MODULES_WITH_SCREENS: readonly string[] = [
+  'recouvrement',
   'nettoyage',
   'finance',
   'clients',
