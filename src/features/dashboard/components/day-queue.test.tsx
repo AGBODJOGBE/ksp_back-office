@@ -19,6 +19,7 @@ const ROUTES = {
   claims: '/api/v1/admin/cleaning/claims',
   withdrawals: '/api/v1/admin/wallet/withdrawals',
   creditRequests: '/api/v1/admin/wallet/credit-requests',
+  myDay: '/api/v1/admin/recovery/my-day',
 };
 
 const id = (suffix: string) => `0192f1c4-7a2b-7c3d-8e4f-5a6b7c8d${suffix}`;
@@ -149,7 +150,35 @@ const awaitingWithdrawal = {
 /** Demandes de crédit : la liste est dans `items` (`ManualCreditRequestList`). */
 const noCreditRequests = { status: 200, body: { items: [], nextCursor: null } };
 
-type Response = ReturnType<typeof page> | ReturnType<typeof cleaningPage> | typeof noCreditRequests;
+/** File du chargé du recouvrement (`RecoveryWorkQueue`), une ligne par tâche. */
+const myDay = (items: unknown[]) => ({ status: 200, body: { items } });
+const recoveryItem = (kind: string, suffix: string) => ({
+  kind,
+  case: {
+    id: id(`ca${suffix}`),
+    number: `RC-2026-00${suffix}`,
+    kind: 'b2b',
+    status: 'active',
+    stage: 'amicable',
+    creditor: { type: 'organization', id: id('0a01'), displayName: 'SARL TEST Créances' },
+    debtorName: `Débiteur TEST ${suffix}`,
+    due: xof(450000),
+    paid: xof(0),
+    score: null,
+    assignedAgent: null,
+    nextDeadline: null,
+    lastActionAt: null,
+    createdAt: '2026-11-02T08:00:00Z',
+  },
+  dueAt: '2026-11-25T09:00:00Z',
+  note: kind === 'callback_request' ? 'Rappeler après 17 h.' : null,
+});
+
+type Response =
+  | ReturnType<typeof page>
+  | ReturnType<typeof cleaningPage>
+  | typeof noCreditRequests
+  | ReturnType<typeof myDay>;
 type Handler = Response | Response[] | ((body: unknown, url: URL) => Response);
 
 /** Gateway : une page par route ; `overrides` remplace la réponse d'une route. */
@@ -167,6 +196,7 @@ function gateway(overrides: Partial<Record<keyof typeof ROUTES, Handler>> = {}) 
     withdrawals: (_body: unknown, url: URL) =>
       url.searchParams.get('status') === 'awaiting_approval' ? page([awaitingWithdrawal]) : empty,
     creditRequests: noCreditRequests,
+    myDay: myDay([]),
     ...overrides,
   };
   return stubGateway(
@@ -203,6 +233,10 @@ describe('file « À traiter » de Ma journée', () => {
       'Candidatures d’agents',
       'Comptes entreprise à valider',
       'Factures impayées',
+      'Rappels du recouvrement',
+      'Promesses et échéances non tenues',
+      'Relances du jour',
+      'Contestations et échéanciers à valider',
     ]);
 
     const search = (path: string) =>
@@ -224,7 +258,9 @@ describe('file « À traiter » de Ma journée', () => {
       `${ROUTES.requests}?limit=20&status=visit_done`,
       `${ROUTES.requests}?limit=20&status=visit_to_schedule`,
     ]);
-    expect(calls).toHaveLength(13);
+    // Recouvrement : une seule lecture de la file du chargé pour ses quatre sections.
+    expect(calls.filter((call) => call.path === ROUTES.myDay)).toHaveLength(1);
+    expect(calls).toHaveLength(14);
     const wallet = calls
       .filter((call) => call.path.startsWith('/api/v1/admin/wallet'))
       .map((call) => decodeURIComponent(call.path + call.search))
@@ -320,8 +356,41 @@ describe('file « À traiter » de Ma journée', () => {
     ).toBeInTheDocument();
   });
 
-  it('un rôle sans section : aucun appel, un message', () => {
+  it('chargé du recouvrement : sa file du jour en quatre sections, une seule lecture', async () => {
     session.set(sessionBody(['recovery_agent']));
+    const { calls } = gateway({
+      myDay: myDay([
+        recoveryItem('broken_promise', '01'),
+        recoveryItem('callback_request', '02'),
+        recoveryItem('missed_installment', '03'),
+      ]),
+    });
+    render(<DayQueue />);
+    const promises = sectionNamed('Promesses et échéances non tenues');
+    expect(
+      await within(promises).findByRole('link', {
+        name: 'Ouvrir le dossier : Dossier RC-2026-0001 — Débiteur TEST 01',
+      }),
+    ).toHaveAttribute('href', `/recouvrement/dossiers/${id('ca01')}`);
+    expect(within(promises).getByText('2')).toBeInTheDocument();
+    expect(within(promises).getByText(/Promesse non tenue · Pour le .* · Dû 450\s000/)).toBeInTheDocument();
+    const callbacks = sectionNamed('Rappels du recouvrement');
+    expect(within(callbacks).getByText(/Demande de rappel · .* · Rappeler après 17 h\./)).toBeInTheDocument();
+    expect(within(callbacks).getByRole('link', { name: /Voir les dossiers/ })).toHaveAttribute(
+      'href',
+      '/recouvrement/dossiers',
+    );
+    expect(sectionTitles()).toEqual([
+      'Rappels du recouvrement',
+      'Promesses et échéances non tenues',
+      'Relances du jour',
+      'Contestations et échéanciers à valider',
+    ]);
+    expect(calls.map((call) => call.path)).toEqual([ROUTES.myDay]);
+  });
+
+  it('un rôle sans section : aucun appel, un message', () => {
+    session.set(sessionBody(['print_prepress']));
     const { calls } = gateway();
     render(<DayQueue />);
     expect(screen.getByText(/Aucune file « À traiter » ne correspond à vos rôles/)).toBeInTheDocument();
@@ -339,7 +408,7 @@ describe('file « À traiter » de Ma journée', () => {
     });
     render(<DayQueue />);
     expect(await screen.findByText('Tout est à jour : rien à traiter pour le moment.')).toBeInTheDocument();
-    expect(screen.getAllByText('Rien à traiter')).toHaveLength(11);
+    expect(screen.getAllByText('Rien à traiter')).toHaveLength(15);
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 

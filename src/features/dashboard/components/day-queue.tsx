@@ -22,6 +22,7 @@ import { billingQueueSections } from '@/features/billing/queue';
 import { cleaningQueueSections } from '@/features/cleaning/queue';
 import { organizationQueueSections } from '@/features/identity/queue';
 import { paymentQueueSections } from '@/features/payment/queue';
+import { recoveryQueueSections } from '@/features/recovery/queue';
 import { walletQueueSections } from '@/features/wallet/queue';
 import { dashboardTexts as t } from '@/features/dashboard/texts';
 
@@ -29,7 +30,9 @@ import { dashboardTexts as t } from '@/features/dashboard/texts';
  * Ordre de priorité de la file, validé le 5 novembre 2026 : écarts de paiement, puis l'argent des clients
  * en attente (retraits à valider, à traiter, demandes de crédit ; ajout « à valider »), puis le Nettoyage v2
  * (réclamations, interventions à affecter, visites à planifier, devis à préparer, candidatures d'agents ;
- * ordre interne à valider), comptes entreprise à valider, factures impayées.
+ * ordre interne à valider), comptes entreprise à valider, factures impayées. Le Recouvrement (rappels,
+ * promesses et échéances non tenues, relances du jour, contestations et échéanciers) vient après : place
+ * « à valider ».
  */
 export const QUEUE_ORDER = [
   'payment-mismatches',
@@ -43,6 +46,10 @@ export const QUEUE_ORDER = [
   'cleaning-agent-applications',
   'organizations-to-validate',
   'invoices-overdue',
+  'recovery-callbacks',
+  'recovery-promises',
+  'recovery-reminders',
+  'recovery-decisions',
 ] as const;
 
 /** Sections fournies par les fonctionnalités (chacune lit sa route de la gateway). */
@@ -52,6 +59,7 @@ export const QUEUE_SECTIONS: readonly WorkQueueSection[] = [
   ...cleaningQueueSections,
   ...organizationQueueSections,
   ...billingQueueSections,
+  ...recoveryQueueSections,
 ];
 
 type SectionStatus = 'loading' | 'error' | 'empty' | 'filled';
