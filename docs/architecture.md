@@ -150,59 +150,78 @@ Le cadre des pages `(app)` importe `@/features/identity/session` (garde et panne
 
 ## Nettoyage v2 (`features/cleaning`, ADR-054 à ADR-059)
 
-Le backend a remplacé le Nettoyage v1 sur place, sans compatibilité (ADR-054) : routes `quote-requests`, `quote-request-groups`, `missions`, `interventions`, `catalog`, mesures v1 supprimées. Le module du back-office est reconstruit en trois sous-lots sur la même branche : **1a** socle v2, catalogue, tarifs et réglages (ci-dessous) ; **1b** dossiers (demandes, visites, constat retenu, devis) ; **1c** agents, équipes, planning, affectations, programmes, séances, réclamations. Le code v1 (écrans, schémas, textes, tests, sections de « Ma journée ») est retiré ; les sections à venir sont des pages provisoires « Bientôt disponible », sans donnée.
+Le backend a remplacé le Nettoyage v1 sur place, sans compatibilité (ADR-054) : routes `quote-requests`, `quote-request-groups`, `missions`, `interventions`, `catalog`, mesures v1 supprimées. Le module du back-office est reconstruit en trois sous-lots sur la même branche : **1a** socle v2, catalogue, tarifs et réglages (ci-dessous) ; **1b** dossiers (demandes, visites, constat retenu, devis) ; **1c** agents, équipes, planning, affectations, programmes, séances, réclamations. Le code v1 (écrans, schémas, textes, tests, sections de « Ma journée ») est retiré. Les trois sous-lots sont livrés (1c-4 : réclamations, sections de « Ma journée ») : il ne reste plus aucune page provisoire dans le module (`ComingSoon` supprimé).
 
 ```
 features/cleaning/
 ├── index.ts               onglets, menus de section, écrans (relais à la demande), textes des pages
-├── access.ts              permissions du contrat (x-ksp-permission) ← rôles par défaut (x-ksp-default-roles)
+├── queue.ts               point d'entrée `@/features/cleaning/queue` : sections de « Ma journée » (+ queue-texts.ts)
+├── access.ts              permissions du contrat (x-ksp-permission) ← rôles par défaut (x-ksp-default-roles) ; rolesWith
 ├── api.ts                 42 opérations admin du sous-lot 1a (listes paginées, lectures complètes, total)
+├── requests-api.ts        1b : dossiers, visites, version retenue, devis (+ requests-schemas, -filters, -texts)
+├── agents-api.ts          1c-1 : agents, disponibilités, équipes (+ agents-schemas, -filters, -texts, teams-texts)
+├── planning-api.ts        1c-2 : planning, à affecter, affectations, propositions, automatique (+ planning-*)
+├── programs-api.ts        1c-3 : programmes, séances, décisions (+ programs-*, schedule-plan.ts, session-texts)
+├── claims-api.ts          1c-4 : réclamations (+ claims-schemas, claims-filters, claims-texts)
 ├── schemas.ts             zod/mini, champ par champ, énumérations du contrat
 ├── errors.ts              message affichable, champ refusé (details.field), tarif incomplet (details.reason, index)
 ├── inputs.ts              entiers, FCFA, coefficients (points de base ↔ « 1,15 »), pourcentages, codes
 ├── paths.ts, sections.ts  adresses ; étapes du catalogue et sections des réglages (fichier léger des coques)
 ├── texts.ts, catalog-texts.ts, simulator-texts.ts, settings-texts.ts
-├── fake-gateway.test-utils.ts   passerelle commune + réponses TEST v2
+├── *-fixtures.test-utils.ts, fake-gateway.test-utils.ts   passerelle commune + réponses TEST v2
 └── components/
     ├── lazy.tsx                 relais next/dynamic : une page ne télécharge que son écran
-    ├── cleaning-tabs.tsx, section-nav.tsx, coming-soon.tsx
-    ├── parts.tsx, editors.tsx, catalog-parts.tsx   états, formulaires, listes et fiches communs
+    ├── cleaning-tabs.tsx, section-nav.tsx, legacy-mission.tsx
+    ├── parts.tsx, editors.tsx, catalog-parts.tsx, request-parts.tsx   états, formulaires, motifs, clés
     ├── catalog-overview.tsx, parameters.tsx, categories.tsx, places.tsx, skills.tsx,
     │   cleaning-types.tsx, offers.tsx, tariffs.tsx, simulator.tsx
-    └── settings.tsx, zones.tsx, holidays.tsx
+    ├── settings.tsx, zones.tsx, holidays.tsx
+    ├── requests-*.tsx, request-*.tsx, visits-*.tsx, visit-panel.tsx        dossiers et visites (1b)
+    ├── agent-*.tsx, agents-*.tsx, team-*.tsx, teams-list.tsx              agents et équipes (1c-1)
+    ├── planning-*.tsx, assignment-*.tsx                                   planning (1c-2)
+    ├── program-*.tsx, programs-*.tsx, session-*.tsx                       programmes et séances (1c-3)
+    └── claims-queue.tsx, claims-filter-bar.tsx, claim-detail.tsx, claim-actions.tsx, claim-messages.tsx (1c-4)
 ```
 
 **Parcours du module** (onglets, dans l'ordre du métier, chacun suivant la permission de sa route) : Catalogue · Dossiers · Visites · Planning · Programmes · Agents et équipes · Réclamations · Réglages.
 
-| Adresse                                                            | Écran                                                                                                 | Sous-lot         |
-| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ---------------- |
-| `/nettoyage/catalogue`                                             | Ordre de construction, nombre d'éléments par étape, première étape vide mise en avant                 | 1a               |
-| `/nettoyage/catalogue/parametres[/nouveau, /{id}]`                 | 1. Paramètres (nombre, choix, oui/non ; valeurs désactivables)                                        | 1a               |
-| `/nettoyage/catalogue/categories[/nouveau, /{id}]`                 | 2. Catégories de lieu, frais de visite, lieux rattachés                                               | 1a               |
-| `/nettoyage/catalogue/lieux[/nouveau, /{id}]`                      | 3. Lieux (`?categorie=`), paramètres ordonnés, superficie, visibilité sur le portail, offres du lieu  | 1a               |
-| `/nettoyage/catalogue/competences`                                 | 4. Compétences (ajout, renommage, désactivation)                                                      | 1a               |
-| `/nettoyage/catalogue/types[/nouveau, /{id}]`                      | 5. Types de nettoyage et packs, liste de contrôle                                                     | 1a               |
-| `/nettoyage/catalogue/offres[/nouveau, /{id}]`                     | 6. Offres (`?lieu=`, `?type=`), équipe par tranches ; tarif : versions, brouillon, essai, publication | 1a               |
-| `/nettoyage/catalogue/simulateur`                                  | 7. Simulateur (`?lieu=&types=&brouillons=`), détail ligne par ligne                                   | 1a               |
-| `/nettoyage/reglages`, `/reglages/zones`, `/reglages/jours-feries` | Réglages bornés ; zones et communes ; jours fériés (`?annee=`)                                        | 1a               |
-| `/nettoyage` (Dossiers), `/nettoyage/visites`                      | Pages provisoires ; onglet « Dossiers » prêt pour `/nettoyage/dossiers/{id}`                          | 1b               |
-| `/nettoyage/planning`, `/programmes`, `/equipe`, `/reclamations`   | Pages provisoires ; onglet « Programmes » rattache aussi `/nettoyage/missions/*`                      | 1c               |
-| `/nettoyage/missions/{id}`                                         | Page provisoire : ancienne fiche mission encore citée par factures, paiements et portefeuilles        | 1c (redirection) |
+| Adresse                                                            | Écran                                                                                                 | Sous-lot |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | -------- |
+| `/nettoyage/catalogue`                                             | Ordre de construction, nombre d'éléments par étape, première étape vide mise en avant                 | 1a       |
+| `/nettoyage/catalogue/parametres[/nouveau, /{id}]`                 | 1. Paramètres (nombre, choix, oui/non ; valeurs désactivables)                                        | 1a       |
+| `/nettoyage/catalogue/categories[/nouveau, /{id}]`                 | 2. Catégories de lieu, frais de visite, lieux rattachés                                               | 1a       |
+| `/nettoyage/catalogue/lieux[/nouveau, /{id}]`                      | 3. Lieux (`?categorie=`), paramètres ordonnés, superficie, visibilité sur le portail, offres du lieu  | 1a       |
+| `/nettoyage/catalogue/competences`                                 | 4. Compétences (ajout, renommage, désactivation)                                                      | 1a       |
+| `/nettoyage/catalogue/types[/nouveau, /{id}]`                      | 5. Types de nettoyage et packs, liste de contrôle                                                     | 1a       |
+| `/nettoyage/catalogue/offres[/nouveau, /{id}]`                     | 6. Offres (`?lieu=`, `?type=`), équipe par tranches ; tarif : versions, brouillon, essai, publication | 1a       |
+| `/nettoyage/catalogue/simulateur`                                  | 7. Simulateur (`?lieu=&types=&brouillons=`), détail ligne par ligne                                   | 1a       |
+| `/nettoyage/reglages`, `/reglages/zones`, `/reglages/jours-feries` | Réglages bornés ; zones et communes ; jours fériés (`?annee=`)                                        | 1a       |
+| `/nettoyage` (Dossiers), `/nettoyage/dossiers/{id}`                | File des dossiers (« À traiter », filtres) ; fiche par étapes : demande, visite, retenu, devis        | 1b       |
+| `/nettoyage/visites`                                               | Calendrier des visites (jour, semaine, filtres), gestion d'une visite                                 | 1b       |
+| `/nettoyage/equipe[/agents/{id}, /agents/nouveau, /equipes…]`      | Agents (candidatures en tête), fiche et cycle de vie, disponibilités ; équipes                        | 1c-1     |
+| `/nettoyage/planning` (`?vue=jour&date=`)                          | Planning jour/semaine, colonne « à affecter », affectation contrôlée, propositions, automatique       | 1c-2     |
+| `/nettoyage/programmes[/{id}, /{id}/seances/{sessionId}]`          | Programmes, décisions (horaire, avenant, suspension, arrêt validé par une 2ᵉ personne) ; séance       | 1c-3     |
+| `/nettoyage/missions/{id}`                                         | Ancienne fiche mission (v1) encore citée par factures et paiements : renvoi vers les programmes       | 1c-3     |
+| `/nettoyage/reclamations[/{id}]`                                   | File (`?statut=&agent=&client=&organisation=&tri=`, compteurs) ; fiche : échanges, décision, crédit   | 1c-4     |
 
-| Route du contrat (`/api/v1/admin/cleaning`)                                       | Écran ou composant                                           |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `GET`, `POST /parameters` ; `GET`, `PATCH /parameters/{id}`                       | `ParametersList`, `NewParameter`, `ParameterDetail`          |
-| `GET`, `POST /place-categories` ; `GET`, `PATCH /place-categories/{id}`           | `CategoriesList`, `NewCategory`, `CategoryDetail`            |
-| `GET`, `POST /place-types` ; `GET`, `PATCH /place-types/{id}`                     | `PlacesList`, `NewPlace`, `PlaceDetail`, `CategoryPlaces`    |
-| `GET`, `POST /skills` ; `PATCH /skills/{id}`                                      | `SkillsScreen`, choix de la compétence d'un type             |
-| `GET`, `POST /cleaning-types` ; `GET`, `PATCH /cleaning-types/{id}`               | `CleaningTypesList`, `NewCleaningType`, `CleaningTypeDetail` |
-| `GET`, `POST /offers` ; `GET`, `PATCH /offers/{id}`                               | `OffersList`, `NewOffer`, `OfferDetail`, `PlaceOffers`       |
-| `GET`, `POST /offers/{id}/tariffs` ; `PUT …/tariffs/{version}` ; `POST …/publish` | `TariffsPanel` (fiche de l'offre), brouillons du simulateur  |
-| `POST /simulations`                                                               | `Simulator`                                                  |
-| `GET`, `POST /holidays` ; `DELETE /holidays/{id}`                                 | `HolidaysScreen`                                             |
-| `GET`, `POST /zones` ; `PATCH /zones/{id}` ; `POST /zones/{id}/activation`        | `ZonesScreen` ; communes du simulateur                       |
-| `GET /communes`                                                                   | `ZonesScreen` (communes sans zone)                           |
-| `GET`, `PATCH /settings`                                                          | `SettingsScreen`                                             |
+| Route du contrat (`/api/v1/admin/cleaning`)                                       | Écran ou composant                                                     |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `GET`, `POST /parameters` ; `GET`, `PATCH /parameters/{id}`                       | `ParametersList`, `NewParameter`, `ParameterDetail`                    |
+| `GET`, `POST /place-categories` ; `GET`, `PATCH /place-categories/{id}`           | `CategoriesList`, `NewCategory`, `CategoryDetail`                      |
+| `GET`, `POST /place-types` ; `GET`, `PATCH /place-types/{id}`                     | `PlacesList`, `NewPlace`, `PlaceDetail`, `CategoryPlaces`              |
+| `GET`, `POST /skills` ; `PATCH /skills/{id}`                                      | `SkillsScreen`, choix de la compétence d'un type                       |
+| `GET`, `POST /cleaning-types` ; `GET`, `PATCH /cleaning-types/{id}`               | `CleaningTypesList`, `NewCleaningType`, `CleaningTypeDetail`           |
+| `GET`, `POST /offers` ; `GET`, `PATCH /offers/{id}`                               | `OffersList`, `NewOffer`, `OfferDetail`, `PlaceOffers`                 |
+| `GET`, `POST /offers/{id}/tariffs` ; `PUT …/tariffs/{version}` ; `POST …/publish` | `TariffsPanel` (fiche de l'offre), brouillons du simulateur            |
+| `POST /simulations`                                                               | `Simulator`                                                            |
+| `GET`, `POST /holidays` ; `DELETE /holidays/{id}`                                 | `HolidaysScreen`                                                       |
+| `GET`, `POST /zones` ; `PATCH /zones/{id}` ; `POST /zones/{id}/activation`        | `ZonesScreen` ; communes du simulateur                                 |
+| `GET /communes`                                                                   | `ZonesScreen` (communes sans zone)                                     |
+| `GET`, `PATCH /settings`                                                          | `SettingsScreen`                                                       |
+| `GET /claims` ; `GET`, `PATCH /claims/{id}`                                       | `ClaimsQueue` ; `ClaimDetail` (prise en charge, réponse)               |
+| `POST /claims/{id}/decision` ; `POST …/decision/approve`                          | `ClaimActions` (décision confirmée, crédit validé par une 2ᵉ personne) |
+
+Les routes des sous-lots 1b et 1c (dossiers, visites, devis, agents, équipes, planning, programmes, séances) sont listées dans les en-têtes de `requests-api.ts`, `agents-api.ts`, `planning-api.ts` et `programs-api.ts`.
 
 Aucune route publique `/api/v1/cleaning/catalog/*` n'est lue : le back-office voit les mêmes données (et les éléments désactivés) par ses routes.
 
@@ -213,7 +232,9 @@ Aucune route publique `/api/v1/cleaning/catalog/*` n'est lue : le back-office vo
 - **Tarif** (ADR-056) : version en vigueur, brouillon (préparé depuis la version en vigueur ; première sauvegarde `POST` avec clé, suivantes `PUT`), « Essayer ce brouillon au simulateur », publication confirmée (`Idempotency-Key`). Saisie en FCFA entiers, coefficients en multiplicateur (« 1,15 » = 11 500 points de base), remise de pack en pourcentage. Contiguïté et cohérence jugées par la gateway : `CLEANING_TARIFF_INCOMPLETE` traduit avec le rang, `CLEANING_VALIDATION_FAILED` placé sous le champ (`brackets[2].to`).
 - **Idempotence** : clé tirée au premier envoi, renvoyée telle quelle après une coupure ou une erreur du serveur, renouvelée après une réussite ou un refus définitif.
 - **Montants masqués** sans `cleaning.amounts.read` : « Montant masqué », champ non envoyé.
-- **Ma journée** : les sections du Nettoyage v1 (incidents, comptes rendus, demandes à visiter) sont retirées ; les sections v2 reviendront au sous-lot 1c par `@/features/cleaning/queue`.
+- **Réclamations** (1c-4, `cleaning.claim.manage`, support compris) : file triée des plus anciennes aux plus récentes (défaut du contrat), compteurs « Nouvelles » et « En cours », colonne « À faire » (prendre en charge, décider, crédit à valider) et signal « plus de 24 h sans réponse » (objectif `firstResponseAt`). Fiche : séance et programme liés, récit et photos, échanges avec le client et réponse (`PATCH`, 2 000 caractères), décision confirmée avec motif (repasse gratuite, crédit en FCFA entiers, rejet), validation d'un crédit au-delà de 50 000 FCFA par une autre personne que l'auteur (bouton masqué pour l'auteur, `CLEANING_SECOND_APPROVER_REQUIRED` en dernier ressort). Crédit « Montant masqué » sans `cleaning.amounts.read`. Les trois gestes portent une `Idempotency-Key`.
+- **Double authentification récente** : clôture et absence d'une séance ou d'une visite, retrait de photo, décision et validation d'un crédit exigent une double authentification de moins de 10 minutes (`x-ksp-mfa-max-age: 600`). Le contrat n'offre aucune route pour la refaire pendant une session (`/identity/mfa/verify` exige le `mfaToken` de la connexion) : l'écran l'annonce en note et affiche le refus de la gateway (`GATEWAY_MFA_REQUIRED`, 403, absent du contrat). **Manque du backend.**
+- **Ma journée** : sections v2 par `@/features/cleaning/queue` (voir « Ma journée » ci-dessous).
 
 ## Finance et comptes entreprise (`features/billing`, `features/payment`, `features/identity`)
 
@@ -278,12 +299,18 @@ Accueil `/` : file « À traiter », puis « Vos modules ». Chaque fonctionnali
 | Ordre | Section                      | Route et filtres du contrat                                        | Rôles (`x-ksp-roles`)                                             | Action de la ligne                  |
 | ----- | ---------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------- | ----------------------------------- |
 | 1     | Écarts de paiement           | `GET /admin/payment/payments?underReview=true&limit=20`            | finance_officer, cleaning_admin, super_admin                      | « Traiter l'écart » sur place       |
-| 2     | Comptes entreprise à valider | `GET /admin/identity/organizations?status=pending_review&limit=20` | super_admin, support_agent                                        | fiche (décision : super_admin)      |
-| 3     | Factures impayées            | `GET /admin/billing/invoices?status=overdue&limit=20`              | finance_officer, cleaning_supervisor, cleaning_admin, super_admin | fiche (« Enregistrer un paiement ») |
+| 2     | Réclamations à traiter       | `GET /admin/cleaning/claims?status=open` puis `status=in_progress` | `cleaning.claim.manage` (support compris)                         | fiche (geste attendu)               |
+| 3     | Interventions à affecter     | `GET /admin/cleaning/planning/unassigned?sort=urgency`             | `cleaning.planning.manage`                                        | planning du jour                    |
+| 4     | Visites à planifier          | `GET /admin/cleaning/requests?status=visit_to_schedule`            | `cleaning.request.process`                                        | fiche dossier                       |
+| 5     | Devis à préparer             | `GET /admin/cleaning/requests?status=visit_done`                   | `cleaning.quote.manage`                                           | fiche dossier                       |
+| 6     | Candidatures d'agents        | `GET /admin/cleaning/agents?status=applicant` puis `under_review`  | `cleaning.agent.manage`                                           | fiche agent                         |
+| 7     | Comptes entreprise à valider | `GET /admin/identity/organizations?status=pending_review&limit=20` | super_admin, support_agent                                        | fiche (décision : super_admin)      |
+| 8     | Factures impayées            | `GET /admin/billing/invoices?status=overdue&limit=20`              | finance_officer, cleaning_supervisor, cleaning_admin, super_admin | fiche (« Enregistrer un paiement ») |
 
-- Compteur : les listes ne renvoient pas de total ; « N », ou « 20+ » quand `nextCursor` n'est pas nul. 5 lignes au plus, dans l'ordre de la gateway ; « Tout voir » ouvre la liste déjà filtrée.
+- Compteur : les listes sans total affichent « N », ou « 20+ » quand `nextCursor` n'est pas nul ; celles du Nettoyage donnent `total` (compteur exact, somme des deux statuts lus). 5 lignes au plus, dans l'ordre de la gateway ; « Tout voir » ouvre la liste déjà filtrée.
+- Nettoyage : rôles d'une section = rôles par défaut de la permission de sa route (`rolesWith`, `access.ts`). Place des cinq sections entre les écarts de paiement et les comptes entreprise, et leur ordre interne : **à valider**. Arrêts de programme à valider : pas de section, `GET /programs` n'a pas de filtre sur `pendingCancellation` (**manque du contrat**).
 - États : squelette par section, section repliée « Rien à traiter », « Tout est à jour » quand toutes sont vides, erreur limitée à la section (message, référence, « Réessayer »), section absente hors des rôles.
-- Nettoyage : les trois sections v1 (incidents, comptes rendus à saisir, demandes à visiter) lisaient des routes supprimées par la v2 (ADR-054) ; elles sont retirées et reviendront, sur les routes v2, au sous-lot 1c.
+- Nettoyage v1 : les trois sections (incidents, comptes rendus à saisir, demandes à visiter) lisaient des routes supprimées par la v2 (ADR-054) ; remplacées par les sections v2 ci-dessus.
 - Menu : modules rangés par groupe (`group` dans `config/modules.ts` : Ma journée, Opérations, Finance, Clients, Pilotage), sans compteur.
 
 Écran lié : `/finance/paiements?a-examiner=1` (`underReview=true`) et « Traiter l'écart » (`POST /admin/payment/payments/{id}/resolve-mismatch`, note obligatoire, `Idempotency-Key` tirée à l'ouverture, accusé de réception, liste relue).
