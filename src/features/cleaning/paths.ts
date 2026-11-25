@@ -3,6 +3,7 @@
 const id = (value: string) => encodeURIComponent(value);
 const CATALOG = '/nettoyage/catalogue';
 const SETTINGS = '/nettoyage/reglages';
+const TEAM = '/nettoyage/equipe';
 
 export const cleaningPaths = {
   /** Dossiers (demandes) : racine du module, écrans du sous-lot 1b. */
@@ -18,7 +19,14 @@ export const cleaningPaths = {
   program: (value: string) => `/nettoyage/programmes/${id(value)}`,
   /** Ancienne fiche « mission » (v1), encore citée par la facturation et les paiements. */
   missionPrefix: '/nettoyage/missions',
-  team: '/nettoyage/equipe',
+  /** Agents et équipes (sous-lot 1c) : la liste des agents est la page d'accueil de l'onglet. */
+  team: TEAM,
+  agentPrefix: `${TEAM}/agents`,
+  agent: (value: string) => `${TEAM}/agents/${id(value)}`,
+  newAgent: `${TEAM}/agents/nouveau`,
+  teams: `${TEAM}/equipes`,
+  teamDetail: (value: string) => `${TEAM}/equipes/${id(value)}`,
+  newTeam: `${TEAM}/equipes/nouvelle`,
   claims: '/nettoyage/reclamations',
   catalog: {
     home: CATALOG,

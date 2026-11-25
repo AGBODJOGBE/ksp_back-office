@@ -99,12 +99,6 @@ export const cleaningTexts = {
       coming:
         'Le suivi d’un programme, de ses séances et de leurs paiements arrive avec les écrans des programmes.',
     },
-    team: {
-      title: 'Agents et équipes',
-      lead: 'Les agents de terrain, leurs candidatures, leurs disponibilités et leurs équipes.',
-      coming:
-        'Agents et candidatures (invitation, vérification, validation, suspension), disponibilités, indisponibilités et équipes.',
-    },
     claims: {
       title: 'Réclamations',
       lead: 'Les réclamations des clients après une séance.',

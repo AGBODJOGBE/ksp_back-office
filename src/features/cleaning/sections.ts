@@ -68,3 +68,10 @@ export const SETTINGS_SECTIONS = [
   { href: cleaningPaths.settings.zones, label: 'Zones desservies' },
   { href: cleaningPaths.settings.holidays, label: 'Jours fériés' },
 ] as const;
+
+export const TEAM_SECTIONS_LABEL = 'Agents ou équipes';
+/** Agents (accueil de l'onglet, fiches agent comprises) et équipes. */
+export const TEAM_SECTIONS = [
+  { href: cleaningPaths.team, label: 'Agents', match: [cleaningPaths.agentPrefix] },
+  { href: cleaningPaths.teams, label: 'Équipes' },
+] as const;

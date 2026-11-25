@@ -61,3 +61,9 @@ export const RequestDetail = dynamic(() => import('./request-detail').then((m) =
 export const VisitsCalendar = dynamic(() => import('./visits-calendar').then((m) => m.VisitsCalendar), {
   loading,
 });
+export const AgentsList = dynamic(() => import('./agents-list').then((m) => m.AgentsList), { loading });
+export const AgentDetail = dynamic(() => import('./agent-detail').then((m) => m.AgentDetail), { loading });
+export const AgentInvite = dynamic(() => import('./agent-invite').then((m) => m.AgentInvite), { loading });
+export const TeamsList = dynamic(() => import('./teams-list').then((m) => m.TeamsList), { loading });
+export const TeamDetail = dynamic(() => import('./team-detail').then((m) => m.TeamDetail), { loading });
+export const NewTeam = dynamic(() => import('./team-detail').then((m) => m.NewTeam), { loading });

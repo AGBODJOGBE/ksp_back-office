@@ -10,6 +10,8 @@ import {
   CATALOG_STEPS_LABEL,
   SETTINGS_SECTIONS,
   SETTINGS_SECTIONS_LABEL,
+  TEAM_SECTIONS,
+  TEAM_SECTIONS_LABEL,
 } from '@/features/cleaning/sections';
 
 export interface SectionNavItem {
@@ -17,6 +19,8 @@ export interface SectionNavItem {
   label: string;
   /** Rang dans un ordre à suivre (étapes du catalogue), affiché et lu (« Étape 1 : Paramètres »). */
   step?: number;
+  /** Autres préfixes d'adresse qui rendent l'entrée courante (fiches rattachées). */
+  match?: readonly string[];
 }
 
 /**
@@ -38,10 +42,10 @@ export function SectionNav({
     <nav aria-label={label} className="-mx-gutter overflow-x-auto">
       <ul className="px-gutter flex min-w-max gap-2 pb-1">
         {items.map((item) => {
+          const under = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
           const current =
-            item.href === rootHref
-              ? pathname === item.href
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            (item.href === rootHref ? pathname === item.href : under(item.href)) ||
+            (item.match ?? []).some(under);
           return (
             <li key={item.href}>
               <Link
@@ -92,4 +96,9 @@ export function SettingsNav() {
       rootHref={cleaningPaths.settings.general}
     />
   );
+}
+
+/** Sections de l'onglet « Agents et équipes » : agents (et leurs fiches), équipes. */
+export function TeamNav() {
+  return <SectionNav label={TEAM_SECTIONS_LABEL} items={TEAM_SECTIONS} rootHref={cleaningPaths.team} />;
 }
