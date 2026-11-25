@@ -202,8 +202,10 @@ describe('fiche d’un compte entreprise', () => {
     render(<OrganizationDetail id={ids.organization} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Valider' }));
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Valider le compte' }));
-    expect(await screen.findByText(/a changé d’état entre-temps/)).toBeInTheDocument();
     await waitFor(() => expect(calls.filter((call) => call.method === 'GET')).toHaveLength(2));
+    // La relecture retire la décision et sa fenêtre : l'explication doit rester sur la fiche.
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByText(/a changé d’état entre-temps/)).toBeInTheDocument();
   });
 
   it('réserve les décisions au super administrateur', async () => {

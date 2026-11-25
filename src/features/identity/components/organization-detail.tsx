@@ -183,6 +183,14 @@ function OrganizationView({
   const { roles } = grants;
   const access = organizationAccess(roles);
   const [done, setDone] = useState<string | null>(null);
+  // État changé entre-temps : l'explication reste sur la fiche, car la relecture retire la décision
+  // et sa fenêtre avant qu'elle ait affiché le message.
+  const [stale, setStale] = useState<string | null>(null);
+  const onStaleKept = () => {
+    setDone(null);
+    setStale(organizationTexts.errors.invalidTransition);
+    onStale();
+  };
   const { organization, members } = detail;
   const decisions = DECISIONS[organization.status] ?? [];
 
@@ -201,6 +209,7 @@ function OrganizationView({
 
       <StatusNotice organization={organization} />
       <FormMessage tone="success">{done}</FormMessage>
+      <FormMessage tone="info">{stale}</FormMessage>
 
       <Panel title={t.decisionsTitle} id="entreprise-decision">
         {!access.decide ? (
@@ -212,8 +221,9 @@ function OrganizationView({
                 key={decision}
                 organization={organization}
                 decision={decision}
-                onStale={onStale}
+                onStale={onStaleKept}
                 onDone={(updated, message) => {
+                  setStale(null);
                   setDone(message);
                   onChange({ organization: updated, members });
                 }}
