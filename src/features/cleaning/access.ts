@@ -60,3 +60,6 @@ export function cleaningAccess(roles: readonly string[]): CleaningAccess {
     ]),
   ) as CleaningAccess;
 }
+
+/** Rôles qui portent une permission (file « À traiter » de Ma journée : sections affichées par rôle). */
+export const rolesWith = (permission: CleaningPermission): readonly string[] => DEFAULT_ROLES[permission];
